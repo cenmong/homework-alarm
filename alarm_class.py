@@ -181,10 +181,10 @@ class Alarm():
 
         # Plot 4 var in one figure
 
-        fig = plt.figure(figsize=(16, 14))
+        fig = plt.figure(figsize=(16, 30))
         fig.suptitle('I-Seismometer '+self.ymd)
 
-        ax1 = fig.add_subplot(311)
+        ax1 = fig.add_subplot(711)
         ax1.plot(dt, count_u, 'b-', label='updates')
         ax1.xaxis.set_visible(False)
         ax1.set_ylabel('update count', color='b')
@@ -197,29 +197,40 @@ class Alarm():
         ax1.legend(loc='best')
         ax11.legend(loc='best')
 
-        ax2 = fig.add_subplot(312)
+        ax2 = fig.add_subplot(712)
         ax2.plot(dt, count_p, 'b-')
         ax2.xaxis.set_visible(False)
         ax2.set_ylabel('pfx number', color='b')
         for t in ax2.get_yticklabels():
             t.set_color('b')
 
-        ax3 = fig.add_subplot(313)
-        ax3.plot(dt, count90, 'k-', label='>=90%')
-        ax3.plot(dt, count80, 'b-', label='>=80%')
-        ax3.plot(dt, count70, 'r-', label='>=70%')
-        ax3.plot(dt, count60, 'g-', label='>=60%')
-        ax3.plot(dt, count50, 'c-', label='>=50%')
+        ax3 = fig.add_subplot(713)
+        ax3.plot(dt, count50, 'b-')
+        ax3.xaxis.set_visible(False)
+        ax3.set_ylabel('active 50')
 
-        ax3.legend(loc='best')
+        ax4 = fig.add_subplot(714)
+        ax4.plot(dt, count60, 'b-')
+        ax4.xaxis.set_visible(False)
+        ax4.set_ylabel('active 60')
 
-        ax3.set_xlabel('Datetime')
+        ax5 = fig.add_subplot(715)
+        ax5.plot(dt, count70, 'b-')
+        ax5.xaxis.set_visible(False)
+        ax5.set_ylabel('active 70')
+
+        ax6 = fig.add_subplot(716)
+        ax6.plot(dt, count80, 'b-')
+        ax6.xaxis.set_visible(False)
+        ax6.set_ylabel('active 80')
+
+        ax7 = fig.add_subplot(717)
+        ax7.plot(dt, count90, 'b-')
+        ax7.set_ylabel('active 90')
+
+        ax7.set_xlabel('Datetime')
         myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
-        ax3.xaxis.set_major_formatter(myFmt)
-        ax3.set_ylabel('active pfx number', color='b')
-        ax3.set_yscale('log')
-        for t in ax3.get_yticklabels():
-            t.set_color('b')
+        ax7.xaxis.set_major_formatter(myFmt)
 
         plt.xticks(rotation=45)
         plt.plot()
