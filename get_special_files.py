@@ -17,9 +17,9 @@ def get_file():
         os.system('lynx -dump http://archive.routeviews.org/bgpdata/' + ym[i] +\
                 '/UPDATES/ > tmpfile')
         f = open('tmpfile', 'r')
-        if os.path.exists('metadata/files' + ymd1[i]):
-            os.system('rm metadata/files' + ymd1[i])
-        flist = open('metadata/files' + ymd1[i], 'a')
+        #if os.path.exists('metadata/files' + ymd1[i]):
+            #os.system('rm metadata/files' + ymd1[i])
+        #flist = open('metadata/files' + ymd1[i], 'a')
         for line in f.readlines():
             if line.split('.')[-1] != 'bz2\n':
                 continue
@@ -33,8 +33,9 @@ def get_file():
                 os.system('wget -e robots=off --connect-timeout=3000 -np -P ' + hdname + ' -c -m -r -A.bz2\
                         http://' + topofile)
             else:
+                print 'exists!'
                 continue
-            flist.write(topofile.replace('.bz2', '.psd') + '\n')  # Names of parsed files are stored
+            #flist.write(topofile.replace('.bz2', '.psd') + '\n')  # Names of parsed files are stored
             if os.path.exists(hdname + topofile):
                 try:
                     os.system('bunzip2 ' + hdname + topofile)  # Unpack the files
@@ -57,7 +58,7 @@ def get_file():
                 os.system('python ~/Downloads/clean.py ' + hdname + topofile +\
                         '.psd')
         f.close()
-        flist.close()
+        #flist.close()
         os.system('rm tmpfile')
     return
 

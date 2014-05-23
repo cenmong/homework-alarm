@@ -3,7 +3,9 @@ from get_special_files import ymd1
 
 #filelist = 'metadata/test-files20050828'
 #filelist = 'metadata/hk-localtest'
-for i in range(len(ymd1)-4, len(ymd1)):
+for i in range(0, len(ymd1)):
+    if i == 9:
+        continue
     filelist = 'metadata/files' + ymd1[i]
     ana = Analyzer(filelist, 10, ymd1[i])  # Granularity needed
     ana.parse_update()

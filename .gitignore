@@ -10,3 +10,5 @@ data/
 *.swp
 *.pdf
 *.psd
+tmpfile
+result_tmp
