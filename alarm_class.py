@@ -14,18 +14,22 @@ class Alarm():
 
     def __init__(self, granu, ymd):
         self.granu = granu  # Time granularity
-        #self.pfx_info = dict()  # {prefix: {AS: count}}
-        self.trie = patricia.trie(None)  # prefix: {AS: count}
+        self.trie = patricia.trie(None)  # prefix: AS list
+        '''
         self.actv_pfx90 = dict()  # {time: prefix list}
         self.actv_pfx80 = dict()  # {time: prefix list}
         self.actv_pfx70 = dict()  # {time: prefix list}
         self.actv_pfx60 = dict()  # {time: prefix list}
         self.actv_pfx50 = dict()  # {time: prefix list}
+        '''
         self.ucount = 0  # update count in a period
         self.pcount = 0  # prefix count in a period
         self.lasttime = 0  # detect time period changes
         self.from_ip_list = []  # For detecting new from IP
-
+        self.dvi1 = dict()  # {time: index value}
+        self.dvi2 = dict()
+        self.dvi3 = dict()
+        '''
         self.ct90 = dict()  # {time: active prefix count}. For plot.
         self.ct80 = dict()  # {time: active prefix count}. For plot.
         self.ct70 = dict()  # {time: active prefix count}. For plot.
@@ -34,12 +38,12 @@ class Alarm():
         self.ct_monitor = dict()  # {time: monitor count}. For plot.
         self.ct_p = dict()  # {time: all prefix count}. For plot.
         self.ct_u = dict()  # {time: all update count}. For plot.
+        '''
 
         self.ymd = ymd  # For saving figures
 
     def add(self, update):
         dt = update.get_time()
-        #print dt
         dt = datetime.datetime.strptime(dt, '%m/%d/%y %H:%M:%S')  # Format to obj 
 
         # Set granularity
@@ -57,8 +61,8 @@ class Alarm():
         if time != self.lasttime:
             if self.lasttime != 0:  # Not the first run
                 print datetime.datetime.fromtimestamp(time)
-                self.get_fqt()
-                #self.pfx_info = {}
+                #self.get_50_90()
+                self.get_index()
                 self.trie = patricia.trie(None)
                 self.pcount = 0
                 self.ucount = 0
@@ -66,20 +70,79 @@ class Alarm():
             self.lasttime = time
 
         for p in prefix:
-            try:
+            try:  # Test whether the trie has the node
                 test = self.trie[p]
-            except:
-                self.trie[p] = {}
+            except:  # Node does not exist
+                self.trie[p] = []
                 self.pcount += 1
 
-            try:
-                self.trie[p][from_ip] += 1
-            except:
-                self.trie[p][from_ip] = 1
+            if from_ip not in self.trie[p]:
+                self.trie[p].append(from_ip)
 
             self.ucount += 1
 
-    def get_fqt(self):
+    def get_index(self):
+        len_all_fi = len(self.from_ip_list)
+
+        for p in self.trie:
+            if p == '':
+                continue
+            ratio = float(len(self.trie[p]))/float(len_all_fi)
+            if ratio > 0.5:
+                try:
+                    self.dvi1[self.lasttime] += ratio - 0.5
+                except:
+                    self.dvi1[self.lasttime] = ratio - 0.5
+                try:
+                    self.dvi2[self.lasttime] += np.power(2, (ratio-0.9)*10)
+                except:
+                    self.dvi2[self.lasttime] = np.power(2, (ratio-0.9)*10)
+                try:
+                    self.dvi3[self.lasttime] += np.power(5, (ratio-0.9)*10)
+                except:
+                    self.dvi3[self.lasttime] = np.power(5, (ratio-0.9)*10)
+
+        return 0
+
+    def plot_index(self):
+        dvi1 = []
+        dvi2 = []
+        dvi3 = []
+
+        dt = self.dvi1.keys()
+        dt.sort()
+        for key in dt:
+            dvi1.append(self.dvi1[key])
+            dvi2.append(self.dvi2[key])
+            dvi3.append(self.dvi3[key])
+        dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
+
+        fig = plt.figure(figsize=(16, 16))
+        fig.suptitle('DVI '+self.ymd)
+
+        ax1 = fig.add_subplot(311)
+        ax1.plot(dt, dvi1, 'b-')
+        ax1.xaxis.set_visible(False)
+        ax1.set_ylabel('dvi1')
+
+        ax2 = fig.add_subplot(312)
+        ax2.plot(dt, dvi2, 'b-')
+        ax2.xaxis.set_visible(False)
+        ax2.set_ylabel('dvi2')
+
+        ax3 = fig.add_subplot(313)
+        ax3.plot(dt, dvi3, 'b-')
+        ax3.set_ylabel('dvi3')
+        ax3.set_xlabel('Datetime')
+        myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
+        ax3.xaxis.set_major_formatter(myFmt)
+
+        plt.xticks(rotation=45)
+        plt.plot()
+        plt.savefig(self.ymd+'_dvi.pdf')
+        return 0
+
+    def get_50_90(self):
         len_all_fi = len(self.from_ip_list)
         self.ct_monitor[self.lasttime] = len_all_fi
 
@@ -87,7 +150,7 @@ class Alarm():
             if p == '':
                 continue
            
-            if len(self.trie[p].keys()) >= 0.5 * len_all_fi:
+            if len(self.trie[p].keys()) >= 0.5 * len_all_fi:  # TODO: not dict any more
                 try:
                     self.actv_pfx50[self.lasttime].append(p)
                 except:
@@ -149,7 +212,7 @@ class Alarm():
         self.ct_p[self.lasttime] = self.pcount
         self.ct_u[self.lasttime] = self.ucount
 
-    def plot(self): 
+    def plot_50_90(self): 
         count90 = []
         count80 = []
         count70 = []
@@ -173,14 +236,7 @@ class Alarm():
 
         dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
 
-        left = 0.05
-        width = 0.92
-        bottom = 0.15
-        height = 0.8
-        rect_scatter = [left, bottom, width, height]
-
-        # Plot 4 var in one figure
-
+        # Plot all var in one figure
         fig = plt.figure(figsize=(16, 30))
         fig.suptitle('I-Seismometer '+self.ymd)
 
@@ -234,4 +290,4 @@ class Alarm():
 
         plt.xticks(rotation=45)
         plt.plot()
-        plt.savefig(self.ymd+'.pdf')
+        plt.savefig(self.ymd+'_50_90.pdf')

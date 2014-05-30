@@ -35,6 +35,7 @@ class Analyzer():
                         update_chunk += line.replace('\n', '').strip() + '@@@'
             f.close()
 
-        self.alarm.plot()  
+        #self.alarm.plot_50_90()  
+        self.alarm.plot_index()
         filelist.close()
         return 0
