@@ -5,13 +5,19 @@ from datetime import datetime
 import time 
 from update_class import *
 from alarm_class import *
+from alarm_c_class import *
 
 class Analyzer():
 
-    def __init__(self, filelist, granu, ymd):  # granularity in minutes
+    def __init__(self, filelist, granu, ymd, atype):  # granularity in minutes
         self.filelist = filelist  # filelist file name 
         #self.update_count = {}  # {datetime: (4 update count, 6 update count)}
-        self.alarm = Alarm(granu, ymd)
+        if atype == 1:
+            self.alarm = Alarm(granu, ymd)
+        if atype == 2:
+            self.alarm = Alarm_c(granu)
+        
+        self.atype = atype
 
     def parse_update(self):
         filelist = open(self.filelist, 'r')
@@ -35,7 +41,11 @@ class Analyzer():
                         update_chunk += line.replace('\n', '').strip() + '@@@'
             f.close()
 
-        #self.alarm.plot_50_90()  
-        self.alarm.plot_index()
+        if self.atype == 1:
+            #self.alarm.plot_50_90()  
+            self.alarm.plot_index()
+        elif self.atype == 2:
+            self.alarm.plot()    
+
         filelist.close()
         return 0

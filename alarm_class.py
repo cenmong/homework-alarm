@@ -29,6 +29,8 @@ class Alarm():
         self.dvi1 = dict()  # {time: index value}
         self.dvi2 = dict()
         self.dvi3 = dict()
+        self.dvi4 = dict()
+        self.dvi5 = dict()
         '''
         self.ct90 = dict()  # {time: active prefix count}. For plot.
         self.ct80 = dict()  # {time: active prefix count}. For plot.
@@ -101,6 +103,14 @@ class Alarm():
                     self.dvi3[self.lasttime] += np.power(5, (ratio-0.9)*10)
                 except:
                     self.dvi3[self.lasttime] = np.power(5, (ratio-0.9)*10)
+                try:
+                    self.dvi4[self.lasttime] += 1
+                except:
+                    self.dvi4[self.lasttime] = 1
+                try:
+                    self.dvi5[self.lasttime] += ratio
+                except:
+                    self.dvi5[self.lasttime] = ratio
 
         return 0
 
@@ -108,6 +118,8 @@ class Alarm():
         dvi1 = []
         dvi2 = []
         dvi3 = []
+        dvi4 = []
+        dvi5 = []
 
         dt = self.dvi1.keys()
         dt.sort()
@@ -115,27 +127,40 @@ class Alarm():
             dvi1.append(self.dvi1[key])
             dvi2.append(self.dvi2[key])
             dvi3.append(self.dvi3[key])
+            dvi4.append(self.dvi4[key])
+            dvi5.append(self.dvi5[key])
         dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
 
-        fig = plt.figure(figsize=(16, 16))
+        fig = plt.figure(figsize=(16, 20))
         fig.suptitle('DVI '+self.ymd)
 
-        ax1 = fig.add_subplot(311)
+        ax1 = fig.add_subplot(511)
         ax1.plot(dt, dvi1, 'b-')
         ax1.xaxis.set_visible(False)
-        ax1.set_ylabel('dvi1')
+        ax1.set_ylabel('dvi1: ratio-0.5')
 
-        ax2 = fig.add_subplot(312)
+        ax2 = fig.add_subplot(512)
         ax2.plot(dt, dvi2, 'b-')
         ax2.xaxis.set_visible(False)
-        ax2.set_ylabel('dvi2')
+        ax2.set_ylabel('dvi2: power(2,(ratio-0.9)*10)')
 
-        ax3 = fig.add_subplot(313)
+        ax3 = fig.add_subplot(513)
         ax3.plot(dt, dvi3, 'b-')
-        ax3.set_ylabel('dvi3')
-        ax3.set_xlabel('Datetime')
+        ax3.xaxis.set_visible(False)
+        ax3.set_ylabel('dvi3: power(5,(ratio-0.9)*10)')
+
+        ax4 = fig.add_subplot(514)
+        ax4.plot(dt, dvi4, 'b-')
+        ax4.xaxis.set_visible(False)
+        ax4.set_ylabel('dvi4:1')
+
+        ax5 = fig.add_subplot(515)
+        ax5.plot(dt, dvi5, 'b-')
+        ax5.set_ylabel('dvi5:ratio')
+
+        ax5.set_xlabel('Datetime')
         myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
-        ax3.xaxis.set_major_formatter(myFmt)
+        ax5.xaxis.set_major_formatter(myFmt)
 
         plt.xticks(rotation=45)
         plt.plot()
