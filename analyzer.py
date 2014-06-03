@@ -45,6 +45,7 @@ class Analyzer():
             #self.alarm.plot_50_90()  
             self.alarm.plot_index()
         elif self.atype == 2:
+            self.alarm.get_avg_med()
             self.alarm.plot()    
 
         filelist.close()

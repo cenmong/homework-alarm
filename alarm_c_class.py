@@ -15,10 +15,34 @@ class Alarm_c():
     def __init__(self, granu):
         self.granu = granu  # Time granularity
         self.trie = patricia.trie(None)  # prefix: AS list
+        self.from_ip_list = []  # temprorily store monitor
         self.dvi1 = dict()  # {time: index value}
         self.dvi2 = dict()
         self.dvi4 = dict()
         self.dvi5 = dict()
+        self.monitor_dict = dict()  # {time: number of monitors}
+
+        self.dvi1_avg = []  # {day: average value}
+        self.dvi1_med = []
+        self.dvi2_avg = []  # {day: average value}
+        self.dvi2_med = []
+        self.dvi4_avg = []  # {day: average value}
+        self.dvi4_med = []
+        self.dvi5_avg = []  # {day: average value}
+        self.dvi5_med = []
+
+        self.monitor = []  # {day: number of monitors}
+
+        order = 0
+        self.days = []  # strings of days
+        for i in range(2003, 2014):
+            for j in ['01', '04', '07', '10']:
+                self.days.append(str(i)+j)
+                self.dvi1_avg[order] = 0  # initialization 
+                self.dvi2_avg[order] = 0
+                self.dvi4_avg[order] = 0
+                self.dvi5_avg[order] = 0
+                order += 1
 
     def add(self, update):
         dt = update.get_time()
@@ -39,7 +63,6 @@ class Alarm_c():
         if time != self.lasttime:
             if self.lasttime != 0:  # Not the first run
                 print datetime.datetime.fromtimestamp(time)
-                #self.get_50_90()
                 self.get_index()
                 self.trie = patricia.trie(None)
                 self.pcount = 0
@@ -84,49 +107,112 @@ class Alarm_c():
                 except:
                     self.dvi5[self.lasttime] = ratio
 
+        self.monitor_dict[self.lasttime] = len(self.from_ip_list)
         return 0
 
-    def plot(self):
-        dvi1 = []
-        dvi2 = []
-        dvi4 = []
-        dvi5 = []
-
+    def get_avg_med(self):
         dt = self.dvi1.keys()
         dt.sort()
+        order = 0  # order of season
+        count = 0  # number of data in a season
+        temp1 = []
+        temp2 = []
+        temp4 = []
+        temp5 = []
+        last_key = dt[0]
         for key in dt:
-            dvi1.append(self.dvi1[key])
-            dvi2.append(self.dvi2[key])
-            dvi4.append(self.dvi4[key])
-            dvi5.append(self.dvi5[key])
-        dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
+            if key - last_key < 1000:  # in the same season
+                self.dvi1_avg[order] += self.dvi1[key]
+                self.dvi2_avg[order] += self.dvi2[key]
+                self.dvi4_avg[order] += self.dvi4[key]
+                self.dvi5_avg[order] += self.dvi5[key]
+                temp1.append(self.dvi1[key])
+                temp2.append(self.dvi2[key])
+                temp4.append(self.dvi4[key])
+                temp5.append(self.dvi5[key])
+                count += 1
+            else:  # in different seasons
+                self.monitor[order] = self.monitor_dict[last_key]
+                self.dvi1_avg[order] = float(self.dvi1_avg[order])/float(count)
+                self.dvi2_avg[order] = float(self.dvi2_avg[order])/float(count)
+                self.dvi4_avg[order] = float(self.dvi4_avg[order])/float(count)
+                self.dvi5_avg[order] = float(self.dvi5_avg[order])/float(count)
+                self.dvi1_med[order] = sorted(temp1)[len(temp1)/2]
+                self.dvi2_med[order] = sorted(temp2)[len(temp2)/2]
+                self.dvi4_med[order] = sorted(temp4)[len(temp4)/2]
+                self.dvi5_med[order] = sorted(temp5)[len(temp5)/2]
+                temp1 = [self.dvi1[key]]
+                temp2 = [self.dvi2[key]]
+                temp4 = [self.dvi4[key]]
+                temp5 = [self.dvi5[key]]
+                order += 1
+                self.dvi1_avg[order] += self.dvi1[key]
+                self.dvi2_avg[order] += self.dvi2[key]
+                self.dvi4_avg[order] += self.dvi4[key]
+                self.dvi5_avg[order] += self.dvi5[key]
+                count = 1
+            last_key = key
 
+    def plot(self):
         fig = plt.figure(figsize=(16, 20))
-        fig.suptitle('DVI '+self.ymd)
+        fig.suptitle('Chronology')
 
-        ax1 = fig.add_subplot(411)
-        ax1.plot(dt, dvi1, 'b-')
+        ax0 = fig.add_subplot(511)
+        ax0.plot(self.days, self.monitor, 'b-')
+        ax0.xaxis.set_visible(False)
+        ax0.set_ylabel('monitors')
+
+        ax1 = fig.add_subplot(512)
+        ax1.plot(self.days, self.dvi1_avg, 'b-', label='average')
         ax1.xaxis.set_visible(False)
         ax1.set_ylabel('dvi1: ratio-0.5')
 
-        ax2 = fig.add_subplot(412)
-        ax2.plot(dt, dvi2, 'b-')
-        ax2.xaxis.set_visible(False)
-        ax2.set_ylabel('dvi2: power(2,(ratio-0.9)*10)')
+        ax11 = ax1.twinx()
+        ax11 = plot(self.days, self.dvi1_med, 'g-', label='median')
+        ax11.xaxis.set_visible(False)
+        ax1.set_ylabel('dvi1: ratio-0.5')
 
-        ax4 = fig.add_subplot(413)
-        ax4.plot(dt, dvi4, 'b-')
+        ax1.legend(loc='best')
+        ax11.legend(loc='best')
+
+        ax2 = fig.add_subplot(513)
+        ax2.plot(self.days, self.dvi2_avg, 'b-', label='average')
+        ax2.xaxis.set_visible(False)
+        ax2.set_ylabel('dvi2:np.power(2, (ratio-0.9)*10)')
+
+        ax22 = ax2.twinx()
+        ax22 = plot(self.days, self.dvi2_med, 'g-', label='median')
+        ax22.xaxis.set_visible(False)
+        ax22.set_ylabel('dvi2')
+
+        ax2.legend(loc='best')
+        ax22.legend(loc='best')
+
+        ax4 = fig.add_subplot(514)
+        ax4.plot(self.days, self.dvi4_avg, 'b-', label='average')
         ax4.xaxis.set_visible(False)
         ax4.set_ylabel('dvi4:1')
 
-        ax5 = fig.add_subplot(414)
-        ax5.plot(dt, dvi5, 'b-')
+        ax44 = ax4.twinx()
+        ax44 = plot(self.days, self.dvi4_med, 'g-', label='median')
+        ax44.xaxis.set_visible(False)
+        ax4.set_ylabel('dvi4')
+
+        ax4.legend(loc='best')
+        ax144.legend(loc='best')
+
+        ax5 = fig.add_subplot(515)
+        ax5.plot(self.days, self.dvi5_avg, 'b-', label='average')
         ax5.set_ylabel('dvi5:ratio')
 
-        ax5.set_xlabel('Datetime')
-        myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
-        ax5.xaxis.set_major_formatter(myFmt)
+        ax55 = ax1.twinx()
+        ax55 = plot(self.days, self.dvi1_med, 'g-', label='median')
+        ax55.xaxis.set_visible(False)
+        ax55.set_ylabel('dvi5')
 
+        ax5.legend(loc='best')
+        ax55.legend(loc='best')
+        
         plt.xticks(rotation=45)
         plt.plot()
         plt.savefig('chronology.pdf')
