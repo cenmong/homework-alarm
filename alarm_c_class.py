@@ -64,8 +64,7 @@ class Alarm_c():
 
         if time != self.lasttime:
             if self.lasttime != 0:  # Not the first run
-                print datetime.datetime.fromtimestamp(time)
-                self.get_index()
+                self.get_index()  # TODO: should consider the last run
                 self.trie = patricia.trie(None)
             
             self.lasttime = time
@@ -81,13 +80,14 @@ class Alarm_c():
 
 
     def get_index(self):
-        len_all_fi = len(self.from_ip_list)
+        len_all_fi = len(self.from_ip_list)  # get number of from ip
 
         for p in self.trie:
-            if p == '':
+            if p == '':  # root node
                 continue
             ratio = float(len(self.trie[p]))/float(len_all_fi)
-            if ratio > 0.5:
+            if ratio > 0.5:  # this prefix is highly visible
+                # TODO: if no one goes in, all assign zero
                 try:
                     self.dvi1[self.lasttime] += ratio - 0.5
                 except:
@@ -105,7 +105,8 @@ class Alarm_c():
                 except:
                     self.dvi5[self.lasttime] = ratio
 
-        self.monitor_dict[self.lasttime] = len(self.from_ip_list)
+        self.monitor_dict[self.lasttime] = len_all_fi
+        self.from_ip_list = []
         return 0
 
     def get_avg_med(self):
@@ -164,8 +165,11 @@ class Alarm_c():
     def plot(self):
         fig = plt.figure(figsize=(16, 20))
         fig.suptitle('Chronology')
-        
+
         x_int = range(0, len(self.days))
+
+        print x_int
+        print self.monitor
 
         ax0 = fig.add_subplot(511)
         ax0.plot(x_int, self.monitor, 'b-')
@@ -213,7 +217,6 @@ class Alarm_c():
 
         ax5 = fig.add_subplot(515)
         ax5.plot(x_int, self.dvi5_avg, 'b-', label='average')
-        ax5.set_xticklabels(self.days, rotation=45)
         ax5.set_ylabel('dvi5:ratio')
 
         ax55 = ax5.twinx()
