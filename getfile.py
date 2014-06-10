@@ -4,20 +4,19 @@ import datetime
 
 hdname_detail = hdname + 'archive.routeviews.org/bgpdata/'
 
-ym = ['2013.07']
-ymd1 = ['20130701']
-ymd2 = ['20130731']
-
+# TODO: start ym, start ymd, number of days
+ym = ['2010.02']
+ymd1 = ['20100226']
+ymd2 = ['20100226']
 
 def get_file():
 
     for i in range(0, len(ym)):
         ## download updatefile
-        os.system('lynx -dump http://archive.routeviews.org/bgpdata/' + ym[i] + '/UPDATES/ > tmpfile')
+        os.system('lynx -dump http://archive.routeviews.org/bgpdata/'+ym[i]+'/UPDATES/ > tmpfile')
         f = open('tmpfile', 'r')
-        if os.path.exists('metadata/updt_filelist_tmp' + ymd1[i]):
-            os.system('rm '+ 'metadata/updt_filelist_tmp' + ymd1[i])
-        flist = open('metadata/updt_filelist_tmp' + ymd1[i], 'a')  # filelist in the same dir as the files
+        # this will over-write an existing filslist
+        flist = open('metadata/updt_filelist'+ymd1[i], 'w')  # .bz2.txt.gz file name
 
         testcount = 0  # TODO: test only
         for line in f.readlines():
@@ -25,43 +24,58 @@ def get_file():
                 continue
             if int(line.split('.')[-3]) < int(ymd1[i]) or int(line.split('.')[-3]) > int(ymd2[i]):
                 continue
-            updt_fname = line.split('//')[1]
-            updt_fname = updt_fname.replace('\n', '')  # name of .bz2 file
-            if not os.path.exists(hdname + updt_fname):
-                os.system('wget -e robots=off --connect-timeout=3000 -np -P ' + hdname + ' -c -m -r -A.bz2\
-                        http://' + updt_fname)
-            else:  # .bz2 file exists
-                pass
-            #flist.write(hdname +'/' + updt_fname + '\n')
-            flist.write(hdname+updt_fname+'\n')  # store location!
 
             # TODO: for test only
             testcount += 1
-            if testcount == 3:
+            if testcount == 30:
                 break
+
+            updt_fname = line.split('//')[1].replace('\n', '')  # name of .bz2 file
+            flist.write(hdname+updt_fname+'.txt.gz\n')  # .bz2.txt.gz file list
+            if os.path.exists(hdname+updt_fname+'.txt.gz'):
+                print '.bz2.txt.gz update file exists!'
+                if os.path.exists(hdname+updt_fname):  # .bz2 useless anymore
+                    os.system('rm '+hdname+updt_fname)
+                continue
+            if os.path.exists(hdname+updt_fname):
+                print '.bz2 update file exists!'
+                continue
+            if os.path.exists(hdname+updt_fname+'.txt'):  # remove existing .txt
+                os.system('rm '+hdname+updt_fname+'.txt')
+
+            os.system('wget -e robots=off --connect-timeout=3000 -np -P '+hdname+' -c -m -r -A.bz2\
+                    http://'+updt_fname)
 
         flist.close()
         f.close()
         os.system('rm tmpfile')
 
+
         ## download rib
-        dt = datetime.datetime.strptime(ymd1[i], "%Y%m%d").date()
-        ribtime = dt + datetime.timedelta(days = -1)  # RIB is 1 day before
-        ribtime = ribtime.strftime('%Y%m%d')
-        dtplace = ribtime[:4] + '.' + ribtime[4:6]  # RIB may from last month
-        os.system('lynx -dump http://archive.routeviews.org/bgpdata/'+dtplace+'/RIBS/ > tmpfile')
+        #dt = datetime.datetime.strptime(ymd1[i], "%Y%m%d").date()
+        #ribtime = dt + datetime.timedelta(days=-1)  # RIB is 1 day before
+        #ribtime = ribtime.strftime('%Y%m%d')
+        ribtime = ymd1[i]
+        os.system('lynx -dump http://archive.routeviews.org/bgpdata/'+ym[i]+'/RIBS/ > tmpfile')
         f = open('tmpfile', 'r')
         for line in f.readlines():
             if line.split('.')[-1] != 'bz2\n':
                 continue
-            if int(line.split('.')[-3]) == int(ribtime):
-                rib_fname = line.split('//')[1]
-                rib_fname = rib_fname.replace('\n', '')
+            if int(line.split('.')[-3]) == int(ribtime):  # right date
+                rib_fname = line.split('//')[1].replace('\n', '')
                 # Download files
-                if not os.path.exists(hdname + rib_fname):  # .bz2 file exists
-                    os.system('wget -e robots=off --connect-timeout=3000 -np -P ' + hdname + ' -c -m -r -A.bz2 http://' + rib_fname)
-                else:
-                    pass    
+                if os.path.exists(hdname+rib_fname+'.txt.gz'): 
+                    print '.bz2.txt.gz RIB file exists!'
+                    if os.path.exists(hdname+rib_fname): 
+                        os.system('rm '+hdname+rib_fname) # .bz2 useless
+                    break
+                if os.path.exists(hdname+rib_fname): 
+                    print '.bz2 RIB file exists!'
+                    break
+                if os.path.exists(hdname+rib_fname+'.txt'): 
+                    os.system('rm '+hdname+rib_fname+'.txt')
+                os.system('wget -e robots=off --connect-timeout=3000 -np -P\
+                        '+hdname+' -c -m -r -A.bz2 http://'+rib_fname)
                 break
             else:
                 pass
@@ -69,88 +83,74 @@ def get_file():
         os.system('rm tmpfile')
 
 
-        ## get all peers (monitors)--->peers.txt
-        print 'getting peers...'
+        ## now for update and RIB files, their formats are either .bz2 or
+        ## .bz2.txt.gz!!!
+
+
+        print 'parsing updates...'
+        flist = open('metadata/updt_filelist'+ymd1[i], 'r')  # .bz2.txt.gz file name
+        for line in flist.readlines():
+            line = line.replace('\n', '')
+            print line
+            if not os.path.exists(line):  # .gz not exists, then .bz2 exists
+                os.system('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
+                        line.replace('.txt.gz', '')+' > '+\
+                        line.replace('.gz', ''))  # parse .bz2 into .txt
+                # compress .txt into .gz
+                os.system('gzip -c '+line.replace('.gz', '')+' > '+line)
+                os.system('rm '+line.replace('.txt.gz', ''))  # remove .bz2 update files
+                os.system('rm '+line.replace('.gz', ''))  # remove txt update files
+            else:  # .gz exists
+                pass
+        flist.close()
+
+
+        print 'parsing RIB and getting peers...'
+        rib_location = hdname + rib_fname  # end with .bz2
         peers = []
-        if not os.path.exists(hdname+rib_fname+'.txt'):  # rib txt file not exists
+        # get .txt
+        if os.path.exists(rib_location+'.txt.gz'):  # .bz2.txt.gz file exists
+            os.system('gunzip -c '+rib_location+'.txt.gz > '+\
+                    rib_location+'.txt')  # unpack                        
+        elif os.path.exists(rib_location):  # .bz2 file exists
             os.system('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m\
-                    '+hdname+rib_fname+'>'+hdname+rib_fname+'.txt')
-        if os.path.exists(hdname+rib_fname):  # rib .bz2 file exists
-            os.system('rm '+hdname+rib_fname)
-
-        rib_fname = rib_fname + '.txt'  # new name
-
-        ff = open(hdname_detail+ym[i]+'/UPDATES/peers'+ymd1[i], 'w')
-        with open(hdname+rib_fname, 'r') as f:
+                    '+rib_location+' > '+rib_location+'.txt')  # parse
+            os.system('rm '+rib_location)  # then remove .bz2
+        # read .txt
+        with open(rib_location+'.txt', 'r') as f:  # get peers from RIB
             for line in f:
                 try:
                     addr = line.split('|')[3]
                     if addr not in peers:
                         peers.append(addr)
                 except:
-                    continue
-
-        for p in peers:
-            ff.write(p+'\n')
-
-        ff.close()
+                    pass
         f.close()
-
-
-        ## compress rib file for the filtering process
-        print 'compress rib...'
-        os.system('gzip -c '+hdname+rib_fname+' > '+hdname+rib_fname+'.gz')
-        os.system('rm '+hdname+rib_fname)
-        rib_location = hdname + rib_fname + '.gz'
+        print 'peers: ', peers
+        # compress RIB into .gz
+        if not os.path.exists(rib_location+'.txt.gz'):
+            os.system('gzip -c '+rib_location+'.txt'+' > '+rib_location+'.txt.gz')
+        os.system('rm '+rib_location+'.txt')  # remove .txt, only .gz left
         
-        
-        ## new filelist after minor filename modification 
-        print 'change updatefile name...'
-        os.system('tool/raw2txt.sh '+'metadata/updt_filelist_tmp'+ymd1[i])
-        f = open('metadata/updt_filelist_tmp'+ymd1[i], 'r')  # .bz file name
-        ff = open('metadata/updt_filelist'+ymd1[i], 'w')  # .bz2.txt.gz file name
-        for line in f.readlines():
-            line = line.rstrip()
-            os.system('rm ' + line)
-            line = line + '.txt.gz'
-            ff.write(line+'\n') 
-        f.close()
-        ff.close()
-        os.system('rm metadata/updt_filelist_tmp'+ymd1[i])
 
-     
-        ## determine router table transfers start and end time
-        print 'determine router table transfers start and end time...'
-        f = open(hdname_detail+ym[i]+'/UPDATES/peers'+ymd1[i],'r')
-        for peer in f:  # process each peer separately
-            print peer,
+        print 'determining table transfers start and end time...'
+        for peer in peers:  # must process each peer one by one
             peer = peer.rstrip()
-            os.system('perl tool/bgpmct.pl -rf '+rib_location+' -ul '+\
+            print peer
+            os.system('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                     'metadata/updt_filelist'+ymd1[i]+' -p '+peer+' > '+\
-                    hdname_detail+ym[i]+'/'+peer+'_result.txt')  # ym[i]?
-        f.close()
-
-
-        ## check which peer transfered table
-        print 'check which peer transfered table...'
-        peer_result_list = os.listdir(hdname_detail+ym[i])  
-        for f in peer_result_list:
-            if not os.path.isfile(hdname_detail + ym[i] + '/' + f): 
-                continue
-            if os.path.getsize(hdname_detail + ym[i] + '/' + f) == 0:  # no
-                    #reset for this peer, then remove file
-                os.system('rm ' + hdname_detail +ym[i] + '/' + f)
+                    'tmp/'+peer+'_result.txt')
 
                 
-        ## delete updates caused by session reset
         print 'delete updates caused by session reset...'
-        for affected_p in peer_result_list:
-            affected_p = affected_p.rstrip('')
-            if not os.path.isfile(hdname_detail+ym[i]+'/'+affected_p):
+        for peer in peers:
+            # No reset for this peer
+            if os.path.getsize('tmp/'+peer+'_result.txt') == 0:
                 continue
 
-            f = open(hdname_detail+ym[i]+'/'+affected_p)
-            for line in f:  # loop over affected peers
+            print 'culprit now: ', peer
+            f_results = open('tmp/'+peer+'_result.txt', 'r')
+            for line in f_results:  # get all affection info of this peer
                 print line
                 attr = line.split(',')
                 if attr[0] == '#START':
@@ -158,83 +158,70 @@ def get_file():
 
                 # get session reset time
                 print 'get session reset time...'
-                stime_unix = attr[0]
-                endtime_unix = attr[1]
-                stime_date = datetime.datetime.fromtimestamp(int(stime_unix))
-                stime_date = stime_date + datetime.timedelta(hours=-8)
-                endtime_date = datetime.datetime.fromtimestamp(int(endtime_unix))
-                endtime_date = endtime_date + datetime.timedelta(hours=-8)
-                stime_date = stime_date.strftime('%Y%m%d.%H%M')
-                start_datetime = datetime.datetime(int(stime_date[0:4]), int(stime_date[4:6]), int(stime_date[6:8]), int(stime_date[9:11]), int(stime_date[11:13]))                               
-                endtime_date = endtime_date.strftime('%Y%m%d.%H%M')
-                end_datetime = datetime.datetime(int(endtime_date[0:4]), int(endtime_date[4:6]), int(endtime_date[6:8]), int(endtime_date[9:11]), int(endtime_date[11:13]))                               
-                print stime_date
-                print endtime_date
+                stime_unix = int(attr[0])
+                endtime_unix = int(attr[1])
+                sdt_tmp = datetime.datetime.fromtimestamp(stime_unix) +\
+                        datetime.timedelta(hours=-8)
+                edt_tmp = datetime.datetime.fromtimestamp(endtime_unix) +\
+                        datetime.timedelta(hours=-8)
+                sdt_tmp = sdt_tmp.strftime('%Y%m%d.%H%M')
+                start_datetime = datetime.datetime(int(sdt_tmp[0:4]),\
+                        int(sdt_tmp[4:6]), int(sdt_tmp[6:8]),\
+                        int(sdt_tmp[9:11]), int(sdt_tmp[11:13]))                               
+                edt_tmp = edt_tmp.strftime('%Y%m%d.%H%M')
+                end_datetime = datetime.datetime(int(edt_tmp[0:4]),\
+                        int(edt_tmp[4:6]), int(edt_tmp[6:8]),\
+                        int(edt_tmp[9:11]), int(edt_tmp[11:13]))                               
+                print 'from ', sdt_tmp, ' to ', edt_tmp
 
                 # now let's clean updates
                 updatefile_list = open('metadata/updt_filelist'+ymd1[i], 'r')
                 for updatefile in updatefile_list.readlines():  
-                    updt_attr = updatefile.split('.')
-                    dt = datetime.datetime(int(updt_attr[4][0:4]),int(updt_attr[4][4:6]),int(updt_attr[4][6:8]),int(updt_attr[5][0:2]),int(updt_attr[5][2:4]))
+                    updatefile = updatefile.replace('\n', '')
+                    file_attr = updatefile.split('.')
+                    dt = datetime.datetime(int(file_attr[4][0:4]),\
+                            int(file_attr[4][4:6]), int(file_attr[4][6:8]),\
+                            int(file_attr[5][0:2]), int(file_attr[5][2:4]))
 
                     if not start_datetime + datetime.timedelta(minutes =\
                             -15) <= dt <= end_datetime:  # filename not OK
                         continue
-                    print updatefile,
+                    print 'session reset exists in: ', updatefile,
                     # unpack
                     os.system('gunzip -c ' + updatefile.rstrip('\n') + ' > ' + updatefile.rstrip('.gz\n'))
-                    myfilename = updatefile.rstrip('.gz\n')
-                    myfile = open(myfilename,'r')
-                    filelines = myfile.readlines()
-                    newfile = open(hdname_detail+ym[i]+'/RIBS/'+myfilename.split('/')[-1], 'w')
-                    list_pre = []
-                    list_new_update = []
-                    for updt in filelines:  # loop over each update
+                    # only .txt from now on!
+                    myfilename = updatefile.rstrip('.gz\n')  # .txt file
+                    oldfile = open(myfilename, 'r')
+                    newfile = open('tmp/'+myfilename.split('/')[-1], 'w')
+                    list_pfx = []
+                    for updt in oldfile.readlines():  # loop over each update
+                        updt = updt.replace('\n', '')
                         update_attr = updt.split('|')
-                        if (cmp(update_attr[3],f.rstrip('.txt'))==0)\
-                        & (int(stime_unix) < int(update_attr[1]) < int\
-                        (endtime_unix)):  # culprit update confirmed
-                            if update_attr[5] in list_pre:
-                                list_new_update.append(updt)  # pfx
-                                    # already counted
-                            else:  # prefix first existence
-                                list_pre.append(update_attr[5])
+                        if (cmp(update_attr[3], peer)==0)\
+                        & (stime_unix<int(update_attr[1])<\
+                        endtime_unix):  # culprit update confirmed
+                            if update_attr[5] in list_pfx:
+                                # pfx already counted, so not from reset
+                                newfile.write(updt+'\n')
+                            else:  # prefix first existence, so from reset
+                                list_pfx.append(update_attr[5])
                                 continue
-                        else:  # normal update
-                            list_new_update.append(updt)
+                        else:  # not culprit update
+                            newfile.write(updt+'\n')
 
-                    if os.path.exists(updatefile):
-                        os.system('rm' + updatefile)  # remove old
-                        num = 0
-                        while 1:
-                            try:  # create new
-                                newfile.write(list_new_update[num])
-                                num = num +1
-                            except:
-                                break
-                    else:
-                        num = 0
-                        while 1:
-                            try:
-                                newfile.write(list_new_update[num])
-                                num = num +1
-                            except:
-                                break
+                    oldfile.close()
                     newfile.close()
-                    myfile.close()
-                    os.system('gzip -c ' + hdname_detail + ym[i] +
-                            '/RIBS/' + myfilename.split('/')[-1]+
-                            '>' + hdname_detail +ym[i] +
-                            '/UPDATES/'+ myfilename.split('/')[-1]+'.gz')
-                    os.system('rm ' + hdname_detail + ym[i]
-                            +'/RIBS/' + myfilename.split('/')[-1])
+
+                    os.system('rm' + updatefile)  # remove old .gz file
+                    # compress .txt into .gz to replace the old file
+                    os.system('gzip -c tmp/'+myfilename.split('/')[-1]+\
+                            ' > '+hdname_detail+ym[i]+\
+                            '/UPDATES/'+myfilename.split('/')[-1]+'.gz')
                            
                 updatefile_list.close()
-            f.close()
+            f_results.close()
 
-        for f in peer_result_list:  # remove every peer's reset info 
-            if os.path.isfile(hdname_detail + ym[i] + '/' + f):
-                os.system('rm ' + hdname_detail + ym[i] + '/' + f)
+        #os.system('rm tmp/*')
     return
 
 if __name__ == '__main__':

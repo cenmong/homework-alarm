@@ -7,8 +7,11 @@ wget-log*
 trpath/
 output/
 data/
+tmp/*
 *.swp
 *.pdf
 *.psd
 tmpfile
 result_tmp
+env.py
+metadata/*
