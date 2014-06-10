@@ -1,13 +1,14 @@
 import os
-from env import hdname
+from env import *
 import datetime
+import patricia
 
 hdname_detail = hdname + 'archive.routeviews.org/bgpdata/'
 
 # TODO: start ym, start ymd, number of days
-ym = ['2010.02']
-ymd1 = ['20100226']
-ymd2 = ['20100226']
+ym = ['2006.12']
+ymd1 = ['20061225']
+ymd2 = ['20061228']
 
 def get_file():
 
@@ -18,7 +19,7 @@ def get_file():
         # this will over-write an existing filslist
         flist = open('metadata/updt_filelist'+ymd1[i], 'w')  # .bz2.txt.gz file name
 
-        testcount = 0  # TODO: test only
+        #testcount = 0  # TODO: test only
         for line in f.readlines():
             if line.split('.')[-1] != 'bz2\n':
                 continue
@@ -26,9 +27,11 @@ def get_file():
                 continue
 
             # TODO: for test only
+            '''
             testcount += 1
             if testcount == 30:
                 break
+            '''
 
             updt_fname = line.split('//')[1].replace('\n', '')  # name of .bz2 file
             flist.write(hdname+updt_fname+'.txt.gz\n')  # .bz2.txt.gz file list
@@ -134,6 +137,7 @@ def get_file():
         
 
         print 'determining table transfers start and end time...'
+        #peers = peers[0:2]  # TODO: test only
         for peer in peers:  # must process each peer one by one
             peer = peer.rstrip()
             print peer
@@ -151,11 +155,12 @@ def get_file():
             print 'culprit now: ', peer
             f_results = open('tmp/'+peer+'_result.txt', 'r')
             for line in f_results:  # get all affection info of this peer
-                print line
+                line = line.replace('\n', '')
                 attr = line.split(',')
                 if attr[0] == '#START':
                     continue
 
+                print line
                 # get session reset time
                 print 'get session reset time...'
                 stime_unix = int(attr[0])
@@ -186,42 +191,45 @@ def get_file():
                     if not start_datetime + datetime.timedelta(minutes =\
                             -15) <= dt <= end_datetime:  # filename not OK
                         continue
-                    print 'session reset exists in: ', updatefile,
+                    print 'session reset exists in: ', updatefile
+                    size_before = os.path.getsize(updatefile)
                     # unpack
                     os.system('gunzip -c ' + updatefile.rstrip('\n') + ' > ' + updatefile.rstrip('.gz\n'))
                     # only .txt from now on!
                     myfilename = updatefile.rstrip('.gz\n')  # .txt file
                     oldfile = open(myfilename, 'r')
                     newfile = open('tmp/'+myfilename.split('/')[-1], 'w')
-                    list_pfx = []
+
+                    counted_pfx = patricia.trie(None)
                     for updt in oldfile.readlines():  # loop over each update
                         updt = updt.replace('\n', '')
                         update_attr = updt.split('|')
                         if (cmp(update_attr[3], peer)==0)\
                         & (stime_unix<int(update_attr[1])<\
                         endtime_unix):  # culprit update confirmed
-                            if update_attr[5] in list_pfx:
-                                # pfx already counted, so not from reset
-                                newfile.write(updt+'\n')
-                            else:  # prefix first existence, so from reset
-                                list_pfx.append(update_attr[5])
-                                continue
+                            pfx = update_attr[5]
+                            try:  # Test whether the trie has the pfx
+                                test = counted_pfx[pfx]
+                                newfile.write(updt+'\n')  # pfx exists
+                            except:  # Node does not exist
+                                counted_pfx[pfx] = True
                         else:  # not culprit update
                             newfile.write(updt+'\n')
 
                     oldfile.close()
                     newfile.close()
 
-                    os.system('rm' + updatefile)  # remove old .gz file
+                    os.system('rm '+updatefile)  # remove old .gz file
                     # compress .txt into .gz to replace the old file
                     os.system('gzip -c tmp/'+myfilename.split('/')[-1]+\
-                            ' > '+hdname_detail+ym[i]+\
-                            '/UPDATES/'+myfilename.split('/')[-1]+'.gz')
+                            ' > '+updatefile)
+                    size_after = os.path.getsize(updatefile)
+                    print 'size(b):', size_before, ',size(a):', size_after
                            
                 updatefile_list.close()
             f_results.close()
 
-        #os.system('rm tmp/*')
+        os.system('rm tmp/*')  # TODO: comment out when testing
     return
 
 if __name__ == '__main__':
