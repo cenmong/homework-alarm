@@ -5,61 +5,72 @@ import patricia
 
 hdname_detail = hdname + 'archive.routeviews.org/bgpdata/'
 
-# TODO: start ym, start ymd, number of days
-ym = ['2006.12']
-ymd1 = ['20061225']
-ymd2 = ['20061228']
+# number of days in total
+daterange = [('20061225', 4, '2006 taiwan cable cut'),\
+            ('20081218', 4, '2008 mediterranean cable cut 2'),\
+            ]
 
 def get_file():
 
-    for i in range(0, len(ym)):
+    for i in range(len(daterange)-1, len(daterange)):
         ## download updatefile
-        os.system('lynx -dump http://archive.routeviews.org/bgpdata/'+ym[i]+'/UPDATES/ > tmpfile')
-        f = open('tmpfile', 'r')
-        # this will over-write an existing filslist
-        flist = open('metadata/updt_filelist'+ymd1[i], 'w')  # .bz2.txt.gz file name
+        sdate = daterange[i][0]
+        sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
+        edate_obj = sdate_obj + datetime.timedelta(days=(daterange[i][1]-1))
+        edate = edate_obj.strftime('%Y%m%d')
 
-        #testcount = 0  # TODO: test only
-        for line in f.readlines():
-            if line.split('.')[-1] != 'bz2\n':
-                continue
-            if int(line.split('.')[-3]) < int(ymd1[i]) or int(line.split('.')[-3]) > int(ymd2[i]):
-                continue
+        # Now it can only deal with at most 2 months
+        yearmonth = [] 
+        yearmonth.append(sdate[0:4] + '.' + sdate[4:6])
+        if edate[0:4] + '.' + edate[4:6] not in yearmonth:
+            yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-            # TODO: for test only
-            '''
-            testcount += 1
-            if testcount == 30:
-                break
-            '''
+        flist = open('metadata/updt_filelist'+sdate, 'w')  # .bz2.txt.gz file name
+        for ym in yearmonth:
+            os.system('lynx -dump http://archive.routeviews.org/bgpdata/'+ym+'/UPDATES/ > tmpfile')
+            f = open('tmpfile', 'r')
 
-            updt_fname = line.split('//')[1].replace('\n', '')  # name of .bz2 file
-            flist.write(hdname+updt_fname+'.txt.gz\n')  # .bz2.txt.gz file list
-            if os.path.exists(hdname+updt_fname+'.txt.gz'):
-                print '.bz2.txt.gz update file exists!'
-                if os.path.exists(hdname+updt_fname):  # .bz2 useless anymore
-                    os.system('rm '+hdname+updt_fname)
-                continue
-            if os.path.exists(hdname+updt_fname):
-                print '.bz2 update file exists!'
-                continue
-            if os.path.exists(hdname+updt_fname+'.txt'):  # remove existing .txt
-                os.system('rm '+hdname+updt_fname+'.txt')
+            #testcount = 0  # TODO: test only
+            for line in f.readlines():
+                if line.split('.')[-1] != 'bz2\n':
+                    continue
+                if int(line.split('.')[-3]) < int(sdate) or\
+                        int(line.split('.')[-3]) > int(edate):
+                    continue
 
-            os.system('wget -e robots=off --connect-timeout=3000 -np -P '+hdname+' -c -m -r -A.bz2\
-                    http://'+updt_fname)
+                # TODO: for test only
+                #testcount += 1
+                #if testcount == 30:
+                #    break
+
+                updt_fname = line.split('//')[1].replace('\n', '')  # name of .bz2 file
+                flist.write(hdname+updt_fname+'.txt.gz\n')  # .bz2.txt.gz file list
+                if os.path.exists(hdname+updt_fname+'.txt.gz'):
+                    print '.bz2.txt.gz update file exists!'
+                    if os.path.exists(hdname+updt_fname):  # .bz2 useless anymore
+                        os.system('rm '+hdname+updt_fname)
+                    continue
+                if os.path.exists(hdname+updt_fname):
+                    print '.bz2 update file exists!'
+                    continue
+                if os.path.exists(hdname+updt_fname+'.txt'):  # remove existing .txt
+                    os.system('rm '+hdname+updt_fname+'.txt')
+
+                os.system('wget -e robots=off --connect-timeout=3000 -np -P '+hdname+' -c -m -r -A.bz2\
+                        http://'+updt_fname)
+
+            f.close()
+            os.system('rm tmpfile')
+            os.system('rm '+hdname_detail+ym+'/UPDATES/*.bz2.txt')
 
         flist.close()
-        f.close()
-        os.system('rm tmpfile')
 
 
         ## download rib
-        #dt = datetime.datetime.strptime(ymd1[i], "%Y%m%d").date()
-        #ribtime = dt + datetime.timedelta(days=-1)  # RIB is 1 day before
-        #ribtime = ribtime.strftime('%Y%m%d')
-        ribtime = ymd1[i]
-        os.system('lynx -dump http://archive.routeviews.org/bgpdata/'+ym[i]+'/RIBS/ > tmpfile')
+        ## rib date is the same as updates' start date
+        ribtime = sdate
+        os.system('lynx -dump\
+                http://archive.routeviews.org/bgpdata/'+yearmonth[0]+'/RIBS/ > tmpfile')
         f = open('tmpfile', 'r')
         for line in f.readlines():
             if line.split('.')[-1] != 'bz2\n':
@@ -91,10 +102,9 @@ def get_file():
 
 
         print 'parsing updates...'
-        flist = open('metadata/updt_filelist'+ymd1[i], 'r')  # .bz2.txt.gz file name
+        flist = open('metadata/updt_filelist'+sdate, 'r')  # .bz2.txt.gz file name
         for line in flist.readlines():
             line = line.replace('\n', '')
-            print line
             if not os.path.exists(line):  # .gz not exists, then .bz2 exists
                 os.system('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
                         line.replace('.txt.gz', '')+' > '+\
@@ -142,7 +152,7 @@ def get_file():
             peer = peer.rstrip()
             print peer
             os.system('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
-                    'metadata/updt_filelist'+ymd1[i]+' -p '+peer+' > '+\
+                    'metadata/updt_filelist'+sdate+' -p '+peer+' > '+\
                     'tmp/'+peer+'_result.txt')
 
                 
@@ -180,7 +190,7 @@ def get_file():
                 print 'from ', sdt_tmp, ' to ', edt_tmp
 
                 # now let's clean updates
-                updatefile_list = open('metadata/updt_filelist'+ymd1[i], 'r')
+                updatefile_list = open('metadata/updt_filelist'+sdate, 'r')
                 for updatefile in updatefile_list.readlines():  
                     updatefile = updatefile.replace('\n', '')
                     file_attr = updatefile.split('.')
