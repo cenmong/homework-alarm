@@ -1,2 +1,2 @@
-hdname = '/media/cm/4F4D-9698/'
+hdname = '/media/sxr/MyBook/'
 #hdname = ''  # used in HK
