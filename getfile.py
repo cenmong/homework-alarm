@@ -8,6 +8,7 @@ hdname_detail = hdname + 'archive.routeviews.org/bgpdata/'
 # number of days in total
 daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20081218', 4, '2008 mediterranean cable cut 2'),\
+            ('20050911', 4, 'LA blackout'),\
             ]
 
 def get_file():
