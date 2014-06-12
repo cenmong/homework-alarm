@@ -4,6 +4,8 @@ from urllib import urlopen
 from env import *
 import datetime
 import patricia
+import subprocess
+import gzip
 
 # 0: routeviews; 1: ripe ris
 '''
@@ -12,9 +14,9 @@ collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ]
 '''
 # TODO: testonly
-#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
+collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 # TODO: testonly
-collectors = [('rrc00', 1)]
+#collectors = [('rrc00', 1)]
 
 # number of days in total
 daterange = [('20061225', 4, '2006 taiwan cable cut'),\
@@ -22,6 +24,22 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20050911', 4, 'LA blackout'),\
             ('20050828', 4, 'Hurricane Katrina'),\
             ]
+
+def pack_gz(inputf, outputf):
+    f_in = open(inputf, 'rb')
+    f_out = gzip.open(outputf, 'wb')
+    f_out.writelines(f_in)
+    f_out.close()
+    f_in_close()
+            
+def unpack_gz(inputf, outputf):
+    f_in = gzip.open(inputf, 'rb')
+    with open(outputf, 'wb') as f_out:
+        for line in f_in:
+            f_out.write(line)
+    f_out.close()
+    f_in_close()
+
 def get_file():
 
     for i in range(3, 4):
@@ -50,7 +68,7 @@ def get_file():
 
             ## download updatefile
             if not os.path.isdir('metadata/'+sdate):
-                os.system('mkdir metadata/'+sdate)
+                os.mkdir('mkdir metadata/'+sdate)
             # TODO: if list file exists, means this collector fully processed
             flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  # .bz2.txt.gz file name
             for ym in yearmonth:
@@ -77,10 +95,10 @@ def get_file():
                     if line == '' or line == '\n':
                         continue  # empty line
                     line = line.split()[0]
-                    print line
                     if int(line.split('.')[-3]) < int(sdate) or\
                             int(line.split('.')[-3]) > int(edate):
                         continue
+                    print line
 
                     # TODO: testonly
                     testcount += 1
@@ -93,28 +111,17 @@ def get_file():
                     if os.path.exists(hdname+updt_fname+'.txt.gz'):
                         print '.xx.txt.gz update file exists!'
                         if os.path.exists(hdname+updt_fname):  # .bz2/.gz useless anymore
-                            os.system('rm '+hdname+updt_fname)
+                            os.remove(hdname+updt_fname)
                         continue
                     if os.path.exists(hdname+updt_fname):
                         print '.bz2/.gz update file exists!'
                         continue
                     # remove existing xx.txt file to make things clearer
                     if os.path.exists(hdname+updt_fname+'.txt'):
-                        os.system('rm '+hdname+updt_fname+'.txt')
+                        os.remove(hdname+updt_fname+'.txt')
 
-                    if cl_type == 0:  # get .bz2
-                        os.system('wget -e robots=off --connect-timeout=3000\
-                                -np -P '+hdname+' -c -m -r -A.bz2\
-                                http://'+updt_fname)
-                    else:  # == 1 get .gz
-                        os.system('wget -e robots=off --connect-timeout=3000\
-                                -np -P '+hdname+' -c -m -r -A.gz\
-                                http://'+updt_fname)
-
-                if cl_type == 0:
-                    os.system('rm '+hdname_detail+ym+'/UPDATES/*.txt')
-                else:
-                    os.system('rm '+hdname_detail+ym+'/*.txt')
+                    urllib.urlretrieve('http://'+updt_fname,\
+                            hdname+updt_fname)
 
             flist.close()
 
@@ -142,30 +149,26 @@ def get_file():
                 if line == '' or line == '\n':
                     continue  # empty line
                 line = line.split()[0]
+                if not int(line.split('.')[-3]) == int(ribtime):  # right date
+                    continue
                 print line
-                if int(line.split('.')[-3]) == int(ribtime):  # right date
-                    rib_fname = loc + line
-                    if os.path.exists(hdname+rib_fname+'.txt.gz'): 
-                        print '.xx.txt.gz RIB file exists!'
-                        if os.path.exists(hdname+rib_fname): 
-                            os.system('rm '+hdname+rib_fname) # .bz2/.gz useless
-                        break
-                    if os.path.exists(hdname+rib_fname): 
-                        print '.bz2/.gz RIB file exists!'
-                        break
-                    if os.path.exists(hdname+rib_fname+'.txt'): 
-                        os.system('rm '+hdname+rib_fname+'.txt')
-                    if cl_type == 0:
-                        os.system('wget -e robots=off --connect-timeout=3000 -np -P\
-                                '+hdname+' -c -m -r -A.bz2 http://'+rib_fname)
-                    else:
-                        os.system('wget -e robots=off --connect-timeout=3000 -np -P\
-                                '+hdname+' -c -m -r -A.gz http://'+rib_fname)
-                    break
-                else:
-                    pass
 
-'''
+                rib_fname = loc + line
+                if os.path.exists(hdname+rib_fname+'.txt.gz'): 
+                    print '.xx.txt.gz RIB file exists!'
+                    if os.path.exists(hdname+rib_fname): 
+                        os.remove(hdname+rib_fname) # .bz2/.gz useless
+                    break
+                if os.path.exists(hdname+rib_fname): 
+                    print '.bz2/.gz RIB file exists!'
+                    break
+                if os.path.exists(hdname+rib_fname+'.txt'): 
+                    os.remove(hdname+rib_fname+'.txt')
+
+                urllib.urlretrieve('http://'+rib_fname,\
+                        hdname+rib_fname)
+                break
+
             ## now for update and RIB files, their formats are either .bz2/gz or
             ## .xx.txt.gz!!!
 
@@ -176,13 +179,13 @@ def get_file():
                 line = line.replace('\n', '')
                 if not os.path.exists(line):  # xx.txt.gz not exists, then .bz2 exists
                     # 6 lines RIPE friendly
-                    os.system('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
+                    subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
                             line.replace('.txt.gz', '')+' > '+\
                             line.replace('txt.gz', 'txt'))  # parse .bz2/.gz into .txt
                     # compress xx.txt-->xx.txt.gz
-                    os.system('gzip -c '+line.replace('txt.gz', 'txt')+' > '+line)
-                    os.system('rm '+line.replace('.txt.gz', ''))  # remove .bz2/.gz update files
-                    os.system('rm '+line.replace('txt.gz', 'txt'))  # remove txt update files
+                    subprocess.call('gzip -c '+line.replace('txt.gz', 'txt')+' > '+line)
+                    os.remove(line.replace('.txt.gz', ''))  # remove .bz2/.gz update files
+                    os.remove(line.replace('txt.gz', 'txt'))  # remove txt update files
                 else:  # xx.txt.gz exists
                     pass
             flist.close()
@@ -193,12 +196,12 @@ def get_file():
             peers = []
             # get .txt
             if os.path.exists(rib_location+'.txt.gz'):  # .xx.txt.gz file exists
-                os.system('gunzip -c '+rib_location+'.txt.gz > '+\
+                subprocess.call('gunzip -c '+rib_location+'.txt.gz > '+\
                         rib_location+'.txt')  # unpack                        
             elif os.path.exists(rib_location):  # .bz2/.gz file exists
-                os.system('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m\
+                subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m\
                         '+rib_location+' > '+rib_location+'.txt')  # parse
-                os.system('rm '+rib_location)  # then remove .bz2/.gz
+                os.remove(rib_location)  # then remove .bz2/.gz
             # read .txt
             with open(rib_location+'.txt', 'r') as f:  # get peers from RIB
                 for line in f:
@@ -212,16 +215,16 @@ def get_file():
             print 'peers: ', peers
             # compress RIB into .gz
             if not os.path.exists(rib_location+'.txt.gz'):
-                os.system('gzip -c '+rib_location+'.txt'+' > '+rib_location+'.txt.gz')
-            os.system('rm '+rib_location+'.txt')  # remove .txt, only .gz left
+                subprocess.call('gzip -c '+rib_location+'.txt'+' > '+rib_location+'.txt.gz')
+            os.remove(rib_location+'.txt')  # remove .txt, only .gz left
             
 
             print 'determining table transfers start and end time...'
-            #peers = peers[0:2]  # TODO: testonly
+            peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print peer
-                os.system('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
+                subprocess.call('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                         'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
                         'tmp/'+peer+'_result.txt')
 
@@ -282,7 +285,7 @@ def get_file():
                         size_before = os.path.getsize(updatefile)
                         # unpack
                         myfilename = updatefile.replace('txt.gz', 'txt')  # .txt file
-                        os.system('gunzip -c ' + updatefile + ' > ' +\
+                        subprocess.call('gunzip -c ' + updatefile + ' > ' +\
                                 myfilename)
                         # only .txt from now on!
                         oldfile = open(myfilename, 'r')
@@ -307,16 +310,16 @@ def get_file():
                         oldfile.close()
                         newfile.close()
 
-                        os.system('rm '+updatefile)  # remove old .gz file
+                        os.remove('rm '+updatefile)  # remove old .gz file
                         # compress .txt into txt.gz to replace the old file
-                        os.system('gzip -c tmp/'+myfilename.split('/')[-1]+\
+                        subprocess.call('gzip -c tmp/'+myfilename.split('/')[-1]+\
                                 ' > '+updatefile)
                         size_after = os.path.getsize(updatefile)
                         print 'size(b):', size_before, ',size(a):', size_after
                                
                     updatefile_list.close()
                 f_results.close()
-            os.system('rm tmp/*')
+            subprocess.call('rm tmp/*', shell=True)
                                
                                 
         #TODO: combine lists
@@ -334,7 +337,6 @@ def get_file():
                 else:
                     file_dt = file_attr[5] + file_attr[6]
                 dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
-                print dt_obj
                 fnames[filename] = dt_obj
             flist.close()
         fnlist = sorted(fnames, key=fnames.get)
@@ -344,7 +346,6 @@ def get_file():
             fcomb.write(fn+'\n')
         fcomb.close()
     return
-    '''
 
 
 if __name__ == '__main__':
