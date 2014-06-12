@@ -4,11 +4,15 @@ import datetime
 import patricia
 
 # 0: routeviews; 1: ripe ris
-#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
+'''
+collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
              ]
+'''
 # TODO: testonly
-collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
+#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
+# TODO: testonly
+collectors = [('rrc00', 1)]
 
 # number of days in total
 daterange = [('20061225', 4, '2006 taiwan cable cut'),\
@@ -17,7 +21,7 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ]
 def get_file():
 
-    for i in range(2, 3):
+    for i in range(0, 1):
         for clctr in collectors:
             # get basic info of this collector
             cl_name = clctr[0]
@@ -59,7 +63,7 @@ def get_file():
 
                 f = open('tmpfile', 'r')
 
-                testcount = 0  # TODO: testonly
+                #testcount = 0  # TODO: testonly
                 for line in f.readlines():
                     try:
                         if line.split('.')[-4].split('/')[1] == 'bview':  # RIB file name
@@ -74,9 +78,9 @@ def get_file():
                         continue
 
                     # TODO: testonly
-                    testcount += 1
-                    if testcount == 5:
-                        break
+                    #testcount += 1
+                    #if testcount == 5:
+                    #    break
                         
                     # get the name of a .bz2/gz update file
                     updt_fname = line.split('//')[1].replace('\n', '')
@@ -210,7 +214,7 @@ def get_file():
             
 
             print 'determining table transfers start and end time...'
-            peers = peers[0:2]  # TODO: testonly
+            #peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print peer
@@ -258,9 +262,15 @@ def get_file():
                     for updatefile in updatefile_list.readlines():  
                         updatefile = updatefile.replace('\n', '')
                         file_attr = updatefile.split('.')
-                        dt = datetime.datetime(int(file_attr[4][0:4]),\
-                                int(file_attr[4][4:6]), int(file_attr[4][6:8]),\
-                                int(file_attr[5][0:2]), int(file_attr[5][2:4]))
+                        if cl_type == 0:
+                            fattr_date = file_attr[4]
+                            fattr_time = file_attr[5]
+                        else:
+                            fattr_date = file_attr[5]
+                            fattr_time = file_attr[6]
+                        dt = datetime.datetime(int(fattr_date[0:4]),\
+                                int(fattr_date[4:6]), int(fattr_date[6:8]),\
+                                int(fattr_time[0:2]), int(fattr_time[2:4]))
 
                         if not start_datetime + datetime.timedelta(minutes =\
                                 -15) <= dt <= end_datetime:  # filename not OK
