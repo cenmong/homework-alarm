@@ -175,15 +175,16 @@ def get_file():
 
             print 'parsing updates...'
             flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .xx.txt.gz file name
-            for line in flist.readlines():
+            for line in flist:
                 line = line.replace('\n', '')
                 if not os.path.exists(line):  # xx.txt.gz not exists, then .bz2 exists
                     # 6 lines RIPE friendly
                     subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
                             line.replace('.txt.gz', '')+' > '+\
-                            line.replace('txt.gz', 'txt'))  # parse .bz2/.gz into .txt
+                            line.replace('txt.gz', 'txt'), shell=True)  # parse .bz2/.gz into .txt
                     # compress xx.txt-->xx.txt.gz
-                    subprocess.call('gzip -c '+line.replace('txt.gz', 'txt')+' > '+line)
+                    subprocess.call('gzip -c '+line.replace('txt.gz', 'txt')+\
+                            ' > '+line, shell=True) 
                     os.remove(line.replace('.txt.gz', ''))  # remove .bz2/.gz update files
                     os.remove(line.replace('txt.gz', 'txt'))  # remove txt update files
                 else:  # xx.txt.gz exists
@@ -197,10 +198,10 @@ def get_file():
             # get .txt
             if os.path.exists(rib_location+'.txt.gz'):  # .xx.txt.gz file exists
                 subprocess.call('gunzip -c '+rib_location+'.txt.gz > '+\
-                        rib_location+'.txt')  # unpack                        
+                        rib_location+'.txt', shell=True)  # unpack                        
             elif os.path.exists(rib_location):  # .bz2/.gz file exists
                 subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m\
-                        '+rib_location+' > '+rib_location+'.txt')  # parse
+                        '+rib_location+' > '+rib_location+'.txt', shell=True)  # parse
                 os.remove(rib_location)  # then remove .bz2/.gz
             # read .txt
             with open(rib_location+'.txt', 'r') as f:  # get peers from RIB
@@ -215,7 +216,8 @@ def get_file():
             print 'peers: ', peers
             # compress RIB into .gz
             if not os.path.exists(rib_location+'.txt.gz'):
-                subprocess.call('gzip -c '+rib_location+'.txt'+' > '+rib_location+'.txt.gz')
+                subprocess.call('gzip -c '+rib_location+'.txt'+' >\
+                        '+rib_location+'.txt.gz', shell=True)
             os.remove(rib_location+'.txt')  # remove .txt, only .gz left
             
 
@@ -226,7 +228,7 @@ def get_file():
                 print peer
                 subprocess.call('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                         'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
-                        'tmp/'+peer+'_result.txt')
+                        'tmp/'+peer+'_result.txt', shell=True)
 
                     
             print 'delete updates caused by session reset...'
@@ -265,7 +267,7 @@ def get_file():
                     # now let's clean updates
                     updatefile_list =\
                             open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
-                    for updatefile in updatefile_list.readlines():  
+                    for updatefile in updatefile_list:  
                         updatefile = updatefile.replace('\n', '')
                         file_attr = updatefile.split('.')
                         if cl_type == 0:
@@ -286,13 +288,13 @@ def get_file():
                         # unpack
                         myfilename = updatefile.replace('txt.gz', 'txt')  # .txt file
                         subprocess.call('gunzip -c ' + updatefile + ' > ' +\
-                                myfilename)
+                                myfilename, shell=True)
                         # only .txt from now on!
                         oldfile = open(myfilename, 'r')
                         newfile = open('tmp/'+myfilename.split('/')[-1], 'w')
 
                         counted_pfx = patricia.trie(None)
-                        for updt in oldfile.readlines():  # loop over each update
+                        for updt in oldfile:  # loop over each update
                             updt = updt.replace('\n', '')
                             update_attr = updt.split('|')
                             if (cmp(update_attr[3], peer)==0)\
@@ -313,7 +315,7 @@ def get_file():
                         os.remove('rm '+updatefile)  # remove old .gz file
                         # compress .txt into txt.gz to replace the old file
                         subprocess.call('gzip -c tmp/'+myfilename.split('/')[-1]+\
-                                ' > '+updatefile)
+                                ' > '+updatefile, shell=True)
                         size_after = os.path.getsize(updatefile)
                         print 'size(b):', size_before, ',size(a):', size_after
                                
@@ -329,7 +331,7 @@ def get_file():
             cl_type = clctr[1]
 
             flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .bz2.txt.gz file name
-            for filename in flist.readlines():
+            for filename in flist:
                 filename = filename.replace('\n', '')
                 file_attr = filename.split('.')
                 if cl_type == 0:
