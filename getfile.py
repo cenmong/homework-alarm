@@ -4,9 +4,11 @@ import datetime
 import patricia
 
 # 0: routeviews; 1: ripe ris
-collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
+#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
              ]
+# TODO: testonly
+collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 
 # number of days in total
 daterange = [('20061225', 4, '2006 taiwan cable cut'),\
@@ -15,7 +17,7 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ]
 def get_file():
 
-    for i in range(0, 1):
+    for i in range(2, 3):
         for clctr in collectors:
             # get basic info of this collector
             cl_name = clctr[0]
@@ -57,7 +59,7 @@ def get_file():
 
                 f = open('tmpfile', 'r')
 
-                #testcount = 0  # TODO: test only
+                testcount = 0  # TODO: testonly
                 for line in f.readlines():
                     try:
                         if line.split('.')[-4].split('/')[1] == 'bview':  # RIB file name
@@ -71,10 +73,10 @@ def get_file():
                             int(line.split('.')[-3]) > int(edate):
                         continue
 
-                    # TODO: for test only
-                    #testcount += 1
-                    #if testcount == 10:
-                    #    break
+                    # TODO: testonly
+                    testcount += 1
+                    if testcount == 5:
+                        break
                         
                     # get the name of a .bz2/gz update file
                     updt_fname = line.split('//')[1].replace('\n', '')
@@ -208,7 +210,7 @@ def get_file():
             
 
             print 'determining table transfers start and end time...'
-            #peers = peers[0:2]  # TODO: test only
+            peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print peer
@@ -302,9 +304,13 @@ def get_file():
                     updatefile_list.close()
                 f_results.close()
 
-            os.system('rm tmp/*')  # TODO: comment out when testing
-    # TODO: combine lists
+            os.system('rm tmp/*')
+                               
+        #TODO: combine lists
+        for clctr in collectors:
+            cl_name = clctr[0]
     return
+
 
 if __name__ == '__main__':
     get_file()
