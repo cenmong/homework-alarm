@@ -4,15 +4,13 @@ import datetime
 import patricia
 
 # 0: routeviews; 1: ripe ris
-'''
 collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
              ]
-'''
 # TODO: testonly
 #collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 # TODO: testonly
-collectors = [('rrc00', 1)]
+#collectors = [('rrc00', 1)]
 
 # number of days in total
 daterange = [('20061225', 4, '2006 taiwan cable cut'),\
@@ -21,7 +19,7 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ]
 def get_file():
 
-    for i in range(0, 1):
+    for i in range(2, 3):
         for clctr in collectors:
             # get basic info of this collector
             cl_name = clctr[0]
@@ -116,7 +114,6 @@ def get_file():
             flist.close()
 
             # TODO: change file name: RV & < Feb, 2013.
-
 
             ## Download RIB. RIB date is always the same as updates' start date
             ribtime = sdate
@@ -313,12 +310,33 @@ def get_file():
                                
                     updatefile_list.close()
                 f_results.close()
-
             os.system('rm tmp/*')
                                
+                                
         #TODO: combine lists
+        fnames = {}
         for clctr in collectors:
             cl_name = clctr[0]
+            cl_type = clctr[1]
+
+            flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .bz2.txt.gz file name
+            for filename in flist.readlines():
+                filename = filename.replace('\n', '')
+                file_attr = filename.split('.')
+                if cl_type == 0:
+                    file_dt = file_attr[4] + file_attr[5]
+                else:
+                    file_dt = file_attr[5] + file_attr[6]
+                dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
+                print dt_obj
+                fnames[filename] = dt_obj
+            flist.close()
+        fnlist = sorted(fnames, key=fnames.get)
+
+        fcomb = open('metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
+        for fn in fnlist:
+            fcomb.write(fn+'\n')
+        fcomb.close()
     return
 
 
