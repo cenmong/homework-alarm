@@ -1,25 +1,30 @@
 import os
+import nltk
+from urllib import urlopen
 from env import *
 import datetime
 import patricia
 
 # 0: routeviews; 1: ripe ris
+'''
 collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
              ]
+'''
 # TODO: testonly
 #collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 # TODO: testonly
-#collectors = [('rrc00', 1)]
+collectors = [('rrc00', 1)]
 
 # number of days in total
 daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20081218', 4, '2008 mediterranean cable cut 2'),\
             ('20050911', 4, 'LA blackout'),\
+            ('20050828', 4, 'Hurricane Katrina'),\
             ]
 def get_file():
 
-    for i in range(2, 3):
+    for i in range(3, 4):
         for clctr in collectors:
             # get basic info of this collector
             cl_name = clctr[0]
@@ -49,39 +54,41 @@ def get_file():
             # TODO: if list file exists, means this collector fully processed
             flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  # .bz2.txt.gz file name
             for ym in yearmonth:
+                # get noisy file list from web
+                loc = ''  # relative location not considering hdname
                 if cl_type == 0:
                     loc = 'archive.routeviews.org/' +\
                             cl_name + '/bgpdata/' + ym + '/UPDATES/'
                     loc = loc.replace('//', '/')  # when name is ''
-                    loc = 'http://' + loc
-                    os.system('lynx -dump '+loc+' > tmpfile')
+                    webloc = 'http://' + loc
+                    webhtml = urlopen(webloc).read()
+                    webraw = nltk.clean_html(webhtml)
                 else:
-                    os.system('lynx -dump\
-                            http://data.ris.ripe.net/'+cl_name+'/'+ym+'/ > tmpfile')
+                    loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
+                    webloc = 'http://' + loc
+                    webhtml = urlopen(webloc).read()
+                    webraw = nltk.clean_html(webhtml)
 
-                f = open('tmpfile', 'r')
-
-                #testcount = 0  # TODO: testonly
-                for line in f.readlines():
-                    try:
-                        if line.split('.')[-4].split('/')[1] == 'bview':  # RIB file name
-                            continue
-                    except:
-                        pass
-                    if line.split('.')[-1] != 'bz2\n' and\
-                            line.split('.')[-1] != 'gz\n':
-                        continue
+                # read the web list
+                testcount = 0  # TODO: testonly
+                for line in webraw.split('\n'):
+                    if not 'updates' in line:
+                        continue  # useless line
+                    if line == '' or line == '\n':
+                        continue  # empty line
+                    line = line.split()[0]
+                    print line
                     if int(line.split('.')[-3]) < int(sdate) or\
                             int(line.split('.')[-3]) > int(edate):
                         continue
 
                     # TODO: testonly
-                    #testcount += 1
-                    #if testcount == 5:
-                    #    break
-                        
+                    testcount += 1
+                    if testcount == 5:
+                        break
+                       
                     # get the name of a .bz2/gz update file
-                    updt_fname = line.split('//')[1].replace('\n', '')
+                    updt_fname = loc + line
                     flist.write(hdname+updt_fname+'.txt.gz\n')  # .xx.txt.gz file list
                     if os.path.exists(hdname+updt_fname+'.txt.gz'):
                         print '.xx.txt.gz update file exists!'
@@ -104,8 +111,6 @@ def get_file():
                                 -np -P '+hdname+' -c -m -r -A.gz\
                                 http://'+updt_fname)
 
-                f.close()
-                os.system('rm tmpfile')
                 if cl_type == 0:
                     os.system('rm '+hdname_detail+ym+'/UPDATES/*.txt')
                 else:
@@ -114,29 +119,32 @@ def get_file():
             flist.close()
 
             # TODO: change file name: RV & < Feb, 2013.
-
             ## Download RIB. RIB date is always the same as updates' start date
             ribtime = sdate
             # TODO: RIPE
             # only download rib of the starting date!
+            loc = ''
             if cl_type == 0:
                 loc = 'archive.routeviews.org/' +\
                         cl_name + '/bgpdata/' + ym + '/RIBS/'
                 loc = loc.replace('//', '/')  # when name is ''
-                loc = 'http://' + loc
-                os.system('lynx -dump '+loc+' > tmpfile')
+                webloc = 'http://' + loc
+                webhtml = urlopen(webloc).read()
+                webraw = nltk.clean_html(webhtml)
             else:
-                os.system('lynx -dump\
-                        http://data.ris.ripe.net/'+cl_name+'/'+ym+'/ > tmpfile')
-            f = open('tmpfile', 'r')
-            for line in f.readlines():
-                if line.split('.')[-1] != 'bz2\n' and\
-                        line.split('.')[-1] != 'gz\n':
-                    continue
-                if line.split('.')[-4].split('/')[1] == 'updates':  # only on NCC RIS
-                    continue
+                loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
+                webloc = 'http://' + loc
+                webhtml = urlopen(webloc).read()
+                webraw = nltk.clean_html(webhtml)
+            for line in webraw.split('\n'):
+                if not 'rib' in line and not 'bview' in line:
+                    continue  # useless line
+                if line == '' or line == '\n':
+                    continue  # empty line
+                line = line.split()[0]
+                print line
                 if int(line.split('.')[-3]) == int(ribtime):  # right date
-                    rib_fname = line.split('//')[1].replace('\n', '')
+                    rib_fname = loc + line
                     if os.path.exists(hdname+rib_fname+'.txt.gz'): 
                         print '.xx.txt.gz RIB file exists!'
                         if os.path.exists(hdname+rib_fname): 
@@ -156,10 +164,8 @@ def get_file():
                     break
                 else:
                     pass
-            f.close()
-            os.system('rm tmpfile')
 
-
+'''
             ## now for update and RIB files, their formats are either .bz2/gz or
             ## .xx.txt.gz!!!
 
@@ -338,6 +344,7 @@ def get_file():
             fcomb.write(fn+'\n')
         fcomb.close()
     return
+    '''
 
 
 if __name__ == '__main__':
