@@ -1,14 +1,7 @@
 from analyzer import *
-from get_special_files import ymd1
+from getfile import daterange
 
-#filelist = 'metadata/test-files20050828'
-#filelist = 'metadata/hk-localtest'
-for i in range(len(ymd1)-1, len(ymd1)):
-#for i in [17, 1, 2, 3, 4, 5, 6, 7]:
-    filelist = 'metadata/files' + ymd1[i]
-    ana = Analyzer(filelist, 10, ymd1[i], 1)  # Granularity needed
+for i in range(len(daterange)-1, len(daterange)):
+    filelist = 'metadata/' + daterange[i][0] + '/updt_filelist_comb'
+    ana = Analyzer(filelist, 10, daterange[i][0], 1)  # Granularity needed
     ana.parse_update()
-'''    
-ana = Analyzer(filelist, 10, 'TEST')  # Granularity needed
-ana.parse_update()
-'''

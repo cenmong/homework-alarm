@@ -1,6 +1,6 @@
 import os
 import nltk
-from urllib import urlopen
+import urllib
 from env import *
 import datetime
 import patricia
@@ -25,6 +25,7 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20050828', 4, 'Hurricane Katrina'),\
             ]
 
+'''
 def pack_gz(inputf, outputf):
     f_in = open(inputf, 'rb')
     f_out = gzip.open(outputf, 'wb')
@@ -39,7 +40,7 @@ def unpack_gz(inputf, outputf):
             f_out.write(line)
     f_out.close()
     f_in_close()
-
+'''
 def get_file():
 
     for i in range(3, 4):
@@ -68,7 +69,7 @@ def get_file():
 
             ## download updatefile
             if not os.path.isdir('metadata/'+sdate):
-                os.mkdir('mkdir metadata/'+sdate)
+                os.mkdir('metadata/'+sdate)
             # TODO: if list file exists, means this collector fully processed
             flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  # .bz2.txt.gz file name
             for ym in yearmonth:
@@ -79,12 +80,12 @@ def get_file():
                             cl_name + '/bgpdata/' + ym + '/UPDATES/'
                     loc = loc.replace('//', '/')  # when name is ''
                     webloc = 'http://' + loc
-                    webhtml = urlopen(webloc).read()
+                    webhtml = urllib.urlopen(webloc).read()
                     webraw = nltk.clean_html(webhtml)
                 else:
                     loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
                     webloc = 'http://' + loc
-                    webhtml = urlopen(webloc).read()
+                    webhtml = urllib.urlopen(webloc).read()
                     webraw = nltk.clean_html(webhtml)
 
                 # read the web list
@@ -125,7 +126,8 @@ def get_file():
 
             flist.close()
 
-            # TODO: change file name: RV & < Feb, 2013.
+            # TODO: change file name: RV & < Feb, 2003.
+
             ## Download RIB. RIB date is always the same as updates' start date
             ribtime = sdate
             # TODO: RIPE
@@ -136,12 +138,12 @@ def get_file():
                         cl_name + '/bgpdata/' + ym + '/RIBS/'
                 loc = loc.replace('//', '/')  # when name is ''
                 webloc = 'http://' + loc
-                webhtml = urlopen(webloc).read()
+                webhtml = urllib.urlopen(webloc).read()
                 webraw = nltk.clean_html(webhtml)
             else:
                 loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
                 webloc = 'http://' + loc
-                webhtml = urlopen(webloc).read()
+                webhtml = urllib.urlopen(webloc).read()
                 webraw = nltk.clean_html(webhtml)
             for line in webraw.split('\n'):
                 if not 'rib' in line and not 'bview' in line:
