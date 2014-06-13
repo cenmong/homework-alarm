@@ -1,90 +1,107 @@
-from update_class import *
-
-from netaddr import *
 import patricia
 import datetime
 import time as time_lib
-
+import numpy as np
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mpldates
+
+from netaddr import *
+from getfile import collectors
 from matplotlib.dates import HourLocator
-import numpy as np
+
 
 class Alarm():
 
-    def __init__(self, granu, ymd):
+    def __init__(self, granu, sdate):
+        # schedule date time order
+        self.from_dt = {}  # collector: dt 
+        self.to_dt = {}  # collector: dt 
+        for cl in collectors:
+            self.from_dt[cl[0]] = 0
+            self.to_dt[cl[0]] = 0
+
         self.granu = granu  # Time granularity
-        self.trie = patricia.trie(None)  # prefix: AS list
+        self.trie = patricia.trie(None)  # pfx: AS list
         '''
-        self.actv_pfx90 = dict()  # {time: prefix list}
-        self.actv_pfx80 = dict()  # {time: prefix list}
-        self.actv_pfx70 = dict()  # {time: prefix list}
-        self.actv_pfx60 = dict()  # {time: prefix list}
-        self.actv_pfx50 = dict()  # {time: prefix list}
+        self.actv_pfx90 = dict()  # {time: pfx list}
+        self.actv_pfx80 = dict()  # {time: pfx list}
+        self.actv_pfx70 = dict()  # {time: pfx list}
+        self.actv_pfx60 = dict()  # {time: pfx list}
+        self.actv_pfx50 = dict()  # {time: pfx list}
         '''
         self.ucount = 0  # update count in a period
-        self.pcount = 0  # prefix count in a period
-        self.lasttime = 0  # detect time period changes
-        self.from_ip_list = []  # For detecting new from IP
+        self.pcount = 0  # pfx count in a period
+        self.lastdt = 0  # detect time period changes
+        self.fip_list = []  # For detecting new from IP
         self.dvi1 = dict()  # {time: index value}
         self.dvi2 = dict()
         self.dvi3 = dict()
         self.dvi4 = dict()
         self.dvi5 = dict()
         '''
-        self.ct90 = dict()  # {time: active prefix count}. For plot.
-        self.ct80 = dict()  # {time: active prefix count}. For plot.
-        self.ct70 = dict()  # {time: active prefix count}. For plot.
-        self.ct60 = dict()  # {time: active prefix count}. For plot.
-        self.ct50 = dict()  # {time: active prefix count}. For plot.
+        self.ct90 = dict()  # {time: active pfx count}. For plot.
+        self.ct80 = dict()  # {time: active pfx count}. For plot.
+        self.ct70 = dict()  # {time: active pfx count}. For plot.
+        self.ct60 = dict()  # {time: active pfx count}. For plot.
+        self.ct50 = dict()  # {time: active pfx count}. For plot.
         self.ct_monitor = dict()  # {time: monitor count}. For plot.
-        self.ct_p = dict()  # {time: all prefix count}. For plot.
+        self.ct_p = dict()  # {time: all pfx count}. For plot.
         self.ct_u = dict()  # {time: all update count}. For plot.
         '''
 
-        self.ymd = ymd  # For saving figures
+        self.sdate = sdate  # For saving figures
+
+    
+    def set_from(self, collector, update):
+        self.from_dt[collector] = int(update.split('|')[1])
+        return 0
+
+    def set_to(self, collector, update):
+        self.to_dt[collector] = int(update.split('|')[1])
+        return 0
+
 
     def add(self, update):
-        dt = update.get_time()
-        dt = datetime.datetime.strptime(dt, '%m/%d/%y %H:%M:%S')  # Format to obj 
+        updt_attr = update.split('|')[0:6]
+        intdt = int(updt_attr[1])
+        objdt = datetime.datetime.fromtimestamp(intdt)
 
         # Set granularity
-        dt = dt.replace(second = 0, microsecond = 0)
+        objdt = objdt.replace(second = 0, microsecond = 0)
         mi = (dt.minute / self.granu) * self.granu
         dt = dt.replace(minute = mi)
-        time = time_lib.mktime(dt.timetuple())  # Change datetime into seconds
+        intdt = time_lib.mktime(dt.timetuple())  # Change datetime into seconds
 
-        from_ip = update.get_from_ip()
-        if from_ip not in self.from_ip_list:
-            self.from_ip_list.append(from_ip)
+        from_ip = updt_attr[3]
+        if from_ip not in self.fip_list:
+            self.fip_list.append(from_ip)
 
-        prefix = update.get_announce() + update.get_withdrawn()
+        pfx = self.ip_to_binary(from_ip, updt_attr[5])
 
-        if time != self.lasttime:
-            if self.lasttime != 0:  # Not the first run
-                print datetime.datetime.fromtimestamp(time)
+        if intdt != self.lastdt:
+            if self.lastdt != 0:  # Not the first run
+                print datetime.datetime.fromtimestamp(intdt)
                 #self.get_50_90()
                 self.get_index()
                 self.trie = patricia.trie(None)
                 self.pcount = 0
                 self.ucount = 0
             
-            self.lasttime = time
+            self.lastdt = time
 
-        for p in prefix:
-            try:  # Test whether the trie has the node
-                test = self.trie[p]
-            except:  # Node does not exist
-                self.trie[p] = []
-                self.pcount += 1
+        try:  # Test whether the trie has the node
+            test = self.trie[pfx]
+        except:  # Node does not exist
+            self.trie[pfx] = []
+            self.pcount += 1
 
-            if from_ip not in self.trie[p]:
-                self.trie[p].append(from_ip)
+        if from_ip not in self.trie[pfx]:
+            self.trie[pfx].append(from_ip)
 
-            self.ucount += 1
+        self.ucount += 1
 
     def get_index(self):
-        len_all_fi = len(self.from_ip_list)
+        len_all_fi = len(self.fip_list)
 
         for p in self.trie:
             if p == '':
@@ -92,25 +109,25 @@ class Alarm():
             ratio = float(len(self.trie[p]))/float(len_all_fi)
             if ratio > 0.5:
                 try:
-                    self.dvi1[self.lasttime] += ratio - 0.5
+                    self.dvi1[self.lastdt] += ratio - 0.5
                 except:
-                    self.dvi1[self.lasttime] = ratio - 0.5
+                    self.dvi1[self.lastdt] = ratio - 0.5
                 try:
-                    self.dvi2[self.lasttime] += np.power(2, (ratio-0.9)*10)
+                    self.dvi2[self.lastdt] += np.power(2, (ratio-0.9)*10)
                 except:
-                    self.dvi2[self.lasttime] = np.power(2, (ratio-0.9)*10)
+                    self.dvi2[self.lastdt] = np.power(2, (ratio-0.9)*10)
                 try:
-                    self.dvi3[self.lasttime] += np.power(5, (ratio-0.9)*10)
+                    self.dvi3[self.lastdt] += np.power(5, (ratio-0.9)*10)
                 except:
-                    self.dvi3[self.lasttime] = np.power(5, (ratio-0.9)*10)
+                    self.dvi3[self.lastdt] = np.power(5, (ratio-0.9)*10)
                 try:
-                    self.dvi4[self.lasttime] += 1
+                    self.dvi4[self.lastdt] += 1
                 except:
-                    self.dvi4[self.lasttime] = 1
+                    self.dvi4[self.lastdt] = 1
                 try:
-                    self.dvi5[self.lasttime] += ratio
+                    self.dvi5[self.lastdt] += ratio
                 except:
-                    self.dvi5[self.lasttime] = ratio
+                    self.dvi5[self.lastdt] = ratio
 
         return 0
 
@@ -132,7 +149,7 @@ class Alarm():
         dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
 
         fig = plt.figure(figsize=(16, 20))
-        fig.suptitle('DVI '+self.ymd)
+        fig.suptitle('DVI '+self.sdate)
 
         ax1 = fig.add_subplot(511)
         ax1.plot(dt, dvi1, 'b-')
@@ -164,12 +181,12 @@ class Alarm():
 
         plt.xticks(rotation=45)
         plt.plot()
-        plt.savefig(self.ymd+'_dvi.pdf')
+        plt.savefig(self.sdate+'_dvi.pdf')
         return 0
 
     def get_50_90(self):
-        len_all_fi = len(self.from_ip_list)
-        self.ct_monitor[self.lasttime] = len_all_fi
+        len_all_fi = len(self.fip_list)
+        self.ct_monitor[self.lastdt] = len_all_fi
 
         for p in self.trie:
             if p == '':
@@ -177,65 +194,88 @@ class Alarm():
            
             if len(self.trie[p].keys()) >= 0.5 * len_all_fi:  # TODO: not dict any more
                 try:
-                    self.actv_pfx50[self.lasttime].append(p)
+                    self.actv_pfx50[self.lastdt].append(p)
                 except:
-                    self.actv_pfx50[self.lasttime] = []
-                    self.actv_pfx50[self.lasttime].append(p)
+                    self.actv_pfx50[self.lastdt] = []
+                    self.actv_pfx50[self.lastdt].append(p)
            
                 if len(self.trie[p].keys()) >= 0.6 * len_all_fi:
                     try:
-                        self.actv_pfx60[self.lasttime].append(p)
+                        self.actv_pfx60[self.lastdt].append(p)
                     except:
-                        self.actv_pfx60[self.lasttime] = []
-                        self.actv_pfx60[self.lasttime].append(p)
+                        self.actv_pfx60[self.lastdt] = []
+                        self.actv_pfx60[self.lastdt].append(p)
                
                     if len(self.trie[p].keys()) >= 0.7 * len_all_fi:
                         try:
-                            self.actv_pfx70[self.lasttime].append(p)
+                            self.actv_pfx70[self.lastdt].append(p)
                         except:
-                            self.actv_pfx70[self.lasttime] = []
-                            self.actv_pfx70[self.lasttime].append(p)
+                            self.actv_pfx70[self.lastdt] = []
+                            self.actv_pfx70[self.lastdt].append(p)
                    
                         if len(self.trie[p].keys()) >= 0.8 * len_all_fi:
                             try:
-                                self.actv_pfx80[self.lasttime].append(p)
+                                self.actv_pfx80[self.lastdt].append(p)
                             except:
-                                self.actv_pfx80[self.lasttime] = []
-                                self.actv_pfx80[self.lasttime].append(p)
+                                self.actv_pfx80[self.lastdt] = []
+                                self.actv_pfx80[self.lastdt].append(p)
                        
                             if len(self.trie[p].keys()) >= 0.9 * len_all_fi:
                                 try:
-                                    self.actv_pfx90[self.lasttime].append(p)
+                                    self.actv_pfx90[self.lastdt].append(p)
                                 except:
-                                    self.actv_pfx90[self.lasttime] = []
-                                    self.actv_pfx90[self.lasttime].append(p)
+                                    self.actv_pfx90[self.lastdt] = []
+                                    self.actv_pfx90[self.lastdt].append(p)
 
             else:
                 continue
 
         try:
-            self.ct90[self.lasttime] = len(self.actv_pfx90[self.lasttime])
-        except:  # No active prefix at all
-            self.ct90[self.lasttime] = 0
+            self.ct90[self.lastdt] = len(self.actv_pfx90[self.lastdt])
+        except:  # No active pfx at all
+            self.ct90[self.lastdt] = 0
         try:
-            self.ct80[self.lasttime] = len(self.actv_pfx80[self.lasttime])
-        except:  # No active prefix at all
-            self.ct80[self.lasttime] = 0
+            self.ct80[self.lastdt] = len(self.actv_pfx80[self.lastdt])
+        except:  # No active pfx at all
+            self.ct80[self.lastdt] = 0
         try:
-            self.ct70[self.lasttime] = len(self.actv_pfx70[self.lasttime])
-        except:  # No active prefix at all
-            self.ct70[self.lasttime] = 0
+            self.ct70[self.lastdt] = len(self.actv_pfx70[self.lastdt])
+        except:  # No active pfx at all
+            self.ct70[self.lastdt] = 0
         try:
-            self.ct60[self.lasttime] = len(self.actv_pfx60[self.lasttime])
-        except:  # No active prefix at all
-            self.ct60[self.lasttime] = 0
+            self.ct60[self.lastdt] = len(self.actv_pfx60[self.lastdt])
+        except:  # No active pfx at all
+            self.ct60[self.lastdt] = 0
         try:
-            self.ct50[self.lasttime] = len(self.actv_pfx50[self.lasttime])
-        except:  # No active prefix at all
-            self.ct50[self.lasttime] = 0
+            self.ct50[self.lastdt] = len(self.actv_pfx50[self.lastdt])
+        except:  # No active pfx at all
+            self.ct50[self.lastdt] = 0
 
-        self.ct_p[self.lasttime] = self.pcount
-        self.ct_u[self.lasttime] = self.ucount
+        self.ct_p[self.lastdt] = self.pcount
+        self.ct_u[self.lastdt] = self.ucount
+
+    def ip_to_binary(self, from_ip, content):  # can deal with ip addr and pfx
+        length = None
+        pfx = content.split('/')[0]
+        try:
+            length = int(content.split('/')[1])
+        except:
+            pass
+        if '.' in from_ip:
+            addr = IPAddress(pfx).bits()
+            addr = addr.replace('.', '')
+            if length:
+                addr = addr[:length]
+            return addr
+        elif ':' in from_ip:
+            addr = IPAddress(pfx).bits()
+            addr = addr.replace(':', '')
+            if length:
+                addr = addr[:length]
+            return addr
+        else:
+            print 'protocol false!'
+            return 0
 
     def plot_50_90(self): 
         count90 = []
@@ -263,7 +303,7 @@ class Alarm():
 
         # Plot all var in one figure
         fig = plt.figure(figsize=(16, 30))
-        fig.suptitle('I-Seismometer '+self.ymd)
+        fig.suptitle('I-Seismometer '+self.sdate)
 
         ax1 = fig.add_subplot(711)
         ax1.plot(dt, count_u, 'b-', label='updates')
@@ -315,4 +355,4 @@ class Alarm():
 
         plt.xticks(rotation=45)
         plt.plot()
-        plt.savefig(self.ymd+'_50_90.pdf')
+        plt.savefig(self.sdate+'_50_90.pdf')

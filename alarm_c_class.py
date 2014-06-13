@@ -1,5 +1,3 @@
-from update_class import *
-
 from netaddr import *
 import patricia
 import datetime

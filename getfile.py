@@ -9,7 +9,7 @@ import gzip
 
 # 0: routeviews; 1: ripe ris
 '''
-collectors = [('', 0), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
+collectors = [('', 0, '20030000'), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
              ]
 '''
@@ -314,7 +314,7 @@ def get_file():
                         oldfile.close()
                         newfile.close()
 
-                        os.remove('rm '+updatefile)  # remove old .gz file
+                        os.remove(updatefile)  # remove old .gz file
                         # compress .txt into txt.gz to replace the old file
                         subprocess.call('gzip -c tmp/'+myfilename.split('/')[-1]+\
                                 ' > '+updatefile, shell=True)
