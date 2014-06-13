@@ -9,16 +9,14 @@ from netaddr import *
 from getfile import collectors
 from matplotlib.dates import HourLocator
 
-
 class Alarm():
 
     def __init__(self, granu, sdate):
         # schedule date time order
-        self.from_dt = {}  # collector: dt 
-        self.to_dt = {}  # collector: dt 
+        self.cl_dt = {}  # collector: [from_dt, to_dt] 
         for cl in collectors:
-            self.from_dt[cl[0]] = 0
-            self.to_dt[cl[0]] = 0
+            self.dt[cl[0]] = [0, 0]
+        self.ceiling = 0  # TODO: set initial value
 
         self.granu = granu  # Time granularity
         self.trie = patricia.trie(None)  # pfx: AS list
@@ -48,17 +46,31 @@ class Alarm():
         self.ct_p = dict()  # {time: all pfx count}. For plot.
         self.ct_u = dict()  # {time: all update count}. For plot.
         '''
-
         self.sdate = sdate  # For saving figures
 
     
-    def set_from(self, collector, update):
-        self.from_dt[collector] = int(update.split('|')[1])
+    def set_ceiling(self, collector, end_line):
+        self.cl_dt[collector][1] = int(end_line.split('|')[1])
         return 0
 
-    def set_to(self, collector, update):
-        self.to_dt[collector] = int(update.split('|')[1])
+
+    def check_mem(self):
+        new_ceil = 9999999999
+        for cl in cl_dt.keys():
+            if cl_dt[cl][1] < new_ceil:
+                new_ceil = cl_dt[cl][1]
+
+        if new_ceil - self.ceiling < 6000:  # pretty random number
+            self.clean_mem()
+
+        if self.ceiling == 0:  # initialize
+            self.ceiling = new_ceil
+
         return 0
+
+
+    # TODO: remember to clean mem in the end of whole processing
+    def clean_mem(self):
 
 
     def add(self, update):

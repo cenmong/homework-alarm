@@ -28,17 +28,11 @@ class Analyzer():
 
             # get collector
             cl = ff.split('/')[5]
-            if cl = 'bgpdata':  # route-views2
+            if cl == 'bgpdata':  # route-views2
                 cl = ''
 
             with open(ff.replace('txt.gz', 'txt'), 'r') as f:
-                line = f.readline().replace('\n', '')
-                if '.' in line.split('|')[3]:  # ipv4
-                    #self.alarm.add(line)
-                    self.alarm.set_from(line)
                 for line in f:
-                    if line == first_line:
-                        print 'Happy!'
                     line = line.replace('\n', '')
                     if ':' in line.split('|')[3]:  # ipv6
                         continue
@@ -46,7 +40,8 @@ class Analyzer():
             f.close()
             os.remove(ff.replace('txt.gz', 'txt'))
 
-            self.alarm.set_to(cl, line)
+            self.alarm.set_ceiling(cl, line)
+            self.alarm.check_mem()
 
         filelist.close()
         '''
