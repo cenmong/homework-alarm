@@ -90,6 +90,10 @@ def get_file():
 
                 # read the web list
                 testcount = 0  # TODO: testonly
+                try:
+                    os.mkdir(hdname+loc)
+                except:  # already exists
+                    pass
                 for line in webraw.split('\n'):
                     if not 'updates' in line:
                         continue  # useless line
@@ -146,6 +150,10 @@ def get_file():
                 webloc = 'http://' + loc
                 webhtml = urllib.urlopen(webloc).read()
                 webraw = nltk.clean_html(webhtml)
+            try:
+                os.mkdir(hdname+loc)
+            except:  # already exists
+                pass
             for line in webraw.split('\n'):
                 if not 'rib' in line and not 'bview' in line:
                     continue  # useless line
