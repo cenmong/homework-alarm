@@ -121,6 +121,7 @@ def get_file():
                     if os.path.exists(hdname+updt_fname+'.txt'):
                         os.remove(hdname+updt_fname+'.txt')
 
+                    os.mkdir(hdname+updt_fname.split('/')[:-1])
                     urllib.urlretrieve('http://'+updt_fname,\
                             hdname+updt_fname)
 
@@ -167,6 +168,7 @@ def get_file():
                 if os.path.exists(hdname+rib_fname+'.txt'): 
                     os.remove(hdname+rib_fname+'.txt')
 
+                os.mkdir(hdname+rib_fname.split('/')[:-1])
                 urllib.urlretrieve('http://'+rib_fname,\
                         hdname+rib_fname)
                 break
