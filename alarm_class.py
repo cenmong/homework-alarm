@@ -15,63 +15,87 @@ class Alarm():
         # schedule date time order
         self.cl_dt = {}  # collector: [from_dt, to_dt] 
         for cl in collectors:
-            self.dt[cl[0]] = [0, 0]
-        self.ceiling = 0  # TODO: set initial value
+            self.cl_dt[cl[0]] = [0, 0]
+        self.ceiling = 0  # ceiling is a place we can reach, not over
 
-        self.granu = granu  # Time granularity
-        self.trie = patricia.trie(None)  # pfx: AS list
-        '''
-        self.actv_pfx90 = dict()  # {time: pfx list}
-        self.actv_pfx80 = dict()  # {time: pfx list}
-        self.actv_pfx70 = dict()  # {time: pfx list}
-        self.actv_pfx60 = dict()  # {time: pfx list}
-        self.actv_pfx50 = dict()  # {time: pfx list}
-        '''
-        self.ucount = 0  # update count in a period
-        self.pcount = 0  # pfx count in a period
-        self.lastdt = 0  # detect time period changes
-        self.fip_list = []  # For detecting new from IP
-        self.dvi1 = dict()  # {time: index value}
-        self.dvi2 = dict()
-        self.dvi3 = dict()
-        self.dvi4 = dict()
-        self.dvi5 = dict()
-        '''
-        self.ct90 = dict()  # {time: active pfx count}. For plot.
-        self.ct80 = dict()  # {time: active pfx count}. For plot.
-        self.ct70 = dict()  # {time: active pfx count}. For plot.
-        self.ct60 = dict()  # {time: active pfx count}. For plot.
-        self.ct50 = dict()  # {time: active pfx count}. For plot.
-        self.ct_monitor = dict()  # {time: monitor count}. For plot.
-        self.ct_p = dict()  # {time: all pfx count}. For plot.
-        self.ct_u = dict()  # {time: all update count}. For plot.
-        '''
         self.sdate = sdate  # For saving figures
+        self.granu = granu  # Time granularity
+        self.pfx_trie = dict()  # dt: pfx, AS list
+        self.fip_list = dict()  # dt: as list
+
+        # aggregated info
+        self.dvi1 = dict()  #  time: value
+        self.dvi2 = dict()  #  time: value
+        self.dvi3 = dict()  #  time: value
+        self.dvi4 = dict()  #  time: value
+        self.dvi5 = dict()  #  time: value
 
     
-    def set_ceiling(self, collector, end_line):
-        self.cl_dt[collector][1] = int(end_line.split('|')[1])
+    def shang_qu_zheng(self, value):
+        return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
+                    self.granu)
+
+    def xia_qu_zheng(self, value):
+        return value / (60 * self.granu) * (60 *\
+                    self.granu)
+
+    def set_high(self, cl, end_line):
+        self.cl_dt[cl][1] = int(end_line.split('|')[1])
+        return 0
+    
+    def set_first(self, cl, first_line):
+        self.cl_dt[cl][0] = int(first_line.split('|')[1])
+        non_zero = True
+        for cl in collectors:
+            if self.cl_dt[cl[0]][0] == 0:
+                non_zero = False
+        if non_zero == True:  # all cl has file exist
+            for cl in collectors:
+                if self.cl_dt[cl[0]][0] > self.ceiling:
+                    self.ceiling = self.cl_dt[cl[0]][0]
+            self.ceiling = self.shang_qu_zheng(self.ceiling)
+            # TODO: del all var that are before ceiling
         return 0
 
+    def check_memo(self, is_end):
+        if self.ceiling == 0:  # not everybofy is ready
+            return 0
+    
+        # We are now sure that all collectors exist and any info that is 
+        # too early to be combined are deleted
 
-    def check_mem(self):
         new_ceil = 9999999999
-        for cl in cl_dt.keys():
-            if cl_dt[cl][1] < new_ceil:
-                new_ceil = cl_dt[cl][1]
+        # get smallest CEILING value
+        for cl in collectors:
+            if self.cl_dt[cl[0]][1] < new_ceil:
+                new_ceil = self.cl_dt[cl[0]][1]
 
-        if new_ceil - self.ceiling < 6000:  # pretty random number
-            self.clean_mem()
-
-        if self.ceiling == 0:  # initialize
-            self.ceiling = new_ceil
+        if is_end == False:
+            if new_ceil - self.ceiling >= 5 * 60 * self.granu:  # pretty random number
+                self.ceiling = new_ceil
+                self.release_memo()
+        else:
+                self.ceiling = new_ceil
+                self.release_memo()
 
         return 0
 
+    # aggregate any info that is <= ceiling
+    def release_memo(self):
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if dt <= self.ceiling:
+                rel_dt.append(dt)
 
-    # TODO: remember to clean mem in the end of whole processing
-    def clean_mem(self):
+        self.get_index(rel_dt)
+        self.del_garbage(rel_dt)
+        return 0
 
+    def del_garbage(self, rel_dt):
+        for dt in rel_dt:
+            del self.pfx_trie[dt]
+            del self.fip_list[dt]
+        return 0
 
     def add(self, update):
         updt_attr = update.split('|')[0:6]
@@ -80,71 +104,92 @@ class Alarm():
 
         # Set granularity
         objdt = objdt.replace(second = 0, microsecond = 0)
-        mi = (dt.minute / self.granu) * self.granu
-        dt = dt.replace(minute = mi)
-        intdt = time_lib.mktime(dt.timetuple())  # Change datetime into seconds
+        mi = self.xia_qu_zheng(objdt.minute)
+        objdt = objdt.replace(minute = mi)
+        intdt = time_lib.mktime(objdt.timetuple())  # Change datetime into seconds
+
+        if intdt not in self.fip_list.keys():
+            self.fip_list[intdt] = []
 
         from_ip = updt_attr[3]
-        if from_ip not in self.fip_list:
-            self.fip_list.append(from_ip)
+        if from_ip not in self.fip_list[intdt]:
+            self.fip_list[intdt].append(from_ip)
 
         pfx = self.ip_to_binary(from_ip, updt_attr[5])
 
-        if intdt != self.lastdt:
-            if self.lastdt != 0:  # Not the first run
-                print datetime.datetime.fromtimestamp(intdt)
-                #self.get_50_90()
-                self.get_index()
-                self.trie = patricia.trie(None)
-                self.pcount = 0
-                self.ucount = 0
-            
-            self.lastdt = time
+
+        if intdt not in self.pfx_trie.keys():
+            self.pfx_trie[intdt] = patricia.trie(None)
 
         try:  # Test whether the trie has the node
-            test = self.trie[pfx]
+            pfx_fip = self.pfx_trie[intdt][pfx]
         except:  # Node does not exist
-            self.trie[pfx] = []
-            self.pcount += 1
+            self.pfx_trie[intdt][pfx] = [from_ip]
+            return 0
 
-        if from_ip not in self.trie[pfx]:
-            self.trie[pfx].append(from_ip)
+        if from_ip not in pfx_fip:
+            self.pfx_trie[intdt][pfx].append(from_ip)
 
-        self.ucount += 1
+        return 0
 
-    def get_index(self):
-        len_all_fi = len(self.fip_list)
+    def ip_to_binary(self, from_ip, content):  # can deal with ip addr and pfx
+        length = None
+        pfx = content.split('/')[0]
+        try:
+            length = int(content.split('/')[1])
+        except:
+            pass
+        if '.' in from_ip:
+            addr = IPAddress(pfx).bits()
+            addr = addr.replace('.', '')
+            if length:
+                addr = addr[:length]
+            return addr
+        elif ':' in from_ip:
+            addr = IPAddress(pfx).bits()
+            addr = addr.replace(':', '')
+            if length:
+                addr = addr[:length]
+            return addr
+        else:
+            print 'protocol false!'
+            return 0
 
-        for p in self.trie:
-            if p == '':
-                continue
-            ratio = float(len(self.trie[p]))/float(len_all_fi)
-            if ratio > 0.5:
+    def get_index(self, rel_dt):
+        for dt in rel_dt:
+            len_all_fi = len(self.fip_list[dt])
+            trie = self.pfx_trie[dt]
+            for p in trie:
+                if p == '':
+                    continue
+                ratio = float(len(trie[p]))/float(len_all_fi)
+                if ratio <= 0.5:
+                    continue
                 try:
-                    self.dvi1[self.lastdt] += ratio - 0.5
+                    self.dvi1[dt] += ratio - 0.5
                 except:
-                    self.dvi1[self.lastdt] = ratio - 0.5
+                    self.dvi1[dt] = ratio - 0.5
                 try:
-                    self.dvi2[self.lastdt] += np.power(2, (ratio-0.9)*10)
+                    self.dvi2[dt] += np.power(2, (ratio-0.9)*10)
                 except:
-                    self.dvi2[self.lastdt] = np.power(2, (ratio-0.9)*10)
+                    self.dvi2[dt] = np.power(2, (ratio-0.9)*10)
                 try:
-                    self.dvi3[self.lastdt] += np.power(5, (ratio-0.9)*10)
+                    self.dvi3[dt] += np.power(5, (ratio-0.9)*10)
                 except:
-                    self.dvi3[self.lastdt] = np.power(5, (ratio-0.9)*10)
+                    self.dvi3[dt] = np.power(5, (ratio-0.9)*10)
                 try:
-                    self.dvi4[self.lastdt] += 1
+                    self.dvi4[dt] += 1
                 except:
-                    self.dvi4[self.lastdt] = 1
+                    self.dvi4[dt] = 1
                 try:
-                    self.dvi5[self.lastdt] += ratio
+                    self.dvi5[dt] += ratio
                 except:
-                    self.dvi5[self.lastdt] = ratio
+                    self.dvi5[dt] = ratio
 
         return 0
 
     def plot_index(self):
-        dvi1 = []
+        dvi1 = []  # list, only for plot
         dvi2 = []
         dvi3 = []
         dvi4 = []
@@ -262,32 +307,6 @@ class Alarm():
             self.ct50[self.lastdt] = len(self.actv_pfx50[self.lastdt])
         except:  # No active pfx at all
             self.ct50[self.lastdt] = 0
-
-        self.ct_p[self.lastdt] = self.pcount
-        self.ct_u[self.lastdt] = self.ucount
-
-    def ip_to_binary(self, from_ip, content):  # can deal with ip addr and pfx
-        length = None
-        pfx = content.split('/')[0]
-        try:
-            length = int(content.split('/')[1])
-        except:
-            pass
-        if '.' in from_ip:
-            addr = IPAddress(pfx).bits()
-            addr = addr.replace('.', '')
-            if length:
-                addr = addr[:length]
-            return addr
-        elif ':' in from_ip:
-            addr = IPAddress(pfx).bits()
-            addr = addr.replace(':', '')
-            if length:
-                addr = addr[:length]
-            return addr
-        else:
-            print 'protocol false!'
-            return 0
 
     def plot_50_90(self): 
         count90 = []
