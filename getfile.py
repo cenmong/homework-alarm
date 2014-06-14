@@ -23,6 +23,7 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20081218', 4, '2008 mediterranean cable cut 2'),\
             ('20050911', 4, 'LA blackout'),\
             ('20050828', 4, 'Hurricane Katrina'),\
+            ('20090720', 1, 'test 1')
             ]
 
 '''
@@ -43,7 +44,7 @@ def unpack_gz(inputf, outputf):
 '''
 def get_file():
 
-    for i in range(3, 4):
+    for i in range(4, 5):
         for clctr in collectors:
             # get basic info of this collector
             cl_name = clctr[0]
@@ -89,7 +90,7 @@ def get_file():
                     webraw = nltk.clean_html(webhtml)
 
                 # read the web list
-                testcount = 0  # TODO: testonly
+                #testcount = 0  # TODO: testonly
                 try:
                     os.mkdir(hdname+loc)
                 except:  # already exists
@@ -106,9 +107,9 @@ def get_file():
                     print line
 
                     # TODO: testonly
-                    testcount += 1
-                    if testcount == 5:
-                        break
+                    #testcount += 1
+                    #if testcount == 5:
+                    #    break
                        
                     # get the name of a .bz2/gz update file
                     updt_fname = loc + line
@@ -232,7 +233,7 @@ def get_file():
             
 
             print 'determining table transfers start and end time...'
-            peers = peers[0:2]  # TODO: testonly
+            #peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print peer
