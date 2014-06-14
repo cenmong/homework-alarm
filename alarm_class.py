@@ -59,11 +59,11 @@ class Alarm():
         return 0
 
     def set_now(self, cl, line):
-        self.cl_dt[cl][1] = int(line.split('|')[1])
+        self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # -8 Hours
         return 0
     
     def set_first(self, cl, first_line):
-        self.cl_dt[cl][0] = int(first_line.split('|')[1])
+        self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
         non_zero = True
         for cl in collectors:
             if self.cl_dt[cl[0]][0] == 0:
@@ -103,7 +103,7 @@ class Alarm():
                 self.ceiling = new_ceil - 60 * self.granu
                 self.release_memo()
         else:
-            'cleaning in the end'
+            print 'cleaning in the end'
             self.ceiling = new_ceil - 60 * self.granu
             self.release_memo()
 
@@ -136,7 +136,8 @@ class Alarm():
 
         intdt = int(updt_attr[1])
         objdt = datetime.datetime.fromtimestamp(intdt).\
-                replace(second = 0, microsecond = 0)
+                replace(second = 0, microsecond = 0) +\
+                datetime.timedelta(hours=-8)
         # Set granularity
         mi = self.xia_qu_zheng(objdt.minute, 'm')
         objdt = objdt.replace(minute = mi)

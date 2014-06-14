@@ -1,6 +1,7 @@
 import os
 import time 
 import subprocess
+import sys
 
 from alarm_class import *
 from alarm_c_class import *
@@ -40,7 +41,10 @@ class Analyzer():
                 if self.cl_first[cl] == True:  # this collector first appears
                     for line in f:  # get first (ipv4) line
                         line = line.replace('\n', '')
-                        if ':' in line.split('|')[3]:
+                        try:
+                            if ':' in line.split('|')[3]:
+                                continue
+                        except:
                             continue
                         break
                     self.alarm.set_first(cl, line)  # set colllector's dt
@@ -48,8 +52,11 @@ class Analyzer():
                     self.cl_first[cl] = False
                 for line in f:
                     line = line.replace('\n', '')
-                    if ':' in line.split('|')[3]:  # ipv6
-                        continue
+                    try:
+                        if ':' in line.split('|')[3]:  # ipv6
+                            continue
+                    except:
+                        continue  # met messy codes
                     self.alarm.add(line)
             f.close()
             os.remove(ff.replace('txt.gz', 'txt'))
