@@ -8,13 +8,11 @@ import subprocess
 import gzip
 
 # 0: routeviews; 1: ripe ris
-'''
 collectors = [('', 0, '20030000'), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
              ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
              ]
-'''
 # TODO: testonly
-collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
+#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 # TODO: testonly
 #collectors = [('rrc00', 1)]
 

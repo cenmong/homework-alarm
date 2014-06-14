@@ -13,15 +13,15 @@ class Alarm():
 
     def __init__(self, granu, sdate):
         # schedule date time order
-        self.cl_dt = {}  # collector: [from_dt, to_dt] 
+        self.cl_dt = {}  # collector: [from_dt, now_dt] 
         for cl in collectors:
-            self.cl_dt[cl[0]] = [0, 0]
+            self.cl_dt[cl[0]] = [0, 0]  # start dt, now dt
         self.ceiling = 0  # ceiling is a place we can reach, not over
 
         self.sdate = sdate  # For saving figures
         self.granu = granu  # Time granularity
-        self.pfx_trie = dict()  # dt: pfx, AS list
-        self.fip_list = dict()  # dt: as list
+        self.pfx_trie = dict()  # dt: pfx, from ip list
+        self.fip_list = dict()  # dt: from ip list
 
         # aggregated info
         self.dvi1 = dict()  #  time: value
@@ -31,16 +31,34 @@ class Alarm():
         self.dvi5 = dict()  #  time: value
 
     
-    def shang_qu_zheng(self, value):
-        return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
-                    self.granu)
+    def shang_qu_zheng(self, value, tp):  # 'm': minute, 's': second
+        if tp == 's':
+            return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
+                        self.granu)
+        elif tp == 'm':
+            return (value + self.granu) / self.granu * self.granu
+        else:
+             return False 
 
-    def xia_qu_zheng(self, value):
-        return value / (60 * self.granu) * (60 *\
-                    self.granu)
+    def xia_qu_zheng(self, value, tp):
+        if tp == 's':
+            return value / (60 * self.granu) * (60 *\
+                        self.granu)
+        elif tp == 'm':
+            return value / self.granu * self.granu
+        else:
+            return False
 
-    def set_high(self, cl, end_line):
-        self.cl_dt[cl][1] = int(end_line.split('|')[1])
+    
+    def print_dt(self, dt):
+        try:
+            print datetime.datetime.fromtimestamp(dt)
+        except:
+            print dt
+        return 0
+
+    def set_now(self, cl, line):
+        self.cl_dt[cl][1] = int(line.split('|')[1])
         return 0
     
     def set_first(self, cl, first_line):
@@ -53,8 +71,9 @@ class Alarm():
             for cl in collectors:
                 if self.cl_dt[cl[0]][0] > self.ceiling:
                     self.ceiling = self.cl_dt[cl[0]][0]
-            self.ceiling = self.shang_qu_zheng(self.ceiling)
-            # TODO: del all var that are before ceiling
+            # del all var that are before ceiling
+            # TODO: unable to completely delete
+            self.del_garbage()
         return 0
 
     def check_memo(self, is_end):
@@ -70,57 +89,66 @@ class Alarm():
             if self.cl_dt[cl[0]][1] < new_ceil:
                 new_ceil = self.cl_dt[cl[0]][1]
 
+        print 'checking...'
+        print 'self.ceiling: '
+        self.print_dt(self.ceiling)
+        print 'new_ceil: '
+        self.print_dt(new_ceil)
+
         if is_end == False:
-            if new_ceil - self.ceiling >= 5 * 60 * self.granu:  # pretty random number
-                self.ceiling = new_ceil
+            if new_ceil - self.ceiling >= 1 * 60 * self.granu:  # not so frequent
+                # e.g., aggregate 10:50 only when now > 11:00
+                self.ceiling = new_ceil - 60 * self.granu
                 self.release_memo()
         else:
-                self.ceiling = new_ceil
-                self.release_memo()
+            'cleaning in the end'
+            self.ceiling = new_ceil - 60 * self.granu
+            self.release_memo()
 
         return 0
 
     # aggregate any info that is <= ceiling
     def release_memo(self):
+        print '\nreleasing...'
         rel_dt = []  # dt for processing
         for dt in self.pfx_trie.keys():  # all dt that exists
             if dt <= self.ceiling:
+                self.print_dt(dt)
                 rel_dt.append(dt)
-
         self.get_index(rel_dt)
-        self.del_garbage(rel_dt)
+        self.del_garbage()
         return 0
 
-    def del_garbage(self, rel_dt):
-        for dt in rel_dt:
-            del self.pfx_trie[dt]
-            del self.fip_list[dt]
+    def del_garbage(self):
+        print '\ndeleting...'
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if dt <= self.ceiling:
+                self.print_dt(dt)
+                del self.pfx_trie[dt]
+                del self.fip_list[dt]
         return 0
 
     def add(self, update):
-        updt_attr = update.split('|')[0:6]
+        updt_attr = update.split('|')[0:6]  # no need for attrs now
+
         intdt = int(updt_attr[1])
-        objdt = datetime.datetime.fromtimestamp(intdt)
-
+        objdt = datetime.datetime.fromtimestamp(intdt).\
+                replace(second = 0, microsecond = 0)
         # Set granularity
-        objdt = objdt.replace(second = 0, microsecond = 0)
-        mi = self.xia_qu_zheng(objdt.minute)
+        mi = self.xia_qu_zheng(objdt.minute, 'm')
         objdt = objdt.replace(minute = mi)
-        intdt = time_lib.mktime(objdt.timetuple())  # Change datetime into seconds
-
-        if intdt not in self.fip_list.keys():
-            self.fip_list[intdt] = []
+        intdt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
 
         from_ip = updt_attr[3]
+        if intdt not in self.fip_list.keys():
+            self.fip_list[intdt] = []
         if from_ip not in self.fip_list[intdt]:
             self.fip_list[intdt].append(from_ip)
 
-        pfx = self.ip_to_binary(from_ip, updt_attr[5])
-
-
+        pfx = self.ip_to_binary(updt_attr[5], from_ip)
         if intdt not in self.pfx_trie.keys():
             self.pfx_trie[intdt] = patricia.trie(None)
-
         try:  # Test whether the trie has the node
             pfx_fip = self.pfx_trie[intdt][pfx]
         except:  # Node does not exist
@@ -132,14 +160,14 @@ class Alarm():
 
         return 0
 
-    def ip_to_binary(self, from_ip, content):  # can deal with ip addr and pfx
+    def ip_to_binary(self, content, from_ip):  # can deal with ip addr and pfx
         length = None
         pfx = content.split('/')[0]
         try:
             length = int(content.split('/')[1])
-        except:
+        except:  # an addr, not a pfx
             pass
-        if '.' in from_ip:
+        if '.' in from_ip:  # IPv4
             addr = IPAddress(pfx).bits()
             addr = addr.replace('.', '')
             if length:

@@ -15,7 +15,7 @@ class Analyzer():
         self.filelist = filelist  # filelist file name 
         if atype == 1:
             self.alarm = Alarm(granu, sdate)
-        if atype == 2:
+        if atype == 2:  # longitudinal
             self.alarm = Alarm_c(granu)
         
         self.atype = atype
@@ -37,13 +37,15 @@ class Analyzer():
                 cl = ''
 
             with open(ff.replace('txt.gz', 'txt'), 'r') as f:
-                if self.cl_first[cl] == True:
-                    for line in f:
+                if self.cl_first[cl] == True:  # this collector first appears
+                    for line in f:  # get first (ipv4) line
                         line = line.replace('\n', '')
-                        if ':' in line:
+                        if ':' in line.split('|')[3]:
                             continue
                         break
-                    self.alarm.set_first(cl, line)
+                    self.alarm.set_first(cl, line)  # set colllector's dt
+                    self.alarm.add(line)
+                    self.cl_first[cl] = False
                 for line in f:
                     line = line.replace('\n', '')
                     if ':' in line.split('|')[3]:  # ipv6
@@ -52,11 +54,10 @@ class Analyzer():
             f.close()
             os.remove(ff.replace('txt.gz', 'txt'))
 
-            self.alarm.set_high(cl, line)
-            self.alarm.check_memo(is_end = False)
+            self.alarm.set_now(cl, line)  # set collector's dt
+            self.alarm.check_memo(False)
 
-        self.alarm.check_memo(is_end = True)
-
+        self.alarm.check_memo(True)
         filelist.close()
 
         if self.atype == 1:
