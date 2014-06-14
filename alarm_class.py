@@ -17,6 +17,7 @@ class Alarm():
         for cl in collectors:
             self.cl_dt[cl[0]] = [0, 0]  # start dt, now dt
         self.ceiling = 0  # ceiling is a place we can reach, not over
+        self.floor = 0  # for not recording the lowest dt
 
         self.sdate = sdate  # For saving figures
         self.granu = granu  # Time granularity
@@ -71,6 +72,7 @@ class Alarm():
             for cl in collectors:
                 if self.cl_dt[cl[0]][0] > self.ceiling:
                     self.ceiling = self.cl_dt[cl[0]][0]
+                    self.floor = self.shang_qu_zheng(self.ceiling, 's')
             # del all var that are before ceiling
             # TODO: unable to completely delete
             self.del_garbage()
@@ -112,7 +114,7 @@ class Alarm():
         print '\nreleasing...'
         rel_dt = []  # dt for processing
         for dt in self.pfx_trie.keys():  # all dt that exists
-            if dt <= self.ceiling:
+            if self.floor <= dt <= self.ceiling:
                 self.print_dt(dt)
                 rel_dt.append(dt)
         self.get_index(rel_dt)
