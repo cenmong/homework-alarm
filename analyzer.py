@@ -2,6 +2,7 @@ import os
 import time 
 import subprocess
 import sys
+import string
 
 from alarm_class import *
 from alarm_c_class import *
@@ -24,6 +25,9 @@ class Analyzer():
         for cl in collectors:
             self.cl_first[cl[0]] = True
 
+        self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
+                '+'{'+'}'+','+'-')
+
     def parse_update(self):
         filelist = open(self.filelist, 'r')
         for ff in filelist:
@@ -37,14 +41,12 @@ class Analyzer():
             if cl == 'bgpdata':  # route-views2
                 cl = ''
 
+            lastline = 'Do not delete me!'
             with open(ff.replace('txt.gz', 'txt'), 'r') as f:
                 if self.cl_first[cl] == True:  # this collector first appears
                     for line in f:  # get first (ipv4) line
                         line = line.replace('\n', '')
-                        try:
-                            if ':' in line.split('|')[3]:
-                                continue
-                        except:
+                        if not set(line).issubset(self.allowed):
                             continue
                         break
                     self.alarm.set_first(cl, line)  # set colllector's dt
@@ -52,16 +54,17 @@ class Analyzer():
                     self.cl_first[cl] = False
                 for line in f:
                     line = line.replace('\n', '')
-                    try:
-                        if ':' in line.split('|')[3]:  # ipv6
-                            continue
-                    except:
-                        continue  # met messy codes
+                    if not set(line).issubset(self.allowed):
+                        continue
                     self.alarm.add(line)
+                    lastline = line
             f.close()
             os.remove(ff.replace('txt.gz', 'txt'))
 
-            self.alarm.set_now(cl, line)  # set collector's dt
+            try:
+                self.alarm.set_now(cl, lastline)  # set collector's dt
+            except:
+                pass
             self.alarm.check_memo(False)
 
         self.alarm.check_memo(True)
