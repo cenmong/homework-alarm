@@ -28,6 +28,12 @@ class Analyzer():
         self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
                 '+'{'+'}'+','+'-')
 
+    def is_normal(self, update):
+        if set(update).issubset(self.allowed) and len(update.split('|')) > 5:
+            return True
+        else:
+            return False
+
     def parse_update(self):
         filelist = open(self.filelist, 'r')
         for ff in filelist:
@@ -46,7 +52,7 @@ class Analyzer():
                 if self.cl_first[cl] == True:  # this collector first appears
                     for line in f:  # get first (ipv4) line
                         line = line.replace('\n', '')
-                        if not set(line).issubset(self.allowed):
+                        if not self.is_normal(line):
                             continue
                         break
                     self.alarm.set_first(cl, line)  # set colllector's dt
@@ -54,7 +60,7 @@ class Analyzer():
                     self.cl_first[cl] = False
                 for line in f:
                     line = line.replace('\n', '')
-                    if not set(line).issubset(self.allowed):
+                    if not self.is_normal(line):
                         continue
                     self.alarm.add(line)
                     lastline = line

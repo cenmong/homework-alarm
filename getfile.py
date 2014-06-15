@@ -8,8 +8,10 @@ import subprocess
 import gzip
 
 # 0: routeviews; 1: ripe ris
-collectors = [('', 0, '20030000'), ('rrc00', 1), ('rrc01', 1), ('rrc03', 1),\
-             ('rrc04', 1), ('rrc05', 1), ('rrc06', 1), ('rrc07', 1),\
+collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
+            '20000801'), ('rrc03', 1, '20010201'),\
+             ('rrc04', 1, '20010501'), ('rrc05', 1, '20010701'), ('rrc06', 1,\
+                     '20010901'), ('rrc07', 1, '20020501'),\
              ]
 # TODO: testonly
 #collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
@@ -45,6 +47,12 @@ def get_file():
     for i in range(4, 5):
         for clctr in collectors:
             # get basic info of this collector
+            try:
+                if int(daterange[i][0]) < int(clctr[2]):
+                    print 'this collector cannot service'
+                    continue
+            except:  # usually when testing
+                pass
             cl_name = clctr[0]
             cl_type = clctr[1]
             if cl_type == 0:
