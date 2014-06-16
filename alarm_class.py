@@ -74,7 +74,6 @@ class Alarm():
                     self.ceiling = self.cl_dt[cl[0]][0]
                     self.floor = self.shang_qu_zheng(self.ceiling, 's')
             # del all var that are before ceiling
-            # TODO: unable to completely delete
             self.del_garbage()
         return 0
 
@@ -194,12 +193,12 @@ class Alarm():
                 if p == '':
                     continue
                 ratio = float(len(trie[p]))/float(len_all_fi)
-                if ratio <= 0.5:
+                if ratio <= 0.2:
                     continue
                 try:
-                    self.dvi1[dt] += ratio - 0.5
+                    self.dvi1[dt] += ratio - 0.2
                 except:
-                    self.dvi1[dt] = ratio - 0.5
+                    self.dvi1[dt] = ratio - 0.2
                 try:
                     self.dvi2[dt] += np.power(2, (ratio-0.9)*10)
                 except:
