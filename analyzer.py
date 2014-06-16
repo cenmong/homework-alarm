@@ -6,7 +6,6 @@ import string
 
 from alarm_class import *
 from alarm_c_class import *
-from getfile import collectors
 from datetime import datetime
 from netaddr import *
 from env import *

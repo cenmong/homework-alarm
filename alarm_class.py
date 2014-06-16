@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mpldates
 
 from netaddr import *
-from getfile import collectors
+from env import *
 from matplotlib.dates import HourLocator
 
 class Alarm():

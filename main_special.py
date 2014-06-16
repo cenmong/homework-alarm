@@ -1,5 +1,5 @@
 from analyzer import *
-from getfile import daterange
+from env import *
 
 for i in range(0, 1):
     filelist = 'metadata/' + daterange[i][0] + '/updt_filelist_comb'

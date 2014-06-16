@@ -7,25 +7,11 @@ import patricia
 import subprocess
 import gzip
 
-# 0: routeviews; 1: ripe ris
-collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
-            '20000801'), ('rrc03', 1, '20010201'),\
-             ('rrc04', 1, '20010501'), ('rrc05', 1, '20010701'), ('rrc06', 1,\
-                     '20010901'), ('rrc07', 1, '20020501'),\
-             ]
-# TODO: testonly
+# TODO: testonly. over write collectors
 #collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
-# TODO: testonly
 #collectors = [('rrc00', 1)]
 
-# number of days in total
-daterange = [('20061225', 4, '2006 taiwan cable cut'),\
-            ('20081218', 4, '2008 mediterranean cable cut 2'),\
-            ('20050911', 4, 'LA blackout'),\
-            ('20050828', 4, 'Hurricane Katrina'),\
-            ('20090720', 1, 'test 1')
-            ]
-
+# TODO: change file name: RV & < Feb, 2003.
 '''
 def pack_gz(inputf, outputf):
     f_in = open(inputf, 'rb')
@@ -39,48 +25,61 @@ def unpack_gz(inputf, outputf):
     with open(outputf, 'wb') as f_out:
         for line in f_in:
             f_out.write(line)
-    f_out.close()
-    f_in_close()
-'''
+    f_out.close()'''
+        
 def get_file():
 
+    # loop over every date range
     for i in range(4, 5):
+        # loop over every collector if appropriate
         for clctr in collectors:
+
             # get basic info of this collector
             try:
+                # this collector is born later than we want
                 if int(daterange[i][0]) < int(clctr[2]):
-                    print 'this collector cannot service'
+                    print 'this collector cannot serve'
                     continue
-            except:  # usually when testing
+            except:  # usually when testing, clctr[2] may not be set
                 pass
-            cl_name = clctr[0]
+            cl_name = clctr[0] # set current collector name and type (rv or ripe)
             cl_type = clctr[1]
-            if cl_type == 0:
+            if cl_type == 0: # from rv family
+                # for ease of further coding, we define a detailed location
                 hdname_detail = hdname + 'archive.routeviews.org/' + cl_name +\
                     '/bgpdata/'
                 hdname_detail = hdname_detail.replace('//', '/') # happens when cl = ''
-            else:  # cl_type == 1
+            else:  # cl_type == 1. From RIPE family
                 hdname_detail = hdname + 'data.ris.ripe.net/' + cl_name + '/'
 
-            # get date range info, sdate and edate are strings
+
+            # get date range info, sdate (start) and edate (end) are both strings
             sdate = daterange[i][0]
             sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
             edate_obj = sdate_obj + datetime.timedelta(days=(daterange[i][1]-1))
             edate = edate_obj.strftime('%Y%m%d')
 
-            # Now it can only deal with at most 2 months
+
+            # Now it can only deal with at most 2 months. Seems enough by now:)
             yearmonth = [] 
             yearmonth.append(sdate[0:4] + '.' + sdate[4:6])
             if edate[0:4] + '.' + edate[4:6] not in yearmonth:
                 yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-            ## download updatefile
+
+            # create the filefolder where we store the update files
             if not os.path.isdir('metadata/'+sdate):
                 os.mkdir('metadata/'+sdate)
+
+
             # TODO: if list file exists, means this collector fully processed
-            flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  # .bz2.txt.gz file name
+            # ready to store update file names into a new file
+            flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
+
+
+            # loop over every month (at most 2 by now)
             for ym in yearmonth:
-                # get noisy file list from web
+                # get update file list (noisy) from web
                 loc = ''  # relative location not considering hdname
                 if cl_type == 0:
                     loc = 'archive.routeviews.org/' +\
@@ -95,30 +94,36 @@ def get_file():
                     webhtml = urllib.urlopen(webloc).read()
                     webraw = nltk.clean_html(webhtml)
 
-                # read the web list
+
                 #testcount = 0  # TODO: testonly
-                try:
+                try: # make a place to store these files
                     os.mkdir(hdname+loc)
-                except:  # already exists
+                except:  # place already exists
                     pass
+
+
+                # read the noisy file list and download files
                 for line in webraw.split('\n'):
                     if not 'updates' in line:
-                        continue  # useless line
+                        continue  # omit noisy line
                     if line == '' or line == '\n':
-                        continue  # empty line
-                    line = line.split()[0]
+                        continue  # omit empty line
+                    line = line.split()[0]  # omit uninteresting info
+
+                    # check whether its datetime in our range
                     if int(line.split('.')[-3]) < int(sdate) or\
                             int(line.split('.')[-3]) > int(edate):
                         continue
-                    print line
 
-                    # TODO: testonly
-                    #testcount += 1
+                    # now we are sure we want this file
+                    print line
+                    #testcount += 1 #TODO: 3 lines testonly
                     #if testcount == 5:
                     #    break
                        
-                    # get the name of a .bz2/gz update file
+                    # get the name of the update file
                     updt_fname = loc + line
+                    # write this name in list after minor modification:)
                     flist.write(hdname+updt_fname+'.txt.gz\n')  # .xx.txt.gz file list
                     if os.path.exists(hdname+updt_fname+'.txt.gz'):
                         print '.xx.txt.gz update file exists!'
@@ -131,42 +136,40 @@ def get_file():
                     # remove existing xx.txt file to make things clearer
                     if os.path.exists(hdname+updt_fname+'.txt'):
                         os.remove(hdname+updt_fname+'.txt')
-
                     urllib.urlretrieve('http://'+updt_fname,\
                             hdname+updt_fname)
-
             flist.close()
 
-            # TODO: change file name: RV & < Feb, 2003.
 
-            ## Download RIB. RIB date is always the same as updates' start date
-            ribtime = sdate
-            # TODO: RIPE
-            # only download rib of the starting date!
+            # Downloading RIB is very like downloading update files
+            # We only download rib of the starting date!!
             loc = ''
             if cl_type == 0:
                 loc = 'archive.routeviews.org/' +\
-                        cl_name + '/bgpdata/' + ym + '/RIBS/'
+                        cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
                 loc = loc.replace('//', '/')  # when name is ''
                 webloc = 'http://' + loc
                 webhtml = urllib.urlopen(webloc).read()
                 webraw = nltk.clean_html(webhtml)
             else:
-                loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
+                loc = 'data.ris.ripe.net/' + cl_name + '/' + yearmonth[0] + '/' 
                 webloc = 'http://' + loc
                 webhtml = urllib.urlopen(webloc).read()
                 webraw = nltk.clean_html(webhtml)
             try:
                 os.mkdir(hdname+loc)
-            except:  # already exists
+            except:
                 pass
+
+            ## Download RIB. RIB date is always the same as updates' start date
+            ribtime = sdate
             for line in webraw.split('\n'):
                 if not 'rib' in line and not 'bview' in line:
-                    continue  # useless line
+                    continue
                 if line == '' or line == '\n':
-                    continue  # empty line
+                    continue
                 line = line.split()[0]
-                if not int(line.split('.')[-3]) == int(ribtime):  # right date
+                if not int(line.split('.')[-3]) == int(ribtime):
                     continue
                 print line
 
@@ -174,7 +177,7 @@ def get_file():
                 if os.path.exists(hdname+rib_fname+'.txt.gz'): 
                     print '.xx.txt.gz RIB file exists!'
                     if os.path.exists(hdname+rib_fname): 
-                        os.remove(hdname+rib_fname) # .bz2/.gz useless
+                        os.remove(hdname+rib_fname) 
                     break
                 if os.path.exists(hdname+rib_fname): 
                     print '.bz2/.gz RIB file exists!'
@@ -185,6 +188,7 @@ def get_file():
                 urllib.urlretrieve('http://'+rib_fname,\
                         hdname+rib_fname)
                 break
+
 
             ## now for update and RIB files, their formats are either .bz2/gz or
             ## .xx.txt.gz!!!
