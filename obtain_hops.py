@@ -188,6 +188,11 @@ if __name__ == "__main__":
             except:
                 continue
         dpf.close()
+
+        # get pfx2as file by the way (after 200506)
+        year = daterange[i][0][:4] # YYYY
+        month = daterange[i][0][4:6] # MM
+
             
         print 'running johnson ...'
         # graph = read_graph("graph.txt", 1000)
@@ -202,6 +207,6 @@ if __name__ == "__main__":
         resf = open(location+'as_hops', 'w')
         for i in final_distances:
             for j in final_distances[i]:
-                resf.write(i+' '+j+''+final_distances[i][j]+'\n')
+                resf.write(str(i)+' '+str(j)+' '+str(final_distances[i][j])+'\n')
         resf.close()
         print datetime.utcnow() - t1
