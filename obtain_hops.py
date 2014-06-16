@@ -4,7 +4,6 @@ from heapq import heappush, heappop
 from datetime import datetime
 from copy import deepcopy
 
-from getfile import daterange
 from env import *
 import os
 import urllib
@@ -21,6 +20,8 @@ graph = {
 
 inf = float('inf')
 dist = {}
+mydist = {}
+myQ = []
 
 def read_graph(file,n):
     graph = dict()
@@ -36,25 +37,25 @@ def read_graph(file,n):
     return graph
 
 def dijkstra(graph, s):
-    n = len(graph.keys())
-    dist = dict()
-    Q = list()
+    #n = len(graph.keys())
+    #mydist = {}
+    #myQ = []
     
     for v in graph:
-        dist[v] = inf
-    dist[s] = 0
+        mydist[v] = inf
+    mydist[s] = 0
     
-    heappush(Q, (dist[s], s))
+    heappush(myQ, (mydist[s], s))
 
-    while Q:
-        d, u = heappop(Q)
-        if d < dist[u]:
-            dist[u] = d
+    while myQ:
+        d, u = heappop(myQ)
+        if d < mydist[u]:
+            mydist[u] = d
         for v in graph[u]:
-            if dist[v] > dist[u] + graph[u][v]:
-                dist[v] = dist[u] + graph[u][v]
-                heappush(Q, (dist[v], v))
-    return dist
+            if mydist[v] > mydist[u] + graph[u][v]:
+                mydist[v] = mydist[u] + graph[u][v]
+                heappush(myQ, (mydist[v], v))
+    return mydist
 
 def initialize_single_source(graph, s):
     for v in graph:
@@ -96,12 +97,21 @@ def reweighting(graph_new):
     return graph_new
 
 def johnsons(graph_new):
+    print 'reweighting...'
     graph = reweighting(graph_new)
     if not graph:
         return False
     final_distances = {}
+    length = len(graph)
+    count = 0
     for u in graph:
+        count += 1
+        print count,'/',length,':',u
+        mydist = {}
+        myQ = []
         final_distances[u] = dijkstra(graph, u)
+        del mydist
+        del myQ
 
     for u in final_distances:
         for v in final_distances[u]:
@@ -129,6 +139,7 @@ if __name__ == "__main__":
                     cp_fname+'.gz', location+cp_fname+'.gz')
             subprocess.call('gunzip -c '+location+cp_fname+'.gz > '+\
                     location+cp_fname, shell=True)
+            os.remove(location+cp_fname+'.gz')
 
         # get AS link files if not exist -- data plane
         print 'Downloading data plane links...'
@@ -141,6 +152,7 @@ if __name__ == "__main__":
                         '/'+month+'/'+dp_fname+'.gz', location+dp_fname+'.gz')
                 subprocess.call('gunzip -c '+location+dp_fname+'.gz > '+\
                         location+dp_fname, shell=True)
+                os.remove(location+dp_fname+'.gz')
         else: # ark data from 3 teams
             pass # TODO
 

@@ -13,5 +13,4 @@ tmp/*
 *.psd
 tmpfile
 result_tmp
-env.py
 metadata/*
