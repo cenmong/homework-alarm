@@ -199,10 +199,10 @@ def get_file():
             for line in flist:
                 line = line.replace('\n', '')
                 if not os.path.exists(line):  # xx.txt.gz not exists, then .bz2 exists
-                    # 6 lines RIPE friendly
+                    # parse .bz2/.gz into .txt
                     subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
                             line.replace('.txt.gz', '')+' > '+\
-                            line.replace('txt.gz', 'txt'), shell=True)  # parse .bz2/.gz into .txt
+                            line.replace('txt.gz', 'txt'), shell=True)
                     # compress xx.txt-->xx.txt.gz
                     subprocess.call('gzip -c '+line.replace('txt.gz', 'txt')+\
                             ' > '+line, shell=True) 
@@ -242,23 +242,23 @@ def get_file():
             os.remove(rib_location+'.txt')  # remove .txt, only .gz left
             
 
-            print 'determining table transfers start and end time...'
+            print 'determining table transfers start and end time for each peer...'
             #peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
-                print peer
+                print 'processing ',peer,'...'
                 subprocess.call('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                         'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
                         'tmp/'+peer+'_result.txt', shell=True)
 
                     
-            print 'delete updates caused by session reset...'
+            print 'delete updates caused by session reset for each peer...'
             for peer in peers:
-                # No reset for this peer
+                # No reset for this peer, so nothing in the file
                 if os.path.getsize('tmp/'+peer+'_result.txt') == 0:
                     continue
 
-                print 'culprit now: ', peer
+                print '\nculprit now: ', peer
                 f_results = open('tmp/'+peer+'_result.txt', 'r')
                 for line in f_results:  # get all affection info of this peer
                     line = line.replace('\n', '')

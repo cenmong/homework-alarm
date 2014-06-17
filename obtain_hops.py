@@ -8,6 +8,7 @@ from env import *
 import os
 import urllib
 import subprocess
+import nltk
 
 graph = { 
     'a' : {'b':-2},
@@ -189,9 +190,24 @@ if __name__ == "__main__":
                 continue
         dpf.close()
 
-        # get pfx2as file by the way (after 200506)
+        # get pfx2as file by the way (only after 200506)
+        print 'get pfx2as file by the way (only after 200506)...'
         year = daterange[i][0][:4] # YYYY
         month = daterange[i][0][4:6] # MM
+        webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
+                        '/' + year + '/' + month + '/'
+        webhtml = urllib.urlopen(webloc).read()
+        webraw = nltk.clean_html(webhtml)
+        for line in webraw.split('\n'):
+            if not daterange[i][0] in line:
+                continue
+            if os.path.exists(hdname+location+line.split()[0].replace('.gz',\
+                        '')):
+                break
+            urllib.urlretrieve(webloc+line.split()[0], location+line.split()[0])
+            subprocess.call('gunzip -c '+location+line.split()[0]+' > '+\
+                    location+line.split()[0].replace('.gz', ''), shell=True)
+            os.remove(location+line.split()[0])
 
             
         print 'running johnson ...'
