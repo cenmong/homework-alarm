@@ -74,7 +74,10 @@ class Alarm():
             f.close()
    
         # We already have as2state database
-        return self.as2state[my_asn]
+        try:
+            return self.as2state[my_asn]
+        except:
+            return 'No record'
 
     #def get_as_type(self, myasn):
         #TODO: tier1 or transient or stub
