@@ -66,7 +66,7 @@ class Alarm():
         except:  # no corresponding ASN
             return -1
 
-    def as2state(self, my_asn):
+    def as_to_state(self, my_asn):
         if self.as2state == {}:
             f = open(hdname+'topofile/as2state.txt')
             for line in f:
@@ -145,7 +145,7 @@ class Alarm():
                 asn = self.pfx2as(p)
                 if asn not in as_list:
                     as_list.append(asn)
-                state = self.as2state(asn)
+                state = self.as_to_state(asn)
                 if state not in state_list:
                     state_list.append(state)
 
