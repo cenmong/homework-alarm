@@ -53,7 +53,7 @@ class Alarm():
             for line in f:
                 line = line.rstrip('\n')
                 attr = line.split()
-                if '_' in attr[2]:
+                if '_' in attr[2] or ',' in attr[2]:
                     continue
                 pfx = self.ip_to_binary(attr[0]+'/'+attr[1], '0.0.0.0')
                 self.globe_pfx[pfx] = int(attr[2]) # pfx: origin AS
