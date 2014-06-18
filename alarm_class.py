@@ -17,7 +17,7 @@ class Alarm():
         # for scheduling date time order
         self.cl_dt = {}  # collector: [from_dt, now_dt] 
         for cl in self.cl_list:
-            self.cl_dt[cl[0]] = [0, 0]  # start dt, now dt
+            self.cl_dt[cl] = [0, 0]  # start dt, now dt
         self.ceiling = 0  # we aggregate everything before ceiling
         self.floor = 0  # for not recording the lowest dt
 
@@ -25,6 +25,8 @@ class Alarm():
         self.granu = granu  # Time granularity in minutes
         self.pfx_trie = dict()  # dt: trie
         self.peerlist = dict()  # dt: peer list
+        self.as_info = dict() # dt: [DAP count, AS count, state count] 
+        #self.as_detail = dict() # dt: {AS: [state, No. of pfx]}
 
         self.globe_pfx = None  # all pfxes in the globe
         self.as2state = dict() # asn: state
@@ -53,7 +55,7 @@ class Alarm():
                 attr = line.split()
                 if '_' in attr[2]:
                     continue
-                pfx = self.ip_to_binary(attr[0]+'/'+attr[1])
+                pfx = self.ip_to_binary(attr[0]+'/'+attr[1], '0.0.0.0')
                 self.globe_pfx[pfx] = int(attr[2]) # pfx: origin AS
             f.close()
 
@@ -71,13 +73,13 @@ class Alarm():
                 self.as2state[int(line.split()[0])] = line.split()[1]
             f.close()
    
-        # We already have as to state database
+        # We already have as2state database
         return self.as2state[my_asn]
 
-    def get_as_type(self, myasn):
+    #def get_as_type(self, myasn):
         #TODO: tier1 or transient or stub
 
-    def get_as_rank(self, myasn):
+    #def get_as_rank(self, myasn):
         #TODO:
         
     def add(self, update):
@@ -126,48 +128,28 @@ class Alarm():
         self.del_garbage()
         return 0
 
-    def del_garbage(self):
-        rel_dt = []  # dt for processing
-        for dt in self.pfx_trie.keys():  # all dt that exists
-            if dt <= self.ceiling:
-                self.print_dt(dt)
-                del self.pfx_trie[dt]
-                del self.peerlist[dt]
-        return 0
-
-    def ip_to_binary(self, content, from_ip):  # can deal with ip addr and pfx
-        length = None
-        pfx = content.split('/')[0]
-        try:
-            length = int(content.split('/')[1])
-        except:  # an addr, not a pfx
-            pass
-        if '.' in from_ip:  # IPv4
-            addr = IPAddress(pfx).bits()
-            addr = addr.replace('.', '')
-            if length:
-                addr = addr[:length]
-            return addr
-        elif ':' in from_ip:
-            addr = IPAddress(pfx).bits()
-            addr = addr.replace(':', '')
-            if length:
-                addr = addr[:length]
-            return addr
-        else:
-            print 'protocol false!'
-            return 0
-
     def get_index(self, rel_dt):
         for dt in rel_dt:
             len_all_fi = len(self.peerlist[dt])
             trie = self.pfx_trie[dt]
+            pcount = 0
+            as_list = []
+            state_list = []
             for p in trie:
                 if p == '':
                     continue
                 ratio = float(len(trie[p]))/float(len_all_fi)
                 if ratio <= 0.2:
                     continue
+                pcount += 1
+                asn = self.pfx2as(p)
+                if asn not in as_list:
+                    as_list.append(asn)
+                state = self.as2state(asn)
+                if state not in state_list:
+                    state_list.append(state)
+
+                # a bunch of shit
                 try:
                     self.dvi1[dt] += ratio - 0.2
                 except:
@@ -188,8 +170,15 @@ class Alarm():
                     self.dvi5[dt] += ratio
                 except:
                     self.dvi5[dt] = ratio
+            self.as_info[dt] = [pcount, len(as_list), len(state_list)]
 
         return 0
+
+    def plot_asinfo(self):
+        f = open('output/tmp_as_info', 'w')
+        for dt in self.as_info.keys():
+            f.write(str(dt)+str(self.as_info[dt]))
+        f.close()
 
     def plot_index(self):
         dvi1 = []  # list, only for plot
@@ -424,12 +413,12 @@ class Alarm():
         self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
         non_zero = True
         for cl in self.cl_list:
-            if self.cl_dt[cl[0]][0] == 0:
+            if self.cl_dt[cl][0] == 0:
                 non_zero = False
         if non_zero == True:  # all cl has file exist
             for cl in self.cl_list:
-                if self.cl_dt[cl[0]][0] > self.ceiling:
-                    self.ceiling = self.cl_dt[cl[0]][0]
+                if self.cl_dt[cl][0] > self.ceiling:
+                    self.ceiling = self.cl_dt[cl][0]
                     self.floor = self.shang_qu_zheng(self.ceiling, 's')
             # delete everything before floor
             self.del_garbage()
@@ -444,8 +433,8 @@ class Alarm():
 
         new_ceil = 9999999999
         for cl in self.cl_list:
-            if self.cl_dt[cl[0]][1] < new_ceil:
-                new_ceil = self.cl_dt[cl[0]][1]
+            if self.cl_dt[cl][1] < new_ceil:
+                new_ceil = self.cl_dt[cl][1]
 
         if is_end == False:
             if new_ceil - self.ceiling >= 1 * 60 * self.granu:  # not so frequent
@@ -458,3 +447,34 @@ class Alarm():
 
         return 0
 
+    def ip_to_binary(self, content, from_ip):  # can deal with ip addr and pfx
+        length = None
+        pfx = content.split('/')[0]
+        try:
+            length = int(content.split('/')[1])
+        except:  # an addr, not a pfx
+            pass
+        if '.' in from_ip:  # IPv4
+            addr = IPAddress(pfx).bits()
+            addr = addr.replace('.', '')
+            if length:
+                addr = addr[:length]
+            return addr
+        elif ':' in from_ip:
+            addr = IPAddress(pfx).bits()
+            addr = addr.replace(':', '')
+            if length:
+                addr = addr[:length]
+            return addr
+        else:
+            print 'protocol false!'
+            return 0
+
+    def del_garbage(self):
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if dt <= self.ceiling:
+                self.print_dt(dt)
+                del self.pfx_trie[dt]
+                del self.peerlist[dt]
+        return 0

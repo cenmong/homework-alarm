@@ -5,7 +5,6 @@ import sys
 import string
 
 from alarm_class import *
-from alarm_c_class import *
 from datetime import datetime
 from netaddr import *
 from env import *
@@ -30,16 +29,16 @@ class Analyzer():
                 continue
             self.cl_list.append(cl)
 
-        print 'cl_list:',str(cl_list)
+        print 'cl_list:',str(self.cl_list)
 
         self.cl_first = dict()  # cl: True or False
         for cl in collectors:
             self.cl_first[cl[0]] = True
                 
         if atype == 1:
-            self.alarm = Alarm(granu, sdate, cl_list)
+            self.alarm = Alarm(granu, sdate, self.cl_list)
         if atype == 2:  # longitudinal
-            self.alarm = Alarm_c(granu, cl_list)
+            self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype
 
     def is_normal(self, update):
@@ -92,6 +91,7 @@ class Analyzer():
 
         if self.atype == 1:
             self.alarm.plot_index()
+            self.alarm.plot_asinfo()
         elif self.atype == 2:
             self.alarm.get_avg_med()
             self.alarm.plot()    
