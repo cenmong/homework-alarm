@@ -21,7 +21,7 @@ graph = {
 
 inf = float('inf')
 dist = {}
-mydist = {}
+#mydist = {}
 myQ = []
 
 def read_graph(file,n):
@@ -37,9 +37,10 @@ def read_graph(file,n):
             graph[i] = dict()
     return graph
 
-def dijkstra(graph, s):
+def dijkstra(graph, s, mydist):
     #n = len(graph.keys())
     #mydist = {}
+    #print '2:',mydist
     #myQ = []
     
     for v in graph:
@@ -56,6 +57,7 @@ def dijkstra(graph, s):
             if mydist[v] > mydist[u] + graph[u][v]:
                 mydist[v] = mydist[u] + graph[u][v]
                 heappush(myQ, (mydist[v], v))
+    #print '3:',mydist
     return mydist
 
 def initialize_single_source(graph, s):
@@ -99,7 +101,7 @@ def reweighting(graph_new):
 
 def johnsons(graph_new):
     print 'reweighting...'
-    graph = reweighting(graph_new)
+    #graph = reweighting(graph_new)
     if not graph:
         return False
     final_distances = {}
@@ -108,26 +110,23 @@ def johnsons(graph_new):
     for u in graph:
         count += 1
         print count,'/',length,':',u
-        mydist = {}
-        myQ = []
-        final_distances[u] = dijkstra(graph, u)
-        del mydist
+        mydist={}
+        #print '1:',mydist
+        myQ=[]
+        final_distances[u] = dijkstra(graph, u, mydist)
+        print len(final_distances)
         del myQ
+        del mydist
 
     for u in final_distances:
         for v in final_distances[u]:
             final_distances[u][v] += dist[v] - dist[u]
     return final_distances
             
-def compute_min(final_distances):
-    return min(final_distances[u][v] for u in final_distances for v in final_distances[u])
-
 if __name__ == "__main__":
 
     for i in range(0, 1):  # loop over events
-
         location = hdname+'as_hops/'+daterange[i][0]+'/'
-
         # mkdir if not exist
         if not os.path.isdir(location):
             os.makedirs(location)
@@ -209,7 +208,6 @@ if __name__ == "__main__":
                     location+line.split()[0].replace('.gz', ''), shell=True)
             os.remove(location+line.split()[0])
 
-            
         print 'running johnson ...'
         # graph = read_graph("graph.txt", 1000)
         graph_new = deepcopy(graph)
@@ -217,12 +215,15 @@ if __name__ == "__main__":
         final_distances =  johnsons(graph_new)
         if not final_distances:
             print "Negative cycle"
-        else:
-            print compute_min(final_distances)
         # write the result into a new file
+        '''
         resf = open(location+'as_hops', 'w')
         for i in final_distances:
             for j in final_distances[i]:
                 resf.write(str(i)+' '+str(j)+' '+str(final_distances[i][j])+'\n')
         resf.close()
+        '''
+        for i in final_distances:
+            for j in final_distances[i]:
+                print str(i)+' '+str(j)+' '+str(final_distances[i][j])
         print datetime.utcnow() - t1
