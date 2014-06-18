@@ -14,18 +14,31 @@ class Analyzer():
 
     def __init__(self, filelist, granu, sdate, atype):  # granularity in minutes
         self.filelist = filelist  # filelist file name 
-        if atype == 1:
-            self.alarm = Alarm(granu, sdate)
-        if atype == 2:  # longitudinal
-            self.alarm = Alarm_c(granu)
-        
-        self.atype = atype
+        self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
+                '+'{'+'}'+','+'-')
+
+        self.cl_list = []  # the collectors this analyzer has
+        dir_list = os.listdir('metadata/'+sdate+'/')
+        for f in dir_list:
+            if not 'filelist' in f:
+                continue
+            if 'test' in f:
+                continue
+            
+            cl = f.split('_')[-1]
+            if cl == 'comb':
+                continue
+            self.cl_list.append(cl)
+
         self.cl_first = dict()  # cl: True or False
         for cl in collectors:
             self.cl_first[cl[0]] = True
-
-        self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
-                '+'{'+'}'+','+'-')
+                
+        if atype == 1:
+            self.alarm = Alarm(granu, sdate, cl_list)
+        if atype == 2:  # longitudinal
+            self.alarm = Alarm_c(granu, cl_list)
+        self.atype = atype
 
     def is_normal(self, update):
         if set(update).issubset(self.allowed) and len(update.split('|')) > 5:

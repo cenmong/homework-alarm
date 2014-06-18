@@ -271,19 +271,11 @@ def get_file():
                     print 'get session reset time...'
                     stime_unix = int(attr[0])
                     endtime_unix = int(attr[1])
-                    sdt_tmp = datetime.datetime.fromtimestamp(stime_unix) +\
+                    start_datetime = datetime.datetime.fromtimestamp(stime_unix) +\
                             datetime.timedelta(hours=-8)
-                    edt_tmp = datetime.datetime.fromtimestamp(endtime_unix) +\
+                    end_datetime = datetime.datetime.fromtimestamp(endtime_unix) +\
                             datetime.timedelta(hours=-8)
-                    sdt_tmp = sdt_tmp.strftime('%Y%m%d.%H%M')
-                    start_datetime = datetime.datetime(int(sdt_tmp[0:4]),\
-                            int(sdt_tmp[4:6]), int(sdt_tmp[6:8]),\
-                            int(sdt_tmp[9:11]), int(sdt_tmp[11:13]))                               
-                    edt_tmp = edt_tmp.strftime('%Y%m%d.%H%M')
-                    end_datetime = datetime.datetime(int(edt_tmp[0:4]),\
-                            int(edt_tmp[4:6]), int(edt_tmp[6:8]),\
-                            int(edt_tmp[9:11]), int(edt_tmp[11:13]))                               
-                    print 'from ', sdt_tmp, ' to ', edt_tmp
+                    print 'from ', start_datetime, ' to ', end_datetime
 
                     # now let's clean updates
                     updatefile_list =\

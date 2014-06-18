@@ -4,6 +4,7 @@ import time as time_lib
 import numpy as np
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mpldates
+import cmlib
 
 from netaddr import *
 from env import *
@@ -11,18 +12,21 @@ from matplotlib.dates import HourLocator
 
 class Alarm():
 
-    def __init__(self, granu, sdate):
-        # schedule date time order
+    def __init__(self, granu, sdate, cl_list):
+        self.cl_list = cl_list
+        # for scheduling date time order
         self.cl_dt = {}  # collector: [from_dt, now_dt] 
-        for cl in collectors:
+        for cl in self.cl_list:
             self.cl_dt[cl[0]] = [0, 0]  # start dt, now dt
-        self.ceiling = 0  # ceiling is a place we can reach, not over
+        self.ceiling = 0  # we aggregate everything before ceiling
         self.floor = 0  # for not recording the lowest dt
 
-        self.sdate = sdate  # For saving figures
-        self.granu = granu  # Time granularity
-        self.pfx_trie = dict()  # dt: pfx, from ip list
-        self.fip_list = dict()  # dt: from ip list
+        self.sdate = sdate
+        self.granu = granu  # Time granularity in minutes
+        self.pfx_trie = dict()  # dt: trie
+        self.peerlist = dict()  # dt: peer list
+
+        self.globe_pfx = None  # all pfxes in the globe
 
         # aggregated info
         self.dvi1 = dict()  #  time: value
@@ -31,105 +35,14 @@ class Alarm():
         self.dvi4 = dict()  #  time: value
         self.dvi5 = dict()  #  time: value
 
-    
-    def shang_qu_zheng(self, value, tp):  # 'm': minute, 's': second
-        if tp == 's':
-            return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
-                        self.granu)
-        elif tp == 'm':
-            return (value + self.granu) / self.granu * self.granu
-        else:
-             return False 
+    def pfx2as(self, pfx):
+        if self.globe_pfx == None:
+            # TODO: build a trie
 
-    def xia_qu_zheng(self, value, tp):
-        if tp == 's':
-            return value / (60 * self.granu) * (60 *\
-                        self.granu)
-        elif tp == 'm':
-            return value / self.granu * self.granu
-        else:
-            return False
+        # TODO: mapping
 
-    
-    def print_dt(self, dt):
-        try:
-            print datetime.datetime.fromtimestamp(dt)
-        except:
-            print dt
-        return 0
-
-    def set_now(self, cl, line):
-        self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # -8 Hours
-        return 0
-    
-    def set_first(self, cl, first_line):
-        self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
-        non_zero = True
-        for cl in collectors:
-            if self.cl_dt[cl[0]][0] == 0:
-                non_zero = False
-        if non_zero == True:  # all cl has file exist
-            for cl in collectors:
-                if self.cl_dt[cl[0]][0] > self.ceiling:
-                    self.ceiling = self.cl_dt[cl[0]][0]
-                    self.floor = self.shang_qu_zheng(self.ceiling, 's')
-            # del all var that are before ceiling
-            self.del_garbage()
-        return 0
-
-    def check_memo(self, is_end):
-        if self.ceiling == 0:  # not everybofy is ready
-            return 0
-    
-        # We are now sure that all collectors exist and any info that is 
-        # too early to be combined are deleted
-
-        new_ceil = 9999999999
-        # get smallest CEILING value
-        for cl in collectors:
-            if self.cl_dt[cl[0]][1] < new_ceil:
-                new_ceil = self.cl_dt[cl[0]][1]
-
-        print 'checking...'
-        print 'self.ceiling: '
-        self.print_dt(self.ceiling)
-        print 'new_ceil: '
-        self.print_dt(new_ceil)
-
-        if is_end == False:
-            if new_ceil - self.ceiling >= 1 * 60 * self.granu:  # not so frequent
-                # e.g., aggregate 10:50 only when now > 11:00
-                self.ceiling = new_ceil - 60 * self.granu
-                self.release_memo()
-        else:
-            print 'cleaning in the end'
-            self.ceiling = new_ceil - 60 * self.granu
-            self.release_memo()
-
-        return 0
-
-    # aggregate any info that is <= ceiling
-    def release_memo(self):
-        print '\nreleasing...'
-        rel_dt = []  # dt for processing
-        for dt in self.pfx_trie.keys():  # all dt that exists
-            if self.floor <= dt <= self.ceiling:
-                self.print_dt(dt)
-                rel_dt.append(dt)
-        self.get_index(rel_dt)
-        self.del_garbage()
-        return 0
-
-    def del_garbage(self):
-        print '\ndeleting...'
-        rel_dt = []  # dt for processing
-        for dt in self.pfx_trie.keys():  # all dt that exists
-            if dt <= self.ceiling:
-                self.print_dt(dt)
-                del self.pfx_trie[dt]
-                del self.fip_list[dt]
-        return 0
-
+    def as2state(self):
+        
     def add(self, update):
         updt_attr = update.split('|')[0:6]  # no need for attrs now
 
@@ -143,10 +56,10 @@ class Alarm():
         intdt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
 
         from_ip = updt_attr[3]
-        if intdt not in self.fip_list.keys():
-            self.fip_list[intdt] = []
-        if from_ip not in self.fip_list[intdt]:
-            self.fip_list[intdt].append(from_ip)
+        if intdt not in self.peerlist.keys():
+            self.peerlist[intdt] = []
+        if from_ip not in self.peerlist[intdt]:
+            self.peerlist[intdt].append(from_ip)
 
         pfx = self.ip_to_binary(updt_attr[5], from_ip)
         if intdt not in self.pfx_trie.keys():
@@ -160,6 +73,29 @@ class Alarm():
         if from_ip not in pfx_fip:
             self.pfx_trie[intdt][pfx].append(from_ip)
 
+        return 0
+
+    # aggregate everything before ceiling
+    def release_memo(self):
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if self.floor <= dt <= self.ceiling:
+                self.print_dt(dt)
+                rel_dt.append(dt)
+
+        # Put major businesses here
+        self.get_index(rel_dt)
+
+        self.del_garbage()
+        return 0
+
+    def del_garbage(self):
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if dt <= self.ceiling:
+                self.print_dt(dt)
+                del self.pfx_trie[dt]
+                del self.peerlist[dt]
         return 0
 
     def ip_to_binary(self, content, from_ip):  # can deal with ip addr and pfx
@@ -187,7 +123,7 @@ class Alarm():
 
     def get_index(self, rel_dt):
         for dt in rel_dt:
-            len_all_fi = len(self.fip_list[dt])
+            len_all_fi = len(self.peerlist[dt])
             trie = self.pfx_trie[dt]
             for p in trie:
                 if p == '':
@@ -272,7 +208,7 @@ class Alarm():
         return 0
 
     def get_50_90(self):
-        len_all_fi = len(self.fip_list)
+        len_all_fi = len(self.peerlist)
         self.ct_monitor[self.lastdt] = len_all_fi
 
         for p in self.trie:
@@ -417,3 +353,71 @@ class Alarm():
         plt.xticks(rotation=45)
         plt.plot()
         plt.savefig(self.sdate+'_50_90.pdf')
+    
+    def shang_qu_zheng(self, value, tp):  # 'm': minute, 's': second
+        if tp == 's':
+            return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
+                        self.granu)
+        elif tp == 'm':
+            return (value + self.granu) / self.granu * self.granu
+        else:
+             return False 
+
+    def xia_qu_zheng(self, value, tp):
+        if tp == 's':
+            return value / (60 * self.granu) * (60 *\
+                        self.granu)
+        elif tp == 'm':
+            return value / self.granu * self.granu
+        else:
+            return False
+
+    def print_dt(self, dt):
+        try:
+            print datetime.datetime.fromtimestamp(dt)
+        except:
+            print dt
+        return 0
+
+    def set_now(self, cl, line):
+        self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # -8 Hours
+        return 0
+    
+    def set_first(self, cl, first_line):
+        self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
+        non_zero = True
+        for cl in self.cl_list:
+            if self.cl_dt[cl[0]][0] == 0:
+                non_zero = False
+        if non_zero == True:  # all cl has file exist
+            for cl in self.cl_list:
+                if self.cl_dt[cl[0]][0] > self.ceiling:
+                    self.ceiling = self.cl_dt[cl[0]][0]
+                    self.floor = self.shang_qu_zheng(self.ceiling, 's')
+            # delete everything before floor
+            self.del_garbage()
+        return 0
+
+    def check_memo(self, is_end):
+        if self.ceiling == 0:  # not everybofy is ready
+            return 0
+    
+        # We are now sure that all collectors exist and any info that is 
+        # too early to be combined are deleted
+
+        new_ceil = 9999999999
+        for cl in self.cl_list:
+            if self.cl_dt[cl[0]][1] < new_ceil:
+                new_ceil = self.cl_dt[cl[0]][1]
+
+        if is_end == False:
+            if new_ceil - self.ceiling >= 1 * 60 * self.granu:  # not so frequent
+                # e.g., aggregate 10:50 only when now > 11:00
+                self.ceiling = new_ceil - 60 * self.granu
+                self.release_memo()
+        else:
+            self.ceiling = new_ceil - 60 * self.granu
+            self.release_memo()
+
+        return 0
+
