@@ -27,6 +27,7 @@ class Alarm():
         self.peerlist = dict()  # dt: peer list
 
         self.globe_pfx = None  # all pfxes in the globe
+        self.as2state = dict() # asn: state
 
         # aggregated info
         self.dvi1 = dict()  #  time: value
@@ -35,13 +36,49 @@ class Alarm():
         self.dvi4 = dict()  #  time: value
         self.dvi5 = dict()  #  time: value
 
-    def pfx2as(self, pfx):
+    def pfx2as(self, my_pfx):
         if self.globe_pfx == None:
-            # TODO: build a trie
+            self.globe_pfx = patricia.trie(None)
 
-        # TODO: mapping
+            pfx2as_file = ''
+            tmp = os.listdir(hdname+'topofile/'+self.sdate+'/')
+            for line in tmp:
+                if 'pfx2as' in line:
+                    pfx2as_file = line
+                    break
 
-    def as2state(self):
+            f = open(hdname+'topofile/'+self.sdate+'/'+pfx2as_file)
+            for line in f:
+                line = line.rstrip('\n')
+                attr = line.split()
+                if '_' in attr[2]:
+                    continue
+                pfx = self.ip_to_binary(attr[0]+'/'+attr[1])
+                self.globe_pfx[pfx] = int(attr[2]) # pfx: origin AS
+            f.close()
+
+        # We already have a global trie
+        try:
+            asn = self.globe_pfx[my_pfx]
+            return asn
+        except:  # no corresponding ASN
+            return -1
+
+    def as2state(self, my_asn):
+        if self.as2state == {}:
+            f = open(hdname+'topofile/as2state.txt')
+            for line in f:
+                self.as2state[int(line.split()[0])] = line.split()[1]
+            f.close()
+   
+        # We already have as to state database
+        return self.as2state[my_asn]
+
+    def get_as_type(self, myasn):
+        #TODO: tier1 or transient or stub
+
+    def get_as_rank(self, myasn):
+        #TODO:
         
     def add(self, update):
         updt_attr = update.split('|')[0:6]  # no need for attrs now

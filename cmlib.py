@@ -17,7 +17,7 @@ def get_unpack_gz(url, save_loc, filename):
     else:
         pass
 
-def get_unpack_bz2(url, save_loc, filename)
+def get_unpack_bz2(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.bz2$', '', filename)):
         urllib.urlretrieve(url+filename, save_loc+filename)
         subprocess.call('bunzip2 -d '+save_loc+filename)

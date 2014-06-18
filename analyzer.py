@@ -30,6 +30,8 @@ class Analyzer():
                 continue
             self.cl_list.append(cl)
 
+        print 'cl_list:',str(cl_list)
+
         self.cl_first = dict()  # cl: True or False
         for cl in collectors:
             self.cl_first[cl[0]] = True

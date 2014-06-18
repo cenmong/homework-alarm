@@ -339,6 +339,7 @@ def get_file():
                                 
         #TODO: combine lists
         fnames = {}
+        # TODO: unnecessarily all collectors exist
         for clctr in collectors:
             cl_name = clctr[0]
             cl_type = clctr[1]
