@@ -3,6 +3,13 @@ import urllib
 import subprocess
 import re
 import nltk
+import numpy as np
+import matplotlib.pyplot as plt 
+import matplotlib.dates as mpldates
+import datetime
+
+from matplotlib.dates import HourLocator
+from netaddr import *
 
 def getfile(url, save_loc, filename):
     if not os.path.exists(save_loc+filename):
@@ -46,4 +53,56 @@ def parse_mrt(old_loc_fname, new_loc_fname):
     else:  # file already exists
         pass
 
-        
+def simple_plot(my_dict, describe): # start date is always first attribute
+    value = []
+    dt = my_dict.keys()
+    dt.sort()
+    for key in dt:
+        value.append(my_dict[key])
+    dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
+    
+    fig = plt.figure(figsize=(16, 8))
+    ax = fig.add_subplot(111)
+    ax.plot(dt, value, 'b-')
+    ax.set_ylabel(describe)
+    ax.set_xlabel('Datetime')
+    myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
+    ax.xaxis.set_major_formatter(myFmt)
+    plt.xticks(rotation=45)
+    plt.plot()
+
+    sdate = describe.split('_')[0]
+    make_dir('output/'+sdate+'/')
+    plt.savefig('output/'+sdate+'/'+describe+'.pdf')
+    return 0
+
+def print_dt(dt):
+    try:
+        print datetime.datetime.fromtimestamp(dt)
+    except:
+        print dt
+    return 0
+
+def ip_to_binary(content, peer):  # can deal with ip addr and pfx
+    length = None
+    pfx = content.split('/')[0]
+    try:
+        length = int(content.split('/')[1])
+    except:  # an addr, not a pfx
+        pass
+    if '.' in peer:  # IPv4
+        addr = IPAddress(pfx).bits()
+        addr = addr.replace('.', '')
+        if length:
+            addr = addr[:length]
+        return addr
+    elif ':' in peer:
+        addr = IPAddress(pfx).bits()
+        addr = addr.replace(':', '')
+        if length:
+            addr = addr[:length]
+        return addr
+    else:
+        print 'protocol false!'
+        return 0
+

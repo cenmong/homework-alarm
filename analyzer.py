@@ -11,7 +11,7 @@ from env import *
 
 class Analyzer():
 
-    def __init__(self, filelist, granu, sdate, atype):  # granularity in minutes
+    def __init__(self, filelist, granu, sdate, act_threshold, atype):  # granularity in minutes
         self.filelist = filelist  # filelist file name 
         self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
                 '+'{'+'}'+','+'-')
@@ -36,7 +36,7 @@ class Analyzer():
             self.cl_first[cl[0]] = True
                 
         if atype == 1:
-            self.alarm = Alarm(granu, sdate, self.cl_list)
+            self.alarm = Alarm(granu, sdate, act_threshold, self.cl_list)
         if atype == 2:  # longitudinal
             self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype
@@ -89,10 +89,6 @@ class Analyzer():
         self.alarm.check_memo(True)
         filelist.close()
 
-        if self.atype == 1:
-            self.alarm.plot_index()
-            self.alarm.plot_asinfo()
-        elif self.atype == 2:
-            self.alarm.get_avg_med()
-            self.alarm.plot()    
+        self.alarm.plot()
+
         return 0
