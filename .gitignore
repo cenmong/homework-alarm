@@ -1,16 +1,8 @@
 *~
-filehtml4
 *.pyc
 *warts
-v6/topo-v6/topo-data.caida.org
-wget-log*
-trpath/
-output/
-data/
-tmp/*
 *.swp
 *.pdf
 *.psd
 tmpfile
 result_tmp
-metadata/*

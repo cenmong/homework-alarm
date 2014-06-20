@@ -54,11 +54,11 @@ def get_file():
                 yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
             # create the filefolder where we store the update files
-            cmlib.make_dir('metadata/'+sdate)
+            cmlib.make_dir(hdname+'metadata/'+sdate)
 
             # TODO: if list file exists, means this collector fully processed
             # ready to store update file names into a new file
-            flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
+            flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
 
 
             # loop over every month (at most 2 by now)
@@ -102,6 +102,7 @@ def get_file():
                     # get the name of the update file
                     # write this name in list after minor modification:)
                     flist.write(hdname+loc+line+'.txt.gz\n')  # .xx.txt.gz file list
+                    '''
                     if os.path.exists(hdname+loc+line+'.txt.gz'):
                         print '.xx.txt.gz update file exists!'
                         if os.path.exists(hdname+loc+line):  # .bz2/.gz useless anymore
@@ -114,9 +115,10 @@ def get_file():
                     if os.path.exists(hdname+loc+line+'.txt'):
                         os.remove(hdname+loc+line+'.txt')
                     cmlib.getfile('http://'+loc+line, hdname+loc, line) 
+                    '''
             flist.close()
 
-
+            '''
             # Downloading RIB is very like downloading update files
             # We only download rib of the starting date!!
             loc = ''
@@ -167,7 +169,7 @@ def get_file():
 
 
             print 'parsing updates...'
-            flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .xx.txt.gz file name
+            flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .xx.txt.gz file name
             for line in flist:
                 line = line.replace('\n', '')
                 if not os.path.exists(line):  # xx.txt.gz not exists, then .bz2 exists
@@ -213,19 +215,19 @@ def get_file():
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print 'processing ',peer,'...'
-                subprocess.call('perl tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
-                        'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
-                        'tmp/'+peer+'_result.txt', shell=True)
+                subprocess.call('perl ~/tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
+                        hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
+                        '~/tmp/'+peer+'_result.txt', shell=True)
 
                     
             print 'delete updates caused by session reset for each peer...'
             for peer in peers:
                 # No reset for this peer, so nothing in the file
-                if os.path.getsize('tmp/'+peer+'_result.txt') == 0:
+                if os.path.getsize('~/tmp/'+peer+'_result.txt') == 0:
                     continue
 
                 print '\nculprit now: ', peer
-                f_results = open('tmp/'+peer+'_result.txt', 'r')
+                f_results = open('~/tmp/'+peer+'_result.txt', 'r')
                 for line in f_results:  # get all affection info of this peer
                     line = line.replace('\n', '')
                     attr = line.split(',')
@@ -245,7 +247,7 @@ def get_file():
 
                     # now let's clean updates
                     updatefile_list =\
-                            open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
+                            open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
                     for updatefile in updatefile_list:  
                         updatefile = updatefile.replace('\n', '')
                         file_attr = updatefile.split('.')
@@ -270,7 +272,7 @@ def get_file():
                                 myfilename, shell=True)
                         # only .txt from now on!
                         oldfile = open(myfilename, 'r')
-                        newfile = open('tmp/'+myfilename.split('/')[-1], 'w')
+                        newfile = open('~/tmp/'+myfilename.split('/')[-1], 'w')
 
                         counted_pfx = patricia.trie(None)
                         for updt in oldfile:  # loop over each update
@@ -293,24 +295,23 @@ def get_file():
 
                         os.remove(updatefile)  # remove old .gz file
                         # compress .txt into txt.gz to replace the old file
-                        subprocess.call('gzip -c tmp/'+myfilename.split('/')[-1]+\
+                        subprocess.call('gzip -c ~/tmp/'+myfilename.split('/')[-1]+\
                                 ' > '+updatefile, shell=True)
                         size_after = os.path.getsize(updatefile)
                         print 'size(b):', size_before, ',size(a):', size_after
                                
                     updatefile_list.close()
                 f_results.close()
-            subprocess.call('rm tmp/*', shell=True)
-                               
+            subprocess.call('rm ~/tmp/*', shell=True)
+            '''                     
                                 
-        #TODO: combine lists
         fnames = {}
         # TODO: unnecessarily all collectors exist
         for clctr in collectors:
             cl_name = clctr[0]
             cl_type = clctr[1]
 
-            flist = open('metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .bz2.txt.gz file name
+            flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .bz2.txt.gz file name
             for filename in flist:
                 filename = filename.replace('\n', '')
                 file_attr = filename.split('.')
@@ -323,7 +324,7 @@ def get_file():
             flist.close()
         fnlist = sorted(fnames, key=fnames.get)
 
-        fcomb = open('metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
+        fcomb = open(hdname+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
         for fn in fnlist:
             fcomb.write(fn+'\n')
         fcomb.close()

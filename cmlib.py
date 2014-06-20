@@ -10,6 +10,7 @@ import datetime
 
 from matplotlib.dates import HourLocator
 from netaddr import *
+from env import *
 
 def getfile(url, save_loc, filename):
     make_dir(save_loc)
@@ -73,8 +74,8 @@ def simple_plot(my_dict, describe): # start date is always first attribute
     plt.plot()
 
     sdate = describe.split('_')[0]
-    make_dir('output/'+sdate+'/')
-    plt.savefig('output/'+sdate+'/'+describe+'.pdf')
+    make_dir(hdname+'output/'+sdate+'/')
+    plt.savefig(hdname+'output/'+sdate+'/'+describe+'.pdf')
     return 0
 
 def print_dt(dt):

@@ -17,7 +17,7 @@ class Analyzer():
                 '+'{'+'}'+','+'-')
 
         self.cl_list = []  # the collectors this analyzer has
-        dir_list = os.listdir('metadata/'+sdate+'/')
+        dir_list = os.listdir(hdname+'metadata/'+sdate+'/')
         for f in dir_list:
             if not 'filelist' in f:
                 continue
