@@ -6,31 +6,18 @@ import datetime
 import patricia
 import subprocess
 import gzip
+import cmlib
 
 # TODO: testonly. over write collectors
 #collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 #collectors = [('rrc00', 1)]
 
 # TODO: change file name: RV & < Feb, 2003.
-'''
-def pack_gz(inputf, outputf):
-    f_in = open(inputf, 'rb')
-    f_out = gzip.open(outputf, 'wb')
-    f_out.writelines(f_in)
-    f_out.close()
-    f_in_close()
-            
-def unpack_gz(inputf, outputf):
-    f_in = gzip.open(inputf, 'rb')
-    with open(outputf, 'wb') as f_out:
-        for line in f_in:
-            f_out.write(line)
-    f_out.close()'''
-        
+
 def get_file():
 
     # loop over every date range
-    for i in range(4, 5):
+    for i in range(0, 1):
         # loop over every collector if appropriate
         for clctr in collectors:
 
@@ -66,11 +53,8 @@ def get_file():
             if edate[0:4] + '.' + edate[4:6] not in yearmonth:
                 yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-
             # create the filefolder where we store the update files
-            if not os.path.isdir('metadata/'+sdate):
-                os.mkdir('metadata/'+sdate)
-
+            cmlib.make_dir('metadata/'+sdate)
 
             # TODO: if list file exists, means this collector fully processed
             # ready to store update file names into a new file
@@ -85,22 +69,16 @@ def get_file():
                     loc = 'archive.routeviews.org/' +\
                             cl_name + '/bgpdata/' + ym + '/UPDATES/'
                     loc = loc.replace('//', '/')  # when name is ''
-                    webloc = 'http://' + loc
-                    webhtml = urllib.urlopen(webloc).read()
+                    #webraw = cmlib.get_weblist('http://' + loc)
+                    webhtml = urllib.urlopen('http://' + loc).read()
                     webraw = nltk.clean_html(webhtml)
                 else:
                     loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
-                    webloc = 'http://' + loc
-                    webhtml = urllib.urlopen(webloc).read()
-                    webraw = nltk.clean_html(webhtml)
+                    webraw = cmlib.get_weblist('http://' + loc)
 
 
                 #testcount = 0  # TODO: testonly
-                try: # make a place to store these files
-                    os.mkdir(hdname+loc)
-                except:  # place already exists
-                    pass
-
+                cmlib.make_dir(hdname+loc)
 
                 # read the noisy file list and download files
                 for line in webraw.split('\n'):
@@ -122,22 +100,20 @@ def get_file():
                     #    break
                        
                     # get the name of the update file
-                    updt_fname = loc + line
                     # write this name in list after minor modification:)
-                    flist.write(hdname+updt_fname+'.txt.gz\n')  # .xx.txt.gz file list
-                    if os.path.exists(hdname+updt_fname+'.txt.gz'):
+                    flist.write(hdname+loc+line+'.txt.gz\n')  # .xx.txt.gz file list
+                    if os.path.exists(hdname+loc+line+'.txt.gz'):
                         print '.xx.txt.gz update file exists!'
-                        if os.path.exists(hdname+updt_fname):  # .bz2/.gz useless anymore
-                            os.remove(hdname+updt_fname)
+                        if os.path.exists(hdname+loc+line):  # .bz2/.gz useless anymore
+                            os.remove(hdname+loc+line)
                         continue
-                    if os.path.exists(hdname+updt_fname):
+                    if os.path.exists(hdname+loc+line):
                         print '.bz2/.gz update file exists!'
                         continue
                     # remove existing xx.txt file to make things clearer
-                    if os.path.exists(hdname+updt_fname+'.txt'):
-                        os.remove(hdname+updt_fname+'.txt')
-                    urllib.urlretrieve('http://'+updt_fname,\
-                            hdname+updt_fname)
+                    if os.path.exists(hdname+loc+line+'.txt'):
+                        os.remove(hdname+loc+line+'.txt')
+                    cmlib.getfile('http://'+loc+line, hdname+loc, line) 
             flist.close()
 
 
@@ -148,21 +124,17 @@ def get_file():
                 loc = 'archive.routeviews.org/' +\
                         cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
                 loc = loc.replace('//', '/')  # when name is ''
-                webloc = 'http://' + loc
-                webhtml = urllib.urlopen(webloc).read()
+                webhtml = urllib.urlopen('http://' + loc).read()
                 webraw = nltk.clean_html(webhtml)
             else:
                 loc = 'data.ris.ripe.net/' + cl_name + '/' + yearmonth[0] + '/' 
-                webloc = 'http://' + loc
-                webhtml = urllib.urlopen(webloc).read()
-                webraw = nltk.clean_html(webhtml)
-            try:
-                os.mkdir(hdname+loc)
-            except:
-                pass
+                webraw = cmlib.get_weblist('http://' + loc)
+            
+            cmlib.make_dir(hdname+loc)
 
             ## Download RIB. RIB date is always the same as updates' start date
             ribtime = sdate
+            rib_fname = ''
             for line in webraw.split('\n'):
                 if not 'rib' in line and not 'bview' in line:
                     continue
@@ -174,19 +146,19 @@ def get_file():
                 print line
 
                 rib_fname = loc + line
-                if os.path.exists(hdname+rib_fname+'.txt.gz'): 
+                if os.path.exists(hdname+loc+line+'.txt.gz'): 
                     print '.xx.txt.gz RIB file exists!'
-                    if os.path.exists(hdname+rib_fname): 
-                        os.remove(hdname+rib_fname) 
+                    if os.path.exists(hdname+loc+line): 
+                        os.remove(hdname+loc+line) 
                     break
-                if os.path.exists(hdname+rib_fname): 
+                if os.path.exists(hdname+loc+line): 
                     print '.bz2/.gz RIB file exists!'
                     break
-                if os.path.exists(hdname+rib_fname+'.txt'): 
-                    os.remove(hdname+rib_fname+'.txt')
+                if os.path.exists(hdname+loc+line+'.txt'): 
+                    os.remove(hdname+loc+line+'.txt')
 
-                urllib.urlretrieve('http://'+rib_fname,\
-                        hdname+rib_fname)
+                cmlib.getfile('http://'+loc+line, hdname+loc, line)
+
                 break
 
 
@@ -199,15 +171,12 @@ def get_file():
             for line in flist:
                 line = line.replace('\n', '')
                 if not os.path.exists(line):  # xx.txt.gz not exists, then .bz2 exists
+                    print line
                     # parse .bz2/.gz into .txt
-                    subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
-                            line.replace('.txt.gz', '')+' > '+\
-                            line.replace('txt.gz', 'txt'), shell=True)
+                    cmlib.parse_mrt(line.replace('.txt.gz', ''), line.replace('txt.gz', 'txt'))
                     # compress xx.txt-->xx.txt.gz
-                    subprocess.call('gzip -c '+line.replace('txt.gz', 'txt')+\
-                            ' > '+line, shell=True) 
+                    cmlib.pack_gz(line.replace('txt.gz', 'txt'))
                     os.remove(line.replace('.txt.gz', ''))  # remove .bz2/.gz update files
-                    os.remove(line.replace('txt.gz', 'txt'))  # remove txt update files
                 else:  # xx.txt.gz exists
                     pass
             flist.close()
@@ -221,8 +190,7 @@ def get_file():
                 subprocess.call('gunzip -c '+rib_location+'.txt.gz > '+\
                         rib_location+'.txt', shell=True)  # unpack                        
             elif os.path.exists(rib_location):  # .bz2/.gz file exists
-                subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m\
-                        '+rib_location+' > '+rib_location+'.txt', shell=True)  # parse
+                cmlib.parse_mrt(rib_location, rib_location+'.txt')
                 os.remove(rib_location)  # then remove .bz2/.gz
             # read .txt
             with open(rib_location+'.txt', 'r') as f:  # get peers from RIB
@@ -237,9 +205,7 @@ def get_file():
             print 'peers: ', peers
             # compress RIB into .gz
             if not os.path.exists(rib_location+'.txt.gz'):
-                subprocess.call('gzip -c '+rib_location+'.txt'+' >\
-                        '+rib_location+'.txt.gz', shell=True)
-            os.remove(rib_location+'.txt')  # remove .txt, only .gz left
+                cmlib.pack_gz(rib_location+'.txt')
             
 
             print 'determining table transfers start and end time for each peer...'

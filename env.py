@@ -21,5 +21,4 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20081218', 4, '2008 mediterranean cable cut 2'),\
             ('20050911', 4, 'LA blackout'),\
             ('20050828', 4, 'Hurricane Katrina'),\
-            ('20090720', 1, 'test 1')
             ]

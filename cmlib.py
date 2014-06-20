@@ -12,6 +12,7 @@ from matplotlib.dates import HourLocator
 from netaddr import *
 
 def getfile(url, save_loc, filename):
+    make_dir(save_loc)
     if not os.path.exists(save_loc+filename):
         urllib.urlretrieve(url+filename, save_loc+filename)
     else:
@@ -20,26 +21,26 @@ def getfile(url, save_loc, filename):
 def get_unpack_gz(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.gz$', '', filename)):
         urllib.urlretrieve(url+filename, save_loc+filename)
-        subprocess.call('gunzip '+save_loc+filename)
+        subprocess.call('gunzip '+save_loc+filename, shell=True)
     else:
         pass
 
 def get_unpack_bz2(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.bz2$', '', filename)):
         urllib.urlretrieve(url+filename, save_loc+filename)
-        subprocess.call('bunzip2 -d '+save_loc+filename)
+        subprocess.call('bunzip2 -d '+save_loc+filename, shell=True)
     else:
         pass
 
 def pack_gz(loc_fname):
     if not os.path.exists(loc_fname+'.gz'):
-        subprocess.call('gzip '+loc_fname)
+        subprocess.call('gzip '+loc_fname, shell=True)
     else:
         pass
 
 def make_dir(location):
     if not os.path.isdir(location):
-        os.mkdir(location)
+        os.makedirs(location)
 
 def get_weblist(url):
     webhtml = urllib.urlopen(url).read()
