@@ -49,8 +49,8 @@ class Alarm():
             self.dvi.append({})
         self.dvi_desc = {} # DVI No.: describe
         self.dvi_desc[0] = 'dvi(ratio-threshold)' # div No.: describe
-        self.dvi_desc[1] = 'dvi(2^(ratio-0.9)*10)' # div No.: describe
-        self.dvi_desc[2] = 'dvi(5^(ratio-0.9)*10)' # div No.: describe
+        self.dvi_desc[1] = 'dvi(2^(ratio-0.9)_10)' # div No.: describe
+        self.dvi_desc[2] = 'dvi(5^(ratio-0.9)_10)' # div No.: describe
         self.dvi_desc[3] = 'dvi(1)' # div No.: describe
         self.dvi_desc[4] = 'dvi(ratio)' # div No.: describe
 
@@ -296,7 +296,7 @@ class Alarm():
         for key in self.level.keys():
             if key < low or key > high:
                 continue
-            cmlib.simple_plot(self.level[key], describe_add+'>='+str(key))
+            cmlib.simple_plot(self.level[key], describe_add+'='+str(key))
 
     def pfx_to_as(self, my_pfx):
         if self.pfx2as == None:
