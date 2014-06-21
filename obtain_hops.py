@@ -127,6 +127,7 @@ if __name__ == "__main__":
 
     for i in range(0, 1):  # loop over events
         location = hdname+'as_hops/'+daterange[i][0]+'/'
+        '''
         # mkdir if not exist
         if not os.path.isdir(location):
             os.makedirs(location)
@@ -187,7 +188,7 @@ if __name__ == "__main__":
                 graph[as2][as1] = 1
             except:
                 continue
-        dpf.close()
+        dpf.close()'''
 
         # get pfx2as file by the way (only after 200506)
         print 'get pfx2as file by the way (only after 200506)...'
@@ -208,6 +209,7 @@ if __name__ == "__main__":
                     location+line.split()[0].replace('.gz', ''), shell=True)
             os.remove(location+line.split()[0])
 
+        '''
         print 'running johnson ...'
         # graph = read_graph("graph.txt", 1000)
         graph_new = deepcopy(graph)
@@ -216,14 +218,13 @@ if __name__ == "__main__":
         if not final_distances:
             print "Negative cycle"
         # write the result into a new file
-        '''
         resf = open(location+'as_hops', 'w')
         for i in final_distances:
             for j in final_distances[i]:
                 resf.write(str(i)+' '+str(j)+' '+str(final_distances[i][j])+'\n')
         resf.close()
-        '''
         for i in final_distances:
             for j in final_distances[i]:
                 print str(i)+' '+str(j)+' '+str(final_distances[i][j])
         print datetime.utcnow() - t1
+        '''

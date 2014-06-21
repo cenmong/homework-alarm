@@ -207,23 +207,23 @@ class Alarm():
 
                 # active prefix to origin AS distribution
                 ori_as = self.pfx_to_as(p)
-                try:
-                    pfxlist = pfx_as_distri[ori_as]
-                except:
-                    pfx_as_distri[ori_as] = [p]
-
-                if p not in pfx_as_distri[ori_as]:
-                    pfx_as_distri[ori_as].append(p)
+                if ori_as != -1: #really found
+                    try:
+                        pfxlist = pfx_as_distri[ori_as]
+                    except:
+                        pfx_as_distri[ori_as] = [p]
+                    if p not in pfx_as_distri[ori_as]:
+                        pfx_as_distri[ori_as].append(p)
 
                 # active prefix to origin state distribution
                 state = self.as_to_state(ori_as)
-                try:
-                    pfxlist = pfx_state_distri[state]
-                except:
-                    pfx_state_distri[state] = [p]
-
-                if p not in pfx_state_distri[state]:
-                    pfx_state_distri[state].append(p)
+                if state != -1:
+                    try:
+                        pfxlist = pfx_state_distri[state]
+                    except:
+                        pfx_state_distri[state] = [p]
+                    if p not in pfx_state_distri[state]:
+                        pfx_state_distri[state].append(p)
 
             self.act_c[dt] = pcount
             self.actas_c[dt] = len(as_list)
@@ -339,6 +339,7 @@ class Alarm():
         except:
             return -1
 
+    '''
     def as_to_type(self, myasn): # old data (2004)
         if self.as2type == {}:
             f = open(hdname+'topofile/as2attr.txt')
@@ -352,6 +353,7 @@ class Alarm():
             return self.as2state[my_asn]
         except:
             return -1
+    '''
 
     def as_to_rank(self, myasn):
         if self.as2rank == {}:
