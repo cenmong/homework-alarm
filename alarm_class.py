@@ -30,14 +30,18 @@ class Alarm():
         self.granu = granu  # Time granularity in minutes
         self.active_t = active_t # active threshold
 
-        self.pfx_trie = dict()  # dt: trie
+        self.pfx_trie = dict()  # dt: trie. (garbage deletion)
         self.peerlist = dict()  # dt: peer list
+        self.peeraslist = dict() # dt: peer AS list
         self.act_c = dict() # dt: DAP count
-        self.actas_c = dict() # dt: AS(of DAPs) count
-        self.actstate_c = dict() # dt: state(od DAPs) count
+        self.actas_c = dict() # dt: origin AS(of DAPs) count
+        self.actstate_c = dict() # dt: origin state(od DAPs) count
+        
+        self.acount = dict() # dt: announcement count
+        self.wcount = dict() # dt: withdrawal count
 
-        # TODO: some detailed info
-        # self.as_detail = dict() # dt: {AS: [state, No. of pfx]}
+        self.pfx_as_top10 = dict() # dt: aggregated value
+        self.pfx_state_top10 = dict() # dt: value
 
         # Dynamic Visibility Index
         self.dvi = []  # DVI No.: dt: value
@@ -56,6 +60,53 @@ class Alarm():
             if i % 10 == 0:
                 self.level[i] = dict()
 
+    def check_memo(self, is_end):
+        if self.ceiling == 0:  # not everybofy is ready
+            return 0
+    
+        # We are now sure that all collectors exist and any info that is 
+        # too early to be combined are deleted
+
+        new_ceil = 9999999999
+        for cl in self.cl_list:
+            if self.cl_dt[cl][1] < new_ceil:
+                new_ceil = self.cl_dt[cl][1]
+
+        if is_end == False:
+            if new_ceil - self.ceiling >= 4 * 60 * self.granu:  # not so frequent
+                # e.g., aggregate 10:50 only when now > 11:00
+                self.ceiling = new_ceil - 60 * self.granu
+                self.release_memo()
+        else:
+            self.ceiling = new_ceil - 60 * self.granu
+            self.release_memo()
+
+        return 0
+
+    # aggregate everything before ceiling and remove garbage
+    def release_memo(self):
+        print 'deciding dt to release...'
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if self.floor <= dt <= self.ceiling:
+                #cmlib.print_dt(dt)
+                rel_dt.append(dt)
+        # Put major businesses here
+        self.aggregate(rel_dt)
+
+        self.del_garbage()
+        return 0
+
+    # delete large and unaggregated memory usage
+    def del_garbage(self):
+        print 'Deleting garbage...'
+        rel_dt = []  # dt for processing
+        for dt in self.pfx_trie.keys():  # all dt that exists
+            if dt <= self.ceiling:
+                #cmlib.print_dt(dt)
+                del self.pfx_trie[dt]
+        return 0
+
     def add(self, update):
         attr = update.split('|')[0:6]  # no need for other attrs now
 
@@ -67,31 +118,51 @@ class Alarm():
         # Reset time to fit granularity
         mi = self.xia_qu_zheng(objdt.minute, 'm')
         objdt = objdt.replace(minute = mi)
-        intdt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
+        dt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
+
+
+        if dt not in self.peerlist.keys(): # a brand new dt!
+            self.peerlist[dt] = []
+            self.peeraslist[dt] = []
+            self.acount[dt] = 0
+            self.wcount[dt] = 0
+            self.pfx_trie[dt] = patricia.trie(None)
+
+        # get and record update type
+        ty = attr[2]
+        if ty == 'A':
+            self.acount[dt] += 1
+        else: # 'W'
+            self.wcount[dt] += 1
 
         # fullfill the peerlist
         peer = attr[3]
-        if intdt not in self.peerlist.keys():
-            self.peerlist[intdt] = []
-        if peer not in self.peerlist[intdt]:
-            self.peerlist[intdt].append(peer)
+        if peer not in self.peerlist[dt]:
+            self.peerlist[dt].append(peer)
 
-        # now let's deal with the prefix
+        # fullfill the peeraslist
+        peeras = int(attr[4])
+        if peeras not in self.peeraslist[dt]:
+            self.peeraslist[dt].append(peeras)
+        
+        # now let's deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
-        if intdt not in self.pfx_trie.keys():
-            self.pfx_trie[intdt] = patricia.trie(None)
-        try:  # Test whether the trie has the node
-            test = self.pfx_trie[intdt][pfx]
-        except:  # Node does not exist
-            self.pfx_trie[intdt][pfx] = [peer]
-            return 0
-
-        if peer not in test:
-            self.pfx_trie[intdt][pfx].append(peer)
+        #if dt not in self.pfx_trie.keys(): # cannot omit this
+        #    self.pfx_trie[dt] = patricia.trie(None)
+        try:
+            try:  # Test whether the trie has the node
+                test = self.pfx_trie[dt][pfx]
+            except:  # Node does not exist
+                self.pfx_trie[dt][pfx] = [peer]
+            if peer not in self.pfx_trie[dt][pfx]:
+                self.pfx_trie[dt][pfx].append(peer)
+        except: # this self.pfx_trie[dt] has been deleted
+            pass
 
         return 0
 
     def aggregate(self, rel_dt):
+        print 'aggregating...'
         for dt in rel_dt:
             len_all_peer = len(self.peerlist[dt])
             trie = self.pfx_trie[dt]
@@ -101,6 +172,8 @@ class Alarm():
             for i in xrange(0, 5):
                 self.dvi[i][dt] = 0
 
+            pfx_as_distri = {} # ASN: pfx list
+            pfx_state_distri = {} # state: pfx list
             for p in trie:
                 if p == '':
                     continue
@@ -112,8 +185,9 @@ class Alarm():
                         except:
                             self.level[lv][dt] = 1
 
+
+                # only count active prefixes from now on
                 ratio = float(len(trie[p]))/float(len_all_peer)
-                # only count active ones from now on
                 if ratio <= self.active_t: # not active pfx
                     continue
                 pcount += 1
@@ -124,16 +198,56 @@ class Alarm():
                 if state not in state_list:
                     state_list.append(state)
 
-                # a bunch of shit
-                    self.dvi[0][dt] += ratio - self.active_t
-                    self.dvi[1][dt] += np.power(2, (ratio-0.9)*10)
-                    self.dvi[2][dt] += np.power(5, (ratio-0.9)*10)
-                    self.dvi[3][dt] += 1
-                    self.dvi[4][dt] += ratio
+                # a bunch of DVIs
+                self.dvi[0][dt] += ratio - self.active_t
+                self.dvi[1][dt] += np.power(2, (ratio-0.9)*10)
+                self.dvi[2][dt] += np.power(5, (ratio-0.9)*10)
+                self.dvi[3][dt] += 1
+                self.dvi[4][dt] += ratio
+
+                # active prefix to origin AS distribution
+                ori_as = self.pfx_to_as(p)
+                try:
+                    pfxlist = pfx_as_distri[ori_as]
+                except:
+                    pfx_as_distri[ori_as] = [p]
+
+                if p not in pfx_as_distri[ori_as]:
+                    pfx_as_distri[ori_as].append(p)
+
+                # active prefix to origin state distribution
+                state = self.as_to_state(ori_as)
+                try:
+                    pfxlist = pfx_state_distri[state]
+                except:
+                    pfx_state_distri[state] = [p]
+
+                if p not in pfx_state_distri[state]:
+                    pfx_state_distri[state].append(p)
 
             self.act_c[dt] = pcount
             self.actas_c[dt] = len(as_list)
             self.actstate_c[dt] = len(state_list)
+
+            # get active pfx count of top 10 ASes and States
+            top10as_ratio = 0 
+            top10state_ratio = 0 
+            try:
+                for k in sorted(pfx_as_distri, key=lambda k:\
+                        len(pfx_as_distri[k]))[:10]:
+                    top10as_ratio += len(pfx_as_distri[k])
+                top10as_ratio = float(top10as_ratio) / pcount
+            except: # < 10
+                top10as_ratio = 1
+            self.pfx_as_top10[dt] = top10as_ratio
+            try:
+                for k in sorted(pfx_state_distri, key=lambda k:\
+                        len(pfx_state_distri[k]))[:10]:
+                    top10state_ratio += len(pfx_state_distri[k])
+                top10state_ratio = float(top10state_ratio) / pcount
+            except: # < 10
+                top10state_ratio = 1
+            self.pfx_state_top10[dt] = top10state_ratio
 
         return 0
 
@@ -152,10 +266,22 @@ class Alarm():
             peercount[key] = len(self.peerlist[key])
         cmlib.simple_plot(peercount, describe_add+'peercount')
 
+        # plot peer AS count
+        peerascount = {}
+        for key in self.peeraslist.keys():
+            peerascount[key] = len(self.peeraslist[key])
+        cmlib.simple_plot(peerascount, describe_add+'peerAScount')
+
         # active pfx count
         cmlib.simple_plot(self.act_c, describe_add+'act_pfx_count')
         cmlib.simple_plot(self.actas_c, describe_add+'originAS(act_pfx)count')
         cmlib.simple_plot(self.actstate_c, describe_add+'State(active_pfx)count')
+
+        # top AS and top State
+        cmlib.simple_plot(self.pfx_as_top10,\
+                describe_add+'ratio_of_top10_originAS(active pfx)')
+        cmlib.simple_plot(self.pfx_state_top10,\
+                describe_add+'ratio_of_top10_originState(active pfx)')
 
     def plot_level(self, low, high, describe_add):
         # fill the empty values with 0
@@ -241,21 +367,6 @@ class Alarm():
         except:
             return -1
         
-
-    # aggregate everything before ceiling and remove garbage
-    def release_memo(self):
-        rel_dt = []  # dt for processing
-        for dt in self.pfx_trie.keys():  # all dt that exists
-            if self.floor <= dt <= self.ceiling:
-                #cmlib.print_dt(dt)
-                rel_dt.append(dt)
-
-        # Put major businesses here
-        self.aggregate(rel_dt)
-
-        self.del_garbage()
-        return 0
-
     def shang_qu_zheng(self, value, tp):  # 'm': minute, 's': second
         if tp == 's':
             return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
@@ -293,33 +404,4 @@ class Alarm():
             self.del_garbage()
         return 0
 
-    def check_memo(self, is_end):
-        if self.ceiling == 0:  # not everybofy is ready
-            return 0
-    
-        # We are now sure that all collectors exist and any info that is 
-        # too early to be combined are deleted
 
-        new_ceil = 9999999999
-        for cl in self.cl_list:
-            if self.cl_dt[cl][1] < new_ceil:
-                new_ceil = self.cl_dt[cl][1]
-
-        if is_end == False:
-            if new_ceil - self.ceiling >= 1 * 60 * self.granu:  # not so frequent
-                # e.g., aggregate 10:50 only when now > 11:00
-                self.ceiling = new_ceil - 60 * self.granu
-                self.release_memo()
-        else:
-            self.ceiling = new_ceil - 60 * self.granu
-            self.release_memo()
-
-        return 0
-
-    def del_garbage(self):
-        rel_dt = []  # dt for processing
-        for dt in self.pfx_trie.keys():  # all dt that exists
-            if dt <= self.ceiling:
-                #cmlib.print_dt(dt)
-                del self.pfx_trie[dt]
-        return 0

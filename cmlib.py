@@ -71,11 +71,12 @@ def simple_plot(my_dict, describe): # start date is always first attribute
     myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
     ax.xaxis.set_major_formatter(myFmt)
     plt.xticks(rotation=45)
-    plt.plot()
+    #plt.plot()
 
     sdate = describe.split('_')[0]
     make_dir(hdname+'output/'+sdate+'/')
     plt.savefig(hdname+'output/'+sdate+'/'+describe+'.pdf')
+    plt.close()
     return 0
 
 def print_dt(dt):
