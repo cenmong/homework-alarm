@@ -38,21 +38,29 @@ class Alarm():
         self.actstate_c = dict() # dt: origin state(od DAPs) count
         
         self.acount = dict() # dt: announcement count
-        self.wcount = dict() # dt: withdrawal count
+        self.wcount = dict() # dt: withdrawl count
+        self.wpctg = dict() # dt: withdrawl percentage 
 
-        self.pfx_as_top10 = dict() # dt: aggregated value
-        self.pfx_state_top10 = dict() # dt: value
+        # distribution skewness 
+        # TODO: more statistics needed
+        self.pfx_as_top10 = dict() # dt: top 10 ASes
+        self.pfx_state_top10 = dict()
+        self.pfx_as_top10pctg = dict() # dt: top 10% ASes
+        self.pfx_state_top10pctg = dict()
+
+        # TODO: state and continent
+
+        # TODO: AS rank
 
         # Dynamic Visibility Index
         self.dvi = []  # DVI No.: dt: value
-        for i in xrange(0, 5):
+        for i in xrange(0, 4): # control total number of DVIs here
             self.dvi.append({})
         self.dvi_desc = {} # DVI No.: describe
         self.dvi_desc[0] = 'dvi(ratio-threshold)' # div No.: describe
         self.dvi_desc[1] = 'dvi(2^(ratio-0.9)_10)' # div No.: describe
         self.dvi_desc[2] = 'dvi(5^(ratio-0.9)_10)' # div No.: describe
-        self.dvi_desc[3] = 'dvi(1)' # div No.: describe
-        self.dvi_desc[4] = 'dvi(ratio)' # div No.: describe
+        self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
 
         # diff levels of visibility, from 0~10 to 90~100 and 100
         self.level = dict() # level(e.g.,>=0,>=10,>=20,...): dt: value
@@ -121,7 +129,7 @@ class Alarm():
         dt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
 
 
-        if dt not in self.peerlist.keys(): # a brand new dt!
+        if dt not in self.peerlist.keys(): # a brand new dt for sure!
             self.peerlist[dt] = []
             self.peeraslist[dt] = []
             self.acount[dt] = 0
@@ -147,8 +155,6 @@ class Alarm():
         
         # now let's deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
-        #if dt not in self.pfx_trie.keys(): # cannot omit this
-        #    self.pfx_trie[dt] = patricia.trie(None)
         try:
             try:  # Test whether the trie has the node
                 test = self.pfx_trie[dt][pfx]
@@ -169,7 +175,7 @@ class Alarm():
             pcount = 0
             as_list = []
             state_list = []
-            for i in xrange(0, 5):
+            for i in xrange(0, len(self.dvi)):
                 self.dvi[i][dt] = 0
 
             pfx_as_distri = {} # ASN: pfx list
@@ -202,8 +208,7 @@ class Alarm():
                 self.dvi[0][dt] += ratio - self.active_t
                 self.dvi[1][dt] += np.power(2, (ratio-0.9)*10)
                 self.dvi[2][dt] += np.power(5, (ratio-0.9)*10)
-                self.dvi[3][dt] += 1
-                self.dvi[4][dt] += ratio
+                self.dvi[3][dt] += ratio
 
                 # active prefix to origin AS distribution
                 ori_as = self.pfx_to_as(p)
@@ -229,25 +234,52 @@ class Alarm():
             self.actas_c[dt] = len(as_list)
             self.actstate_c[dt] = len(state_list)
 
-            # get active pfx count of top 10 ASes and States
+            # get active pfx count ratio of top 10 ASes and States
             top10as_ratio = 0 
             top10state_ratio = 0 
             try:
                 for k in sorted(pfx_as_distri, key=lambda k:\
-                        len(pfx_as_distri[k]))[:10]:
+                        len(pfx_as_distri[k]), reverse=True)[:10]:
                     top10as_ratio += len(pfx_as_distri[k])
                 top10as_ratio = float(top10as_ratio) / pcount
             except: # < 10
                 top10as_ratio = 1
             self.pfx_as_top10[dt] = top10as_ratio
+
             try:
                 for k in sorted(pfx_state_distri, key=lambda k:\
-                        len(pfx_state_distri[k]))[:10]:
+                        len(pfx_state_distri[k]), reverse=True)[:10]:
                     top10state_ratio += len(pfx_state_distri[k])
                 top10state_ratio = float(top10state_ratio) / pcount
             except: # < 10
                 top10state_ratio = 1
             self.pfx_state_top10[dt] = top10state_ratio
+
+            # get active pfx count ratio of top 10% ASes and States
+            top10as_pctg_ratio = 0 
+            top10state_pctg_ratio = 0 
+            tmp_len = len(pfx_as_distri.keys()) / 10
+            if tmp_len > 0:
+                for k in sorted(pfx_as_distri, key=lambda k:\
+                        len(pfx_as_distri[k]), reverse=True)[:tmp_len]:
+                    top10as_pctg_ratio += len(pfx_as_distri[k])
+                top10as_pctg_ratio = float(top10as_pctg_ratio) / pcount
+            else: # tmp_len < 0
+                top10as_pctg_ratio = 0 
+            self.pfx_as_top10pctg[dt] = top10as_pctg_ratio
+
+            tmp_len = len(pfx_state_distri.keys()) / 10
+            if tmp_len > 0:
+                for k in sorted(pfx_state_distri, key=lambda k:\
+                        len(pfx_state_distri[k]), reverse=True)[:tmp_len]:
+                    top10state_pctg_ratio += len(pfx_state_distri[k])
+                top10state_pctg_ratio = float(top10state_pctg_ratio) / pcount
+            else: # tmp_len < 0
+                top10state_pctg_ratio = 0 
+            self.pfx_state_top10pctg[dt] = top10state_pctg_ratio
+
+            # get withdrawal/(W+A) value
+            self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
 
         return 0
 
@@ -277,11 +309,22 @@ class Alarm():
         cmlib.simple_plot(self.actas_c, describe_add+'originAS(act_pfx)count')
         cmlib.simple_plot(self.actstate_c, describe_add+'State(active_pfx)count')
 
-        # top AS and top State
+        # top 10 AS and State
         cmlib.simple_plot(self.pfx_as_top10,\
-                describe_add+'ratio_of_top10_originAS(active pfx)')
+                describe_add+'pfx_ratio_of_top10_originAS(active)')
         cmlib.simple_plot(self.pfx_state_top10,\
-                describe_add+'ratio_of_top10_originState(active pfx)')
+                describe_add+'pfx_ratio_of_top10_originState(active)')
+
+        # top 10% AS and State
+        cmlib.simple_plot(self.pfx_as_top10pctg,\
+                describe_add+'pfx_ratio_of_top10%_originAS(active)')
+        cmlib.simple_plot(self.pfx_state_top10,\
+                describe_add+'pfx_ratio_of_top10%_originState(active)')
+
+        # announcement and withdrawal count
+        cmlib.simple_plot(self.acount, describe_add+'announce_count')
+        cmlib.simple_plot(self.wcount, describe_add+'withdraw_count')
+        cmlib.simple_plot(self.wpctg, describe_add+'withdraw_percentage')
 
     def plot_level(self, low, high, describe_add):
         # fill the empty values with 0
@@ -339,8 +382,7 @@ class Alarm():
         except:
             return -1
 
-    '''
-    def as_to_type(self, myasn): # old data (2004)
+    def as_to_type(self, myasn): # TODO: this is based on old data (2004) :(
         if self.as2type == {}:
             f = open(hdname+'topofile/as2attr.txt')
             for line in f:
@@ -353,7 +395,6 @@ class Alarm():
             return self.as2state[my_asn]
         except:
             return -1
-    '''
 
     def as_to_rank(self, myasn):
         if self.as2rank == {}:
