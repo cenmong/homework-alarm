@@ -44,8 +44,13 @@ def make_dir(location):
         os.makedirs(location)
 
 def get_weblist(url):
-    webhtml = urllib.urlopen(url).read()
-    webraw = nltk.clean_html(webhtml)
+    while 1:
+        try:
+            webhtml = urllib.urlopen(url).read()
+            webraw = nltk.clean_html(webhtml)
+            break
+        except:
+            pass
     return webraw
 
 def parse_mrt(old_loc_fname, new_loc_fname):
