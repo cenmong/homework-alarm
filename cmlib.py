@@ -4,6 +4,9 @@ import subprocess
 import re
 import nltk
 import numpy as np
+import matplotlib
+# This is useful. I can render figures thourgh ssh. VNC viewer in unnecessary.
+matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mpldates
 import datetime

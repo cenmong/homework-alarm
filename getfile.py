@@ -1,3 +1,4 @@
+import cmlib
 import os
 import nltk
 import urllib
@@ -6,7 +7,6 @@ import datetime
 import patricia
 import subprocess
 import gzip
-import cmlib
 
 # TODO: testonly. over write collectors
 #collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
@@ -17,14 +17,14 @@ import cmlib
 def get_file():
 
     # loop over every date range
-    for i in range(0, 1):
+    for i in range(1, 2):
         # loop over every collector if appropriate
         for clctr in collectors:
 
             # get basic info of this collector
             try:
-                # this collector is born later than we want
                 if int(daterange[i][0]) < int(clctr[2]):
+                    # this collector is born later than we want
                     print 'this collector cannot serve'
                     continue
             except:  # usually when testing, clctr[2] may not be set
@@ -32,7 +32,7 @@ def get_file():
             cl_name = clctr[0] # set current collector name and type (rv or ripe)
             cl_type = clctr[1]
             if cl_type == 0: # from rv family
-                # for ease of further coding, we define a detailed location
+                # for ease of further coding, we define a detailed storage location
                 hdname_detail = hdname + 'archive.routeviews.org/' + cl_name +\
                     '/bgpdata/'
                 hdname_detail = hdname_detail.replace('//', '/') # happens when cl = ''
@@ -47,17 +47,17 @@ def get_file():
             edate = edate_obj.strftime('%Y%m%d')
 
 
-            # Now it can only deal with at most 2 months. Seems enough by now:)
+            # Now we can only deal with at most 2 months. Seems enough by now:)
             yearmonth = [] 
             yearmonth.append(sdate[0:4] + '.' + sdate[4:6])
             if edate[0:4] + '.' + edate[4:6] not in yearmonth:
                 yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-            # create the filefolder where we store the update files
+            # create the folder where we store the update file lists
             cmlib.make_dir(hdname+'metadata/'+sdate)
 
-            # TODO: if list file exists, means this collector fully processed
-            # ready to store update file names into a new file
+            # TODO: if list exists, means this collector fully processed
+            # otherwise, creating update file list
             flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
 
 
@@ -69,56 +69,52 @@ def get_file():
                     loc = 'archive.routeviews.org/' +\
                             cl_name + '/bgpdata/' + ym + '/UPDATES/'
                     loc = loc.replace('//', '/')  # when name is ''
-                    #webraw = cmlib.get_weblist('http://' + loc)
-                    webhtml = urllib.urlopen('http://' + loc).read()
-                    webraw = nltk.clean_html(webhtml)
+                    webraw = cmlib.get_weblist('http://' + loc)
                 else:
                     loc = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
                     webraw = cmlib.get_weblist('http://' + loc)
 
-
                 #testcount = 0  # TODO: testonly
+
                 cmlib.make_dir(hdname+loc)
 
                 # read the noisy file list and download files
                 for line in webraw.split('\n'):
-                    if not 'updates' in line:
+                    if not 'updates' in line or line == '' or line == '\n':
                         continue  # omit noisy line
-                    if line == '' or line == '\n':
-                        continue  # omit empty line
-                    line = line.split()[0]  # omit uninteresting info
 
+                    line = line.split()[0]  # omit uninteresting info
+                    filedate = line.split('.')[-3]
                     # check whether its datetime in our range
-                    if int(line.split('.')[-3]) < int(sdate) or\
-                            int(line.split('.')[-3]) > int(edate):
+                    if int(filedate) < int(sdate) or int(filedate) > int(edate):
                         continue
 
                     # now we are sure we want this file
                     print line
+                    origin_floc = hdname + loc + line # original file loc&name
+
                     #testcount += 1 #TODO: 3 lines testonly
                     #if testcount == 5:
                     #    break
                        
                     # get the name of the update file
-                    # write this name in list after minor modification:)
-                    flist.write(hdname+loc+line+'.txt.gz\n')  # .xx.txt.gz file list
-                    '''
-                    if os.path.exists(hdname+loc+line+'.txt.gz'):
+                    # write this name in list after adding suffix
+                    flist.write(origin_floc+'.txt.gz\n')  # .xx.txt.gz file list
+                    if os.path.exists(origin_floc+'.txt.gz'):
+                        # TODO: check file size
                         print '.xx.txt.gz update file exists!'
-                        if os.path.exists(hdname+loc+line):  # .bz2/.gz useless anymore
-                            os.remove(hdname+loc+line)
+                        if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
+                            os.remove(origin_floc)
                         continue
-                    if os.path.exists(hdname+loc+line):
+                    if os.path.exists(origin_floc):
                         print '.bz2/.gz update file exists!'
                         continue
                     # remove existing xx.txt file to make things clearer
-                    if os.path.exists(hdname+loc+line+'.txt'):
-                        os.remove(hdname+loc+line+'.txt')
+                    if os.path.exists(origin_floc+'.txt'):
+                        os.remove(origin_floc+'.txt')
                     cmlib.getfile('http://'+loc+line, hdname+loc, line) 
-                    '''
             flist.close()
 
-            '''
             # Downloading RIB is very like downloading update files
             # We only download rib of the starting date!!
             loc = ''
@@ -126,15 +122,15 @@ def get_file():
                 loc = 'archive.routeviews.org/' +\
                         cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
                 loc = loc.replace('//', '/')  # when name is ''
-                webhtml = urllib.urlopen('http://' + loc).read()
-                webraw = nltk.clean_html(webhtml)
+                webraw = cmlib.get_weblist('http://' + loc)
             else:
                 loc = 'data.ris.ripe.net/' + cl_name + '/' + yearmonth[0] + '/' 
                 webraw = cmlib.get_weblist('http://' + loc)
             
             cmlib.make_dir(hdname+loc)
 
-            ## Download RIB. RIB date is always the same as updates' start date
+            ## Download RIB. RIB date is always the start date
+            # for each event, we only download one RIB
             ribtime = sdate
             rib_fname = ''
             for line in webraw.split('\n'):
@@ -146,18 +142,19 @@ def get_file():
                 if not int(line.split('.')[-3]) == int(ribtime):
                     continue
                 print line
+                origin_floc = hdname + loc + line # original file loc&name
 
                 rib_fname = loc + line
-                if os.path.exists(hdname+loc+line+'.txt.gz'): 
+                if os.path.exists(origin_floc+'.txt.gz'): 
                     print '.xx.txt.gz RIB file exists!'
-                    if os.path.exists(hdname+loc+line): 
-                        os.remove(hdname+loc+line) 
+                    if os.path.exists(origin_floc): 
+                        os.remove(origin_floc) 
                     break
-                if os.path.exists(hdname+loc+line): 
+                if os.path.exists(origin_floc): 
                     print '.bz2/.gz RIB file exists!'
                     break
-                if os.path.exists(hdname+loc+line+'.txt'): 
-                    os.remove(hdname+loc+line+'.txt')
+                if os.path.exists(origin_floc+'.txt'): 
+                    os.remove(origin_floc+'.txt')
 
                 cmlib.getfile('http://'+loc+line, hdname+loc, line)
 
@@ -172,7 +169,7 @@ def get_file():
             flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .xx.txt.gz file name
             for line in flist:
                 line = line.replace('\n', '')
-                if not os.path.exists(line):  # xx.txt.gz not exists, then .bz2 exists
+                if not os.path.exists(line):  # xx.txt.gz not exists, .bz2/.gz exists
                     print line
                     # parse .bz2/.gz into .txt
                     cmlib.parse_mrt(line.replace('.txt.gz', ''), line.replace('txt.gz', 'txt'))
@@ -303,7 +300,6 @@ def get_file():
                     updatefile_list.close()
                 f_results.close()
             subprocess.call('rm ~/tmp/*', shell=True)
-            '''                     
                                 
         fnames = {}
         # TODO: unnecessarily all collectors exist
