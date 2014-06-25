@@ -1,3 +1,4 @@
+import cmlib
 import os
 import time 
 import subprocess
@@ -16,19 +17,7 @@ class Analyzer():
         self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
                 '+'{'+'}'+','+'-')
 
-        self.cl_list = []  # the collectors this analyzer has
-        dir_list = os.listdir(hdname+'metadata/'+sdate+'/')
-        for f in dir_list:
-            if not 'filelist' in f:
-                continue
-            if 'test' in f:
-                continue
-            
-            cl = f.split('_')[-1]
-            if cl == 'comb':
-                continue
-            self.cl_list.append(cl)
-
+        self.cl_list = cmlib.get_collector(sdate)  # the collectors this analyzer has
         print 'cl_list:',str(self.cl_list)
 
         self.cl_first = dict()  # cl: True or False

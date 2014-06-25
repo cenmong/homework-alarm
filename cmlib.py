@@ -117,3 +117,18 @@ def ip_to_binary(content, peer):  # can deal with ip addr and pfx
         print 'protocol false!'
         return 0
 
+def get_collector(sdate):
+    clist = []
+    dir_list = os.listdir(hdname+'metadata/'+sdate+'/')
+    for f in dir_list:
+        if not 'filelist' in f:
+            continue
+        if 'test' in f:
+            continue
+        
+        cl = f.split('_')[-1]
+        if cl == 'comb':
+            continue
+        clist.append(cl)
+    return clist
+
