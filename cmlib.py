@@ -10,17 +10,23 @@ matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mpldates
 import datetime
+import patricia
+import gzip
 
 from matplotlib.dates import HourLocator
 from netaddr import *
 from env import *
 
-def getfile(url, save_loc, filename):
+def download_file(url, save_loc, filename):
     make_dir(save_loc)
     if not os.path.exists(save_loc+filename):
         urllib.urlretrieve(url+filename, save_loc+filename)
     else:
         pass
+
+def force_download_file(url, save_loc, filename):
+    make_dir(save_loc)
+    urllib.urlretrieve(url+filename, save_loc+filename)
 
 def get_unpack_gz(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.gz$', '', filename)):
@@ -120,6 +126,7 @@ def ip_to_binary(content, peer):  # can deal with ip addr and pfx
 def get_collector(sdate):
     clist = []
     dir_list = os.listdir(hdname+'metadata/'+sdate+'/')
+    print 'cmlib dir_list:', dir_list
     for f in dir_list:
         if not 'filelist' in f:
             continue
@@ -132,3 +139,10 @@ def get_collector(sdate):
         clist.append(cl)
     return clist
 
+def size_u2v(unit):
+    if unit in ['k', 'K']:
+        return 1024
+    if unit in ['m', 'M']:
+        return 1048576
+    if unit in ['g', 'G']:
+        return 1073741824

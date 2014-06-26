@@ -8,7 +8,7 @@ import patricia
 import subprocess
 import gzip
 
-# TODO: testonly. over write collectors
+# TODO: testonly. overwrite collectors
 collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 #collectors = [('rrc00', 1)]
 
@@ -17,9 +17,11 @@ collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
 def combine_flist(sdate):
     fnames = {}
     clist = cmlib.get_collector(sdate)
-    for clctr in clist:
-        cl_name = clctr[0]
-        cl_type = clctr[1]
+    for cl_name in clist:
+        if cl_name.startswith('rrc'):
+            cl_type = 1
+        else:
+            cl_type = 0
 
         flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .bz2.txt.gz file name
         for filename in flist:
@@ -57,7 +59,7 @@ def parse_updates(sdate, cl_name):
 
 
 def del_tabletran_updates(peer, sdate, cl_name):
-    f_results = open('~/tmp/'+peer+'_result.txt', 'r')
+    f_results = open(homedir+'tmp/'+peer+'_result.txt', 'r')
     for line in f_results:  # get all affection info of this peer
         line = line.replace('\n', '')
         attr = line.split(',')
@@ -82,11 +84,9 @@ def del_tabletran_updates(peer, sdate, cl_name):
             updatefile = updatefile.replace('\n', '')
             file_attr = updatefile.split('.')
             if cl_type == 0:
-                fattr_date = file_attr[4]
-                fattr_time = file_attr[5]
+                fattr_date, fattr_time = file_attr[4], file_attr[5]
             else:
-                fattr_date = file_attr[5]
-                fattr_time = file_attr[6]
+                fattr_date, fattr_time = file_attr[5], file_attr[6]
             dt = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
@@ -102,7 +102,7 @@ def del_tabletran_updates(peer, sdate, cl_name):
                     myfilename, shell=True)
             # only .txt from now on!
             oldfile = open(myfilename, 'r')
-            newfile = open('~/tmp/'+myfilename.split('/')[-1], 'w')
+            newfile = open(homedir+'tmp/'+myfilename.split('/')[-1], 'w')
 
             counted_pfx = patricia.trie(None)
             for updt in oldfile:  # loop over each update
@@ -125,7 +125,7 @@ def del_tabletran_updates(peer, sdate, cl_name):
 
             os.remove(updatefile)  # remove old .gz file
             # compress .txt into txt.gz to replace the old file
-            subprocess.call('gzip -c ~/tmp/'+myfilename.split('/')[-1]+\
+            subprocess.call('gzip -c '+homedir+'tmp/'+myfilename.split('/')[-1]+\
                     ' > '+updatefile, shell=True)
             size_after = os.path.getsize(updatefile)
             print 'size(b):', size_before, ',size(a):', size_after
@@ -134,11 +134,11 @@ def del_tabletran_updates(peer, sdate, cl_name):
     f_results.close()
 
 def get_peers(rib_location): # should end with .bz2/.gz
+    print rib_location
     peers = []
     # get .txt
     if os.path.exists(rib_location+'.txt.gz'):  # .xx.txt.gz file exists
-        subprocess.call('gunzip -c '+rib_location+'.txt.gz > '+\
-                rib_location+'.txt', shell=True)  # unpack                        
+        subprocess.call('gunzip '+rib_location+'.txt.gz', shell=True)  # unpack                        
     elif os.path.exists(rib_location):  # .bz2/.gz file exists
         cmlib.parse_mrt(rib_location, rib_location+'.txt')
         os.remove(rib_location)  # then remove .bz2/.gz
@@ -194,13 +194,9 @@ def get_file():
             if edate[0:4] + '.' + edate[4:6] not in yearmonth:
                 yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-            # create the folder where we store the update file lists
+
             cmlib.make_dir(hdname+'metadata/'+sdate)
-
-            # TODO: if list exists, means this collector fully processed
-            # otherwise, creating update file list
             flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
-
 
             # loop over every month (at most 2 by now)
             for ym in yearmonth:
@@ -221,44 +217,54 @@ def get_file():
 
                 # read the noisy file list and download files
                 for line in webraw.split('\n'):
+
                     if not 'updates' in line or line == '' or line == '\n':
                         continue  # omit noisy line
 
+                    size = line.split()[-1]
+                    print 'u2v:',cmlib.size_u2v(size[-1])
+                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+                    print 'fsize:',fsize
                     line = line.split()[0]  # omit uninteresting info
                     filedate = line.split('.')[-3]
                     # check whether its datetime in our range
                     if int(filedate) < int(sdate) or int(filedate) > int(edate):
                         continue
-
-                    # now we are sure we want this file
-                    print line
-                    origin_floc = hdname + weblocation + line # original file loc&name
-
                     testcount += 1 #TODO: 3 lines testonly
                     if testcount == 5:
                         break
+
+                    print line
+                    origin_floc = hdname + weblocation + line # original file loc&name
                        
-                    # get the name of the update file
                     # write this name in list after adding suffix
                     flist.write(origin_floc+'.txt.gz\n')  # .xx.txt.gz file list
                     if os.path.exists(origin_floc+'.txt.gz'):
-                        # TODO: check file size
-                        print '.xx.txt.gz update file exists!'
-                        if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
-                            os.remove(origin_floc)
-                        continue
+                        if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
+                            print '.xx.txt.gz update file exists!'
+                            if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
+                                os.remove(origin_floc)
+                            continue
+                        else:
+                            os.remove(origin_floc+'.txt.gz')
                     if os.path.exists(origin_floc):
-                        print '.bz2/.gz update file exists!'
-                        continue
+                        if os.path.getsize(origin_floc) > 0.9 * fsize:
+                            print '.bz2/.gz update file exists!'
+                            continue
+                        else:
+                            os.remove(origin_floc)
                     # remove existing xx.txt file to make things clearer
-                    if os.path.exists(origin_floc+'.txt'):
+                    try:
                         os.remove(origin_floc+'.txt')
-                    cmlib.getfile('http://'+weblocation+line, hdname+weblocation, line) 
+                    except:
+                        pass
+
+                    cmlib.force_download_file('http://'+weblocation+line, hdname+weblocation, line) 
+                    print origin_floc
+                    print 'real file size:',os.path.getsize(origin_floc)
             flist.close()
 
-            # Downloading RIB is very like downloading update files
             # We only download rib of the starting date!!
-            weblocation = ''
             if cl_type == 0:
                 weblocation = 'archive.routeviews.org/' +\
                         cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
@@ -297,7 +303,7 @@ def get_file():
                 if os.path.exists(origin_floc+'.txt'): 
                     os.remove(origin_floc+'.txt')
 
-                cmlib.getfile('http://'+weblocation+line, hdname+weblocation, line)
+                cmlib.force_download_file('http://'+weblocation+line, hdname+weblocation, line)
 
                 break
 
@@ -320,21 +326,21 @@ def get_file():
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print 'processing ',peer,'...'
-                subprocess.call('perl ~/tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
+                subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                         hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
-                        '~/tmp/'+peer+'_result.txt', shell=True)
+                        homedir+'tmp/'+peer+'_result.txt', shell=True)
 
                     
             print 'delete updates caused by session reset for each peer...'
             for peer in peers:
                 # No reset from this peer, so nothing in the file
-                if os.path.getsize('~/tmp/'+peer+'_result.txt') == 0:
+                if os.path.getsize(homedir+'tmp/'+peer+'_result.txt') == 0:
                     continue
                 print '\nculprit now: ', peer
                 del_tabletran_updates(peer, sdate, cl_name)
 
             # delete all rubbish in the end
-            subprocess.call('rm ~/tmp/*', shell=True)
+            subprocess.call('rm '+homedir+'tmp/*', shell=True)
                                 
         combine_flist(sdate)
     return

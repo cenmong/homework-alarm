@@ -1,4 +1,5 @@
 import os
+from os.path import expanduser
 
 hdname = ''
 if os.path.isdir('/media/cm/'):
@@ -8,6 +9,7 @@ elif os.path.isdir('/media/sxr/'):
 else:
     pass
 
+homedir = expanduser('~') + '/'
 
 # 0: routeviews; 1: ripe ris
 collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
