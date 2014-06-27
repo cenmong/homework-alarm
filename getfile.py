@@ -1,16 +1,12 @@
 import cmlib
-import os
-import nltk
-import urllib
 from env import *
 import datetime
 import patricia
 import subprocess
-import gzip
 
 # TODO: testonly. overwrite collectors
-collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
-#collectors = [('rrc00', 1)]
+#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
+collectors = [('rrc01', 1)]
 
 # TODO: change file name: RV & < Feb, 2003.
 
@@ -48,9 +44,7 @@ def parse_updates(sdate, cl_name):
         line = line.replace('\n', '')
         if not os.path.exists(line):  # xx.txt.gz not exists, .bz2/.gz exists
             print line
-            # parse .bz2/.gz into .txt
             cmlib.parse_mrt(line.replace('.txt.gz', ''), line.replace('txt.gz', 'txt'))
-            # compress xx.txt-->xx.txt.gz
             cmlib.pack_gz(line.replace('txt.gz', 'txt'))
             os.remove(line.replace('.txt.gz', ''))  # remove .bz2/.gz update files
         else:  # xx.txt.gz exists
@@ -67,7 +61,6 @@ def del_tabletran_updates(peer, sdate, cl_name):
             continue
 
         print line
-        # get session reset time
         print 'get session reset time...'
         stime_unix = int(attr[0])
         endtime_unix = int(attr[1])
@@ -77,7 +70,6 @@ def del_tabletran_updates(peer, sdate, cl_name):
                 datetime.timedelta(hours=-8)
         print 'from ', start_datetime, ' to ', end_datetime
 
-        # now let's clean updates
         updatefile_list =\
                 open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
         for updatefile in updatefile_list:  
@@ -162,155 +154,158 @@ def get_file():
     for i in xrange(1, 2):
         for clctr in collectors:
 
-            # get basic info of this collector
             try:
                 if int(daterange[i][0]) < int(clctr[2]):
-                    # this collector is born later than we want
-                    print 'this collector cannot serve'
+                    print'this collector is born later than we want'
                     continue
             except:  # usually when testing, clctr[2] may not be set
                 pass
-            cl_name = clctr[0] # set current collector name and type (rv or ripe)
+
+            cl_name = clctr[0]
             cl_type = clctr[1]
-            if cl_type == 0: # from rv family
-                # for ease of further coding, we define a detailed storage location
+
+            if cl_type == 0: # RouteViews
                 hdname_detail = hdname + 'archive.routeviews.org/' + cl_name +\
                     '/bgpdata/'
                 hdname_detail = hdname_detail.replace('//', '/') # happens when cl = ''
-            else:  # cl_type == 1. From RIPE family
+            else:
                 hdname_detail = hdname + 'data.ris.ripe.net/' + cl_name + '/'
 
-
-            # get date range info, sdate (start) and edate (end) are both strings
             sdate = daterange[i][0]
             sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
             edate_obj = sdate_obj + datetime.timedelta(days=(daterange[i][1]-1))
             edate = edate_obj.strftime('%Y%m%d')
 
-
-            # Now we can only deal with at most 2 months. Seems enough by now:)
+            # Now we can only deal with at most 2 months
             yearmonth = [] 
             yearmonth.append(sdate[0:4] + '.' + sdate[4:6])
             if edate[0:4] + '.' + edate[4:6] not in yearmonth:
                 yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-
             cmlib.make_dir(hdname+'metadata/'+sdate)
             flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
 
-            # loop over every month (at most 2 by now)
+            # only for downloading updates, not RIBs
             for ym in yearmonth:
-                # get update file list (noisy) from web
-                weblocation = ''  # relative location not considering hdname
+
+                filelocation = ''
                 if cl_type == 0:
-                    weblocation = 'archive.routeviews.org/' +\
+                    filelocation = 'archive.routeviews.org/' +\
                             cl_name + '/bgpdata/' + ym + '/UPDATES/'
-                    weblocation = weblocation.replace('//', '/')  # when name is ''
-                    webraw = cmlib.get_weblist('http://' + weblocation)
+                    filelocation = filelocation.replace('//', '/')  # when name is ''
+                    webraw = cmlib.get_weblist('http://' + filelocation)
                 else:
-                    weblocation = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
-                    webraw = cmlib.get_weblist('http://' + weblocation)
+                    filelocation = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
+                    webraw = cmlib.get_weblist('http://' + filelocation)
 
                 testcount = 0  # TODO: testonly
 
-                cmlib.make_dir(hdname+weblocation)
-
-                # read the noisy file list and download files
+                cmlib.make_dir(hdname+filelocation)
                 for line in webraw.split('\n'):
 
                     if not 'updates' in line or line == '' or line == '\n':
-                        continue  # omit noisy line
+                        continue
 
+                    print line
                     size = line.split()[-1]
-                    print 'u2v:',cmlib.size_u2v(size[-1])
+                    print size
+                    # TODO: whether size id a digit?
                     fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
-                    print 'fsize:',fsize
-                    line = line.split()[0]  # omit uninteresting info
-                    filedate = line.split('.')[-3]
+                    filename = line.split()[0]  # omit uninteresting info
+                    filedate = filename.split('.')[-3]
+
                     # check whether its datetime in our range
                     if int(filedate) < int(sdate) or int(filedate) > int(edate):
                         continue
+
+                    print filename
+
                     testcount += 1 #TODO: 3 lines testonly
                     if testcount == 5:
                         break
 
-                    print line
-                    origin_floc = hdname + weblocation + line # original file loc&name
-                       
-                    # write this name in list after adding suffix
+                    origin_floc = hdname + filelocation + filename # original file loc&name
                     flist.write(origin_floc+'.txt.gz\n')  # .xx.txt.gz file list
+
                     if os.path.exists(origin_floc+'.txt.gz'):
                         if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
-                            print '.xx.txt.gz update file exists!'
                             if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
                                 os.remove(origin_floc)
                             continue
                         else:
                             os.remove(origin_floc+'.txt.gz')
+
                     if os.path.exists(origin_floc):
                         if os.path.getsize(origin_floc) > 0.9 * fsize:
-                            print '.bz2/.gz update file exists!'
                             continue
                         else:
                             os.remove(origin_floc)
+
                     # remove existing xx.txt file to make things clearer
                     try:
                         os.remove(origin_floc+'.txt')
                     except:
                         pass
 
-                    cmlib.force_download_file('http://'+weblocation+line, hdname+weblocation, line) 
-                    print origin_floc
-                    print 'real file size:',os.path.getsize(origin_floc)
+                    cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename) 
+
+            # file that stores update list
             flist.close()
 
-            # We only download rib of the starting date!!
             if cl_type == 0:
-                weblocation = 'archive.routeviews.org/' +\
+                filelocation = 'archive.routeviews.org/' +\
                         cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
-                weblocation = weblocation.replace('//', '/')  # when name is ''
-                webraw = cmlib.get_weblist('http://' + weblocation)
+                filelocation = filelocation.replace('//', '/')  # when name is ''
+                webraw = cmlib.get_weblist('http://' + filelocation)
             else:
-                weblocation = 'data.ris.ripe.net/' + cl_name + '/' + yearmonth[0] + '/' 
-                webraw = cmlib.get_weblist('http://' + weblocation)
+                filelocation = 'data.ris.ripe.net/' + cl_name + '/' + yearmonth[0] + '/' 
+                webraw = cmlib.get_weblist('http://' + filelocation)
             
-            cmlib.make_dir(hdname+weblocation)
+            cmlib.make_dir(hdname+filelocation)
 
-            ## Download RIB. RIB date is always the start date
-            # for each event, we only download one RIB
-            ribtime = sdate
+            # for each event, we only download one RIB (on the sdate)
             rib_fname = ''
             for line in webraw.split('\n'):
+
                 if not 'rib' in line and not 'bview' in line:
                     continue
                 if line == '' or line == '\n':
                     continue
-                line = line.split()[0]
-                if not int(line.split('.')[-3]) == int(ribtime):
+
+                size = line.split()[-1]
+                fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+
+                filename = line.split()[0]
+                if not int(filename.split('.')[-3]) == int(sdate):
                     continue
-                print line
-                origin_floc = hdname + weblocation + line # original file loc&name
+                print filename
+                origin_floc = hdname + filelocation + filename # original file loc&name
 
-                rib_fname = weblocation + line
+                rib_fname = filelocation + filename
                 if os.path.exists(origin_floc+'.txt.gz'): 
-                    print '.xx.txt.gz RIB file exists!'
-                    if os.path.exists(origin_floc): 
-                        os.remove(origin_floc) 
-                    break
-                if os.path.exists(origin_floc): 
-                    print '.bz2/.gz RIB file exists!'
-                    break
-                if os.path.exists(origin_floc+'.txt'): 
-                    os.remove(origin_floc+'.txt')
+                    if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
+                        if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
+                            os.remove(origin_floc)
+                        break
+                    else:
+                        os.remove(origin_floc+'.txt.gz')
 
-                cmlib.force_download_file('http://'+weblocation+line, hdname+weblocation, line)
+                if os.path.exists(origin_floc): 
+                    if os.path.getsize(origin_floc) > 0.9 * fsize:
+                        break
+                    else:
+                        os.remove(origin_floc)
+                try:
+                    os.remove(origin_floc+'.txt')
+                except:
+                    pass
+
+                cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename)
 
                 break
 
-
             ## now for update and RIB files, their formats are either .bz2/gz or
             ## .xx.txt.gz!!!
-
 
             print 'parsing updates...'
             parse_updates(sdate, cl_name)
@@ -320,7 +315,6 @@ def get_file():
             peers = get_peers(rib_location)
             print 'peers: ', peers
             
-
             print 'determining table transfers start and end time for each peer...'
             peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
@@ -329,7 +323,6 @@ def get_file():
                 subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                         hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
                         homedir+'tmp/'+peer+'_result.txt', shell=True)
-
                     
             print 'delete updates caused by session reset for each peer...'
             for peer in peers:
