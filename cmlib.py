@@ -126,7 +126,6 @@ def ip_to_binary(content, peer):  # can deal with ip addr and pfx
 def get_collector(sdate):
     clist = []
     dir_list = os.listdir(hdname+'metadata/'+sdate+'/')
-    print 'cmlib dir_list:', dir_list
     for f in dir_list:
         if not 'filelist' in f:
             continue

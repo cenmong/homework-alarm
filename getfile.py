@@ -4,9 +4,12 @@ import datetime
 import patricia
 import subprocess
 
-# TODO: testonly. overwrite collectors
-#collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
-collectors = [('rrc01', 1)]
+global TEST
+TEST = True
+
+if TEST:
+    collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
+    #collectors = [('rrc01', 1)]
 
 # TODO: change file name: RV & < Feb, 2003.
 
@@ -198,7 +201,8 @@ def get_file():
                     filelocation = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
                     webraw = cmlib.get_weblist('http://' + filelocation)
 
-                testcount = 0  # TODO: testonly
+                if TEST:
+                    testcount = 0  # TODO: testonly
 
                 cmlib.make_dir(hdname+filelocation)
                 for line in webraw.split('\n'):
@@ -206,11 +210,11 @@ def get_file():
                     if not 'updates' in line or line == '' or line == '\n':
                         continue
 
-                    print line
                     size = line.split()[-1]
-                    print size
-                    # TODO: whether size id a digit?
-                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+                    if size.isdigit():
+                        fsize = float(size)
+                    else:
+                        fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
                     filename = line.split()[0]  # omit uninteresting info
                     filedate = filename.split('.')[-3]
 
@@ -220,12 +224,19 @@ def get_file():
 
                     print filename
 
-                    testcount += 1 #TODO: 3 lines testonly
-                    if testcount == 5:
-                        break
+                    if TEST:
+                        testcount += 1 #TODO: 3 lines testonly
+                        if testcount == 5:
+                            break
 
                     origin_floc = hdname + filelocation + filename # original file loc&name
                     flist.write(origin_floc+'.txt.gz\n')  # .xx.txt.gz file list
+
+                    # remove existing xx.txt file to make things clearer
+                    try:
+                        os.remove(origin_floc+'.txt')
+                    except:
+                        pass
 
                     if os.path.exists(origin_floc+'.txt.gz'):
                         if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
@@ -241,11 +252,6 @@ def get_file():
                         else:
                             os.remove(origin_floc)
 
-                    # remove existing xx.txt file to make things clearer
-                    try:
-                        os.remove(origin_floc+'.txt')
-                    except:
-                        pass
 
                     cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename) 
 
@@ -281,6 +287,11 @@ def get_file():
                 print filename
                 origin_floc = hdname + filelocation + filename # original file loc&name
 
+                try:
+                    os.remove(origin_floc+'.txt')
+                except:
+                    pass
+
                 rib_fname = filelocation + filename
                 if os.path.exists(origin_floc+'.txt.gz'): 
                     if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
@@ -295,10 +306,6 @@ def get_file():
                         break
                     else:
                         os.remove(origin_floc)
-                try:
-                    os.remove(origin_floc+'.txt')
-                except:
-                    pass
 
                 cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename)
 
@@ -316,7 +323,8 @@ def get_file():
             print 'peers: ', peers
             
             print 'determining table transfers start and end time for each peer...'
-            peers = peers[0:2]  # TODO: testonly
+            if TEST:
+                peers = peers[0:2]  # TODO: testonly
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print 'processing ',peer,'...'
