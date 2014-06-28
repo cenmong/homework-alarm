@@ -351,7 +351,7 @@ class Alarm():
         # top 10% AS and State
         cmlib.simple_plot(self.pfx_as_top10pctg,\
                 describe_add+'pfx_ratio_of_top10%_originAS(active)')
-        cmlib.simple_plot(self.pfx_nation_top10,\
+        cmlib.simple_plot(self.pfx_nation_top10pctg,\
                 describe_add+'pfx_ratio_of_top10%_originState(active)')
 
         # different levels of origin AS ranks
