@@ -5,7 +5,8 @@ import patricia
 import subprocess
 
 global TEST
-TEST = True
+#TEST = True
+TEST = False
 
 if TEST:
     collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
@@ -55,7 +56,7 @@ def parse_updates(sdate, cl_name):
     flist.close()
 
 
-def del_tabletran_updates(peer, sdate, cl_name):
+def del_tabletran_updates(peer, sdate, cl_name, cl_type):
     f_results = open(homedir+'tmp/'+peer+'_result.txt', 'r')
     for line in f_results:  # get all affection info of this peer
         line = line.replace('\n', '')
@@ -338,7 +339,7 @@ def get_file():
                 if os.path.getsize(homedir+'tmp/'+peer+'_result.txt') == 0:
                     continue
                 print '\nculprit now: ', peer
-                del_tabletran_updates(peer, sdate, cl_name)
+                del_tabletran_updates(peer, sdate, cl_name, cl_type)
 
             # delete all rubbish in the end
             subprocess.call('rm '+homedir+'tmp/*', shell=True)
