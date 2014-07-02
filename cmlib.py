@@ -19,14 +19,23 @@ from env import *
 
 def download_file(url, save_loc, filename):
     make_dir(save_loc)
-    if not os.path.exists(save_loc+filename):
-        urllib.urlretrieve(url+filename, save_loc+filename)
-    else:
-        pass
+    if os.path.exists(save_loc+filename):
+        return
+    while 1:
+        try:
+            urlliburlretrieve(url+filename, save_loc+filename)
+            break
+        except:
+            pass
 
 def force_download_file(url, save_loc, filename):
     make_dir(save_loc)
-    urllib.urlretrieve(url+filename, save_loc+filename)
+    while 1:
+        try:
+            urlliburlretrieve(url+filename, save_loc+filename)
+            break
+        except:
+            pass
 
 def get_unpack_gz(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.gz$', '', filename)):

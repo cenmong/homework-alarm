@@ -155,7 +155,7 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in xrange(1, 2):
+    for i in xrange(2, 3):
         for clctr in collectors:
 
             try:
