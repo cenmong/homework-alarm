@@ -1,9 +1,9 @@
-import cmlib
 import os
 import time 
 import subprocess
 import sys
 import string
+import cmlib
 
 from alarm_class import *
 from datetime import datetime
@@ -29,6 +29,8 @@ class Analyzer():
         if atype == 2:  # longitudinal
             self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype
+
+        cmlib.get_pfx2as_file(sdate)
 
     def is_normal(self, update):
         if set(update).issubset(self.allowed) and len(update.split('|')) > 5:

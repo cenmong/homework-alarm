@@ -9,6 +9,7 @@ import os
 import urllib
 import subprocess
 import nltk
+import cmlib
 
 graph = { 
     'a' : {'b':-2},
@@ -125,9 +126,8 @@ def johnsons(graph_new):
             
 if __name__ == "__main__":
 
-    for i in range(0, 1):  # loop over events
-        location = hdname+'as_hops/'+daterange[i][0]+'/'
-        '''
+    for i in range(1, 2):  # loop over events
+        location = hdname+'topofile/'+daterange[i][0]+'/'
         # mkdir if not exist
         if not os.path.isdir(location):
             os.makedirs(location)
@@ -188,28 +188,8 @@ if __name__ == "__main__":
                 graph[as2][as1] = 1
             except:
                 continue
-        dpf.close()'''
+        dpf.close()
 
-        # get pfx2as file by the way (only after 200506)
-        print 'get pfx2as file by the way (only after 200506)...'
-        year = daterange[i][0][:4] # YYYY
-        month = daterange[i][0][4:6] # MM
-        webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
-                        '/' + year + '/' + month + '/'
-        webhtml = urllib.urlopen(webloc).read()
-        webraw = nltk.clean_html(webhtml)
-        for line in webraw.split('\n'):
-            if not daterange[i][0] in line:
-                continue
-            if os.path.exists(hdname+location+line.split()[0].replace('.gz',\
-                        '')):
-                break
-            urllib.urlretrieve(webloc+line.split()[0], location+line.split()[0])
-            subprocess.call('gunzip -c '+location+line.split()[0]+' > '+\
-                    location+line.split()[0].replace('.gz', ''), shell=True)
-            os.remove(location+line.split()[0])
-
-        '''
         print 'running johnson ...'
         # graph = read_graph("graph.txt", 1000)
         graph_new = deepcopy(graph)
@@ -227,4 +207,3 @@ if __name__ == "__main__":
             for j in final_distances[i]:
                 print str(i)+' '+str(j)+' '+str(final_distances[i][j])
         print datetime.utcnow() - t1
-        '''

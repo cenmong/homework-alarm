@@ -145,3 +145,23 @@ def size_u2v(unit):
         return 1048576
     if unit in ['g', 'G']:
         return 1073741824
+
+def get_pfx2as_file(sdate):
+    location = hdname + 'topofile/' + sdate + '/'
+    print 'get pfx2as file ...'
+    year, month = sdate[:4], sdate[4:6] # YYYY, MM
+    webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
+                    '/' + year + '/' + month + '/'
+    webraw = get_weblist(webloc)
+    for line in webraw.split('\n'):
+        if not sdate in line:
+            continue
+        if os.path.exists(hdname+location+line.split()[0].replace('.gz',\
+                    '')):
+            break
+
+        make_dir(location)
+        urllib.urlretrieve(webloc+line.split()[0], location+line.split()[0])
+        subprocess.call('gunzip -c '+location+line.split()[0]+' > '+\
+                location+line.split()[0].replace('.gz', ''), shell=True)
+        os.remove(location+line.split()[0])
