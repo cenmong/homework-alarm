@@ -23,7 +23,7 @@ def download_file(url, save_loc, filename):
         return
     while 1:
         try:
-            urlliburlretrieve(url+filename, save_loc+filename)
+            urllib.urlretrieve(url+filename, save_loc+filename)
             break
         except:
             pass
@@ -32,7 +32,7 @@ def force_download_file(url, save_loc, filename):
     make_dir(save_loc)
     while 1:
         try:
-            urlliburlretrieve(url+filename, save_loc+filename)
+            urllib.urlretrieve(url+filename, save_loc+filename)
             break
         except:
             pass

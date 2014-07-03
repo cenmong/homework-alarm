@@ -46,6 +46,9 @@ class Alarm():
         self.acount = dict() # dt: announcement count
         self.wcount = dict() # dt: withdrawl count
         self.wpctg = dict() # dt: withdrawl percentage 
+        
+        self.ucount = dict() # dt: update count
+        self.pfxcount = dict() # dt: prefix (in updates) count
 
         #self.busy_cont_bypfx = dict() # dt: the busiest continent by DAP
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
@@ -149,16 +152,18 @@ class Alarm():
             self.peeraslist[dt] = []
             self.acount[dt] = 0
             self.wcount[dt] = 0
+            self.ucount[dt] = 0
             self.pfx_trie[dt] = patricia.trie(None)
             for i in xrange(0, len(self.rank_thsd)+1):
                 self.rank_count[i][dt] = 0
 
-        # get and record update type
+        # get and record update type and number
         ty = attr[2]
         if ty == 'A':
             self.acount[dt] += 1
         else: # 'W'
             self.wcount[dt] += 1
+        self.ucount[dt] += 1
 
         # fullfill the peerlist
         peer = attr[3]
@@ -250,6 +255,8 @@ class Alarm():
             self.act_c[dt] = pcount
             self.actas_c[dt] = len(as_list)
             self.actnation_c[dt] = len(nation_list)
+
+            self.pfxcount[dt] = len(trie)
 
             # get rank levels of origin ASes
             for item in as_list:
@@ -362,10 +369,12 @@ class Alarm():
         for i in xrange(0, len(self.rank_thsd)+1):
             cmlib.simple_plot(self.rank_count[i], describe_add+sign+str(i+1))
 
-        # announcement and withdrawal count
+        # announcement withdrawal update prefix count
         cmlib.simple_plot(self.acount, describe_add+'announce_count')
         cmlib.simple_plot(self.wcount, describe_add+'withdraw_count')
         cmlib.simple_plot(self.wpctg, describe_add+'withdraw_percentage')
+        cmlib.simple_plot(self.ucount, describe_add+'update_count')
+        cmlib.simple_plot(self.pfxcount, describe_add+'prefix_count')
 
     def plot_level(self, low, high, describe_add):
         # fill the empty values with 0
