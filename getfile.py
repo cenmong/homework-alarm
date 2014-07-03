@@ -155,7 +155,7 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in xrange(2, 3):
+    for i in xrange(0, 3):
         for clctr in collectors:
 
             try:
@@ -280,7 +280,10 @@ def get_file():
                     continue
 
                 size = line.split()[-1]
-                fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+                if size.isdigit():
+                    fsize = float(size)
+                else:
+                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
 
                 filename = line.split()[0]
                 if not int(filename.split('.')[-3]) == int(sdate):
