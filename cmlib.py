@@ -157,7 +157,7 @@ def size_u2v(unit):
 
 def get_pfx2as_file(sdate):
     location = hdname + 'topofile/' + sdate + '/'
-    print 'get pfx2as file ...'
+    print 'get pfx2as file ... (only after 2005.06)'
     year, month = sdate[:4], sdate[4:6] # YYYY, MM
     webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
                     '/' + year + '/' + month + '/'

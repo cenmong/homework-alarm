@@ -24,4 +24,9 @@ daterange = [('20061225', 4, '2006 taiwan cable cut'),\
             ('20030813', 4, '2003 east coast blackout'),\
             ('20050911', 4, 'LA blackout'),\
             ('20050828', 4, 'Hurricane Katrina'),\
+            ('20080129', 4, '2008 mediterranean cable cut 1'),\
+            ('20100226', 4, '2010 Chile earthquake'),\
+            ('20110310', 4, '2011 Japan Tsunami'),\
+            ('20121021', 4, '2012 Hurricane Sandy'),\
+            ('20130317', 4, '2013 Spamhaus DDoS'),\
             ]
