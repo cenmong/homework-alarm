@@ -80,7 +80,7 @@ def del_tabletran_updates(peer, sdate, cl_name, cl_type):
             updatefile = updatefile.replace('\n', '')
             file_attr = updatefile.split('.')
             if cl_type == 0:
-                fattr_date, fattr_time = file_attr[4], file_attr[5]
+                fattr_date, fattr_time = file_attr[3], file_attr[4]
             else:
                 fattr_date, fattr_time = file_attr[5], file_attr[6]
             dt = datetime.datetime(int(fattr_date[0:4]),\
@@ -155,7 +155,7 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in xrange(0, 3):
+    for i in xrange(10, 12):
         for clctr in collectors:
 
             try:
@@ -194,7 +194,8 @@ def get_file():
 
                 filelocation = ''
                 if cl_type == 0:
-                    filelocation = 'archive.routeviews.org/' +\
+                    #filelocation = 'archive.routeviews.org/' +\
+                    filelocation = 'routeviews.org/' +\
                             cl_name + '/bgpdata/' + ym + '/UPDATES/'
                     filelocation = filelocation.replace('//', '/')  # when name is ''
                     webraw = cmlib.get_weblist('http://' + filelocation)
@@ -260,7 +261,8 @@ def get_file():
             flist.close()
 
             if cl_type == 0:
-                filelocation = 'archive.routeviews.org/' +\
+                #filelocation = 'archive.routeviews.org/' +\
+                filelocation = 'routeviews.org/' +\
                         cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
                 filelocation = filelocation.replace('//', '/')  # when name is ''
                 webraw = cmlib.get_weblist('http://' + filelocation)
