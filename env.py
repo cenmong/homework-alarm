@@ -31,4 +31,10 @@ daterange = [('20061225', 4, '2006 taiwan cable cut', 0, 11),\
             ('20130317', 4, '2013 Spamhaus DDoS', 9, 10),\
             ('20140601', 7, 'for CDF in intro 2014', 10, 01),\
             ('20060601', 7, 'for CDF in intro 2006', 11, 01),\
+            ('20130207', 4, '2013 Northeastern U.S. Blackout', 12, 00),\
+            ('20100413', 4, '2010 Sea-Me undersea cable cut', 13, 00),\
+            ('20120221', 4, 'Australia route leakage', 14, 00),\
+            ('20120807', 4, 'Canada route leakage', 15, 00),\
+            ('20140501', 10, 'for CDF in intro 2014', 16, 01),\
+            ('20060501', 10, 'for CDF in intro 2006', 17, 01),\
             ]
