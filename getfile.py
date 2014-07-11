@@ -155,9 +155,8 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in xrange(7, 8):
+    for i in xrange(11, 12):
         for clctr in collectors:
-
             try:
                 if int(daterange[i][0]) < int(clctr[2]):
                     print'this collector is born later than we want'

@@ -174,3 +174,57 @@ def get_pfx2as_file(sdate):
         subprocess.call('gunzip -c '+location+line.split()[0]+' > '+\
                 location+line.split()[0].replace('.gz', ''), shell=True)
         os.remove(location+line.split()[0])
+
+def get_monitor_c(sdate):
+    mydate = sdate[0:4] + '.' + sdate[4:6]
+    clist = get_collector(sdate)
+    rib_location = ''
+    peers = set()
+    for c in clist:
+        if c.startswith('rrc'):
+            rib_location = hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/'
+            dir_list = os.listdir(hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/')
+            for f in dir_list:
+                if not f.startswith('bview'):
+                    dir_list.remove(f)
+        else:
+            if c == '':
+                rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
+                dir_list =\
+                    os.listdir(hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
+            else:
+                rib_location = 'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/'
+                dir_list =\
+                    os.listdir(hdname+'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/')
+
+        rib_location = rib_location + dir_list[0] # if RIB is of the same month. That's OK.
+        print 'getting peer count from RIB file: ', rib_location
+
+        if rib_location.endswith('txt.gz'):
+            subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        
+            rib_location = rib_location.replace('.txt.gz', '.txt')
+        elif not rib_location.endswith('txt'):  # .bz2/.gz file exists
+            parse_mrt(rib_location, rib_location+'.txt')
+            rib_location = rib_location + '.txt'
+            os.remove(rib_location)  # then remove .bz2/.gz
+        # now rib file definitely ends with .txt  
+        with open(rib_location, 'r') as f:  # get peers from RIB
+            for line in f:
+                try:
+                    addr = line.split('|')[3]
+                    peers.add(addr)
+                except:
+                    pass
+        f.close()
+        # compress RIB into .gz
+        if not os.path.exists(rib_location+'.gz'):
+            pack_gz(rib_location)
+
+        print str(len(peers))
+
+    f = open(hdname+'metadata/sdate&peercount', 'a')
+    f.write(sdate+' '+str(len(peers))+'\n')
+    f.close()
+
+    return len(peers)
+

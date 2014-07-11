@@ -30,17 +30,10 @@ class Alarm():
         self.as2rank = dict() # asn: rank (2012 datasource)
         # here stores info about nations
         self.nation2cont = dict() # nation: continent
-        '''
 
-        # from now on is what we are really interested in, or what we can plot
-        # figures from.
-
-        self.pfx_trie = dict()  # dt: trie. (garbage deletion target)
         self.peerlist = dict()  # dt: peer list
         self.peeraslist = dict() # dt: peer AS list
-        self.act_c = dict() # dt: active prefix count
 
-        '''
         self.actas_c = dict() # dt: origin AS(of DAPs) count
         self.actnation_c = dict() # dt: origin nation(od DAPs) count
         
@@ -49,8 +42,22 @@ class Alarm():
         self.wpctg = dict() # dt: withdrawl percentage 
         '''
 
+        # from now on is what we are really interested in, or what we can plot
+        # figures from.
+
+        self.pfx_trie = dict()  # dt: trie. (garbage deletion target)
+        self.act_c = dict() # dt: active prefix count
+
+        self.dt_list = list()
+
         self.ucount = dict() # dt: update count
         self.pfxcount = dict() # dt: prefix (in updates) count
+
+        for dr in daterange:
+            if dr[0] == self.sdate:
+                self.mcount = dr[2]
+        if self.mcount == -1:
+            self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
 
         #self.busy_cont_bypfx = dict() # dt: the busiest continent by DAP
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
@@ -150,10 +157,11 @@ class Alarm():
         dt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
 
 
-        if dt not in self.peerlist.keys(): # a brand new dt for sure!
+        if dt not in self.dt_list: # a brand new dt for sure!
+            self.dt_list.append(dt)
             # initialization
-            self.peerlist[dt] = []
-            self.peeraslist[dt] = []
+            #self.peerlist[dt] = []
+            #self.peeraslist[dt] = []
             self.ucount[dt] = 0
             self.pfx_trie[dt] = patricia.trie(None)
     
@@ -172,8 +180,9 @@ class Alarm():
         '''
         self.ucount[dt] += 1
 
-        # fullfill the peerlist
         peer = attr[3]
+        '''
+        # fullfill the peerlist
         if peer not in self.peerlist[dt]:
             self.peerlist[dt].append(peer)
 
@@ -181,7 +190,8 @@ class Alarm():
         peeras = int(attr[4])
         if peeras not in self.peeraslist[dt]:
             self.peeraslist[dt].append(peeras)
-        
+        '''    
+
         # now let's deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
         try:
@@ -199,7 +209,7 @@ class Alarm():
     def aggregate(self, rel_dt):
         print 'aggregating...'
         for dt in rel_dt:
-            len_all_peer = len(self.peerlist[dt])
+            # TODO
             trie = self.pfx_trie[dt]
             pcount = 0
             #as_list = [] # list of origin ASes in this dt
@@ -212,7 +222,7 @@ class Alarm():
             for p in trie:
                 if p == '':
                     continue
-                ratio = len(trie[p])*10 / len_all_peer * 10 # 0,10,...,90,100
+                ratio = len(trie[p])*10 / self.mcount * 10 # 0,10,...,90,100
                 for lv in self.level.keys():
                     if ratio >= lv: # e.g., 20 >= 0, 10, 20
                         try:
@@ -222,7 +232,7 @@ class Alarm():
 
 
                 # only count active prefixes from now on
-                ratio = float(len(trie[p]))/float(len_all_peer)
+                ratio = float(len(trie[p]))/float(self.mcount)
                 if ratio <= self.active_t: # not active pfx
                     continue
                 pcount += 1
@@ -341,6 +351,7 @@ class Alarm():
         for i in xrange(0, len(self.dvi)):
             cmlib.simple_plot(self.active_t, self.granu, self.dvi[i], describe_add+self.dvi_desc[i])
 
+        '''
         # plot peer count
         peercount = {}
         for key in self.peerlist.keys():
@@ -352,6 +363,7 @@ class Alarm():
         for key in self.peeraslist.keys():
             peerascount[key] = len(self.peeraslist[key])
         cmlib.simple_plot(self.active_t, self.granu, peerascount, describe_add+'peerAScount')
+        '''
 
         # active pfx count
         cmlib.simple_plot(self.active_t, self.granu, self.act_c, describe_add+'act_pfx_count')
@@ -394,9 +406,8 @@ class Alarm():
 
     def plot_level(self, low, high, describe_add):
         # fill the empty values with 0
-        dtlist = self.peerlist.keys()
         for key in self.level.keys():
-            for dt in dtlist:
+            for dt in self.dt_list:
                 try:
                     test = self.level[key][dt]
                 except:

@@ -42,6 +42,7 @@ class Analyzer():
         filelist = open(self.filelist, 'r')
         for ff in filelist:
             ff = ff.replace('\n', '')
+            ff = ff.replace('archive.', '')
             print ff
             subprocess.call('gunzip -c '+ff+' >\
                     '+ff.replace('txt.gz', 'txt'), shell=True)
