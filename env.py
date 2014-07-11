@@ -26,15 +26,15 @@ daterange = [('20061225', 4, '2006 taiwan cable cut', 0, 11),\
             ('20050828', 4, 'Hurricane Katrina', 4, 11),\
             ('20080129', 4, '2008 mediterranean cable cut 1', 5, 11),\
             ('20100226', 4, '2010 Chile earthquake', 6, 11),\
-            ('20110310', 4, '2011 Japan Tsunami', 7, 10),\
-            ('20121021', 4, '2012 Hurricane Sandy', 8, 10),\
-            ('20130317', 4, '2013 Spamhaus DDoS', 9, 10),\
-            ('20140601', 7, 'for CDF in intro 2014', 10, 01),\
-            ('20060601', 7, 'for CDF in intro 2006', 11, 01),\
+            ('20110310', 4, '2011 Japan Tsunami', 7, 00),\
+            ('20121021', 4, '2012 Hurricane Sandy', 8, 00),\
+            ('20130317', 4, '2013 Spamhaus DDoS', 9, 00),\
+            ('20140601', 7, 'for CDF in intro 2014', 10, 00),\
+            ('20060601', 7, 'for CDF in intro 2006', 11, 00),\
             ('20130207', 4, '2013 Northeastern U.S. Blackout', 12, 00),\
             ('20100413', 4, '2010 Sea-Me undersea cable cut', 13, 00),\
             ('20120221', 4, 'Australia route leakage', 14, 00),\
             ('20120807', 4, 'Canada route leakage', 15, 00),\
-            ('20140501', 10, 'for CDF in intro 2014', 16, 01),\
-            ('20060501', 10, 'for CDF in intro 2006', 17, 01),\
+            ('20140501', 10, 'for CDF in intro 2014', 16, 00),\
+            ('20060501', 10, 'for CDF in intro 2006', 17, 00),\
             ]

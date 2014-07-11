@@ -404,12 +404,16 @@ class Alarm():
 
             f = open(hdname+'topofile/'+self.sdate+'/'+pfx2as_file)
             for line in f:
+                print line
                 line = line.rstrip('\n')
                 attr = line.split()
                 if '_' in attr[2] or ',' in attr[2]:
                     continue
                 pfx = cmlib.ip_to_binary(attr[0]+'/'+attr[1], '0.0.0.0')
-                self.pfx2as[pfx] = int(attr[2]) # pfx: origin AS
+                try:
+                    self.pfx2as[pfx] = int(attr[2]) # pfx: origin AS
+                except:
+                    self.pfx2as[pfx] = -1
             f.close()
 
         # We already have a global trie
