@@ -78,7 +78,7 @@ def parse_mrt(old_loc_fname, new_loc_fname):
     else:  # file already exists
         pass
 
-def simple_plot(my_dict, describe): # start date is always first attribute
+def simple_plot(active_t, granu, my_dict, describe): # start date is always first attribute
     value = []
     dt = my_dict.keys()
     dt.sort()
@@ -97,8 +97,8 @@ def simple_plot(my_dict, describe): # start date is always first attribute
     #plt.plot()
 
     sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'/')
-    plt.savefig(hdname+'output/'+sdate+'/'+describe+'.pdf')
+    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
     plt.close()
     return 0
 

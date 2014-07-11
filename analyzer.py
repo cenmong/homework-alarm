@@ -30,7 +30,7 @@ class Analyzer():
             self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype
 
-        cmlib.get_pfx2as_file(sdate)
+        #cmlib.get_pfx2as_file(sdate)
 
     def is_normal(self, update):
         if set(update).issubset(self.allowed) and len(update.split('|')) > 5:
