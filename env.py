@@ -26,7 +26,7 @@ daterange = [('20061225', 4, 168, '2006 taiwan cable cut', 0, 11),\
             ('20050828', 4, -1, 'Hurricane Katrina', 4, 11),\
             ('20080129', 4, -1, '2008 mediterranean cable cut 1', 5, 11),\
             ('20100226', 4, -1, '2010 Chile earthquake', 6, 11),\
-            ('20110310', 4, -1, '2011 Japan Tsunami', 7, 00),\
+            ('20110310', 4, -1, '2011 Japan Tsunami', 7, 10),\
             ('20121021', 4, -1, '2012 Hurricane Sandy', 8, 00),\
             ('20130317', 4, -1, '2013 Spamhaus DDoS', 9, 00),\
             ('20140601', 7, -1, 'for CDF in intro 2014', 10, 00),\

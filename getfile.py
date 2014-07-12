@@ -28,7 +28,7 @@ def combine_flist(sdate):
             filename = filename.replace('\n', '')
             file_attr = filename.split('.')
             if cl_type == 0:
-                file_dt = file_attr[4] + file_attr[5]
+                file_dt = file_attr[3] + file_attr[4]
             else:
                 file_dt = file_attr[5] + file_attr[6]
             dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
@@ -155,7 +155,7 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in xrange(11, 12):
+    for i in xrange(10, 11):
         for clctr in collectors:
             try:
                 if int(daterange[i][0]) < int(clctr[2]):
