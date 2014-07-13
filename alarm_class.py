@@ -88,13 +88,16 @@ class Alarm():
 
         # Dynamic Visibility Index
         self.dvi = []  # DVI No.: dt: value
-        for i in xrange(0, 4): # control total number of DVIs here
+        for i in xrange(0, 5): # control total number of DVIs here
             self.dvi.append({})
         self.dvi_desc = {} # DVI No.: describe
         self.dvi_desc[0] = 'dvi(ratio-threshold)' # div No.: describe
         self.dvi_desc[1] = 'dvi(2^(ratio-0.9)_10)' # div No.: describe
         self.dvi_desc[2] = 'dvi(5^(ratio-0.9)_10)' # div No.: describe
         self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
+        self.dvi_desc[4] = 'dvi(1)' # div No.: describe
+
+        self.all_pcount = cmlib.get_all_pcount(self.sdate)
 
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybofy is ready
@@ -271,6 +274,7 @@ class Alarm():
                 self.dvi[1][dt] += np.power(2, (ratio-0.9)*10)
                 self.dvi[2][dt] += np.power(5, (ratio-0.9)*10)
                 self.dvi[3][dt] += ratio
+                self.dvi[4][dt] += 1
 
             self.act_c[dt] = pcount
             self.pfxcount[dt] = len(trie)
@@ -346,6 +350,13 @@ class Alarm():
         return 0
 
     def plot(self): # plot everything here!
+
+        # devide DVIs by total prefix count
+        for i in xrange(0, len(self.dvi)):
+            for key_dt in self.dvi[i].keys():
+                value = self.dvi[i][key_dt]
+                self.dvi[i][key_dt] = float(value)/float(self.all_pcount)
+
         # plot all DVIs
         describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
         for i in xrange(0, len(self.dvi)):

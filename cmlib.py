@@ -12,6 +12,7 @@ import matplotlib.dates as mpldates
 import datetime
 import patricia
 import gzip
+import time as time_lib
 
 from matplotlib.dates import HourLocator
 from netaddr import *
@@ -228,3 +229,36 @@ def get_monitor_c(sdate):
 
     return len(peers)
 
+def get_all_pcount(sdate):
+    objdt = datetime.datetime.strptime(sdate, '%Y%m%d') 
+    intdt = time_lib.mktime(objdt.timetuple())
+
+    dtlist = []
+    pclist = []
+    floc = hdname + 'topofile/bgp-active.txt'
+    f = open(floc, 'r')
+    for line in f:
+        dt = line.split()[0]
+        pcount = line.split()[1]
+        dtlist.append(int(dt))
+        pclist.append(int(pcount))
+    f.close()
+
+    least = 9999999999
+    loc = 0
+    for i in xrange(0, len(dtlist)):
+        if abs(dtlist[i]-intdt) < least:
+            least = abs(dtlist[i]-intdt)
+            loc = i
+
+    goal = 0
+    for j in xrange(loc, len(dtlist)-1):
+        prev = pclist[j-1]
+        goal = pclist[j]
+        nex = pclist[j+1]
+        if abs(goal-prev) > prev/7 or abs(goal-nex) > nex/7: # outlier
+            continue
+        else:
+            break
+
+    return goal
