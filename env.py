@@ -27,7 +27,7 @@ daterange = [('20061225', 4, 168, '2006 taiwan cable cut', 0, 11),\
             ('20080129', 4, -1, '2008 mediterranean cable cut 1', 5, 11),\
             ('20100226', 4, -1, '2010 Chile earthquake', 6, 11),\
             ('20110310', 4, -1, '2011 Japan Tsunami', 7, 10),\
-            ('20121021', 4, -1, '2012 Hurricane Sandy', 8, 00),\
+            ('20121021', 4, -1, '2012 Hurricane Sandy', 8, 10),\
             ('20130317', 4, -1, '2013 Spamhaus DDoS', 9, 00),\
             ('20140601', 7, -1, 'for CDF in intro 2014', 10, 01),\
             ('20060601', 7, -1, 'for CDF in intro 2006', 11, 00),\
@@ -35,6 +35,4 @@ daterange = [('20061225', 4, 168, '2006 taiwan cable cut', 0, 11),\
             ('20100413', 4, -1, '2010 Sea-Me undersea cable cut', 13, 00),\
             ('20120221', 4, -1, 'Australia route leakage', 14, 00),\
             ('20120807', 4, -1, 'Canada route leakage', 15, 00),\
-            ('20140501', 10, -1, 'for CDF in intro 2014', 16, 00),\
-            ('20060501', 10, -1, 'for CDF in intro 2006', 17, 00),\
             ]
