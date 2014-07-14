@@ -100,7 +100,7 @@ class Alarm():
         self.all_pcount = cmlib.get_all_pcount(self.sdate)
 
         # For CDF
-        self.cdf = []
+        self.cdf = dict()
 
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybofy is ready
@@ -240,7 +240,10 @@ class Alarm():
                 # only count active prefixes from now on
                 ratio = float(len(trie[p]))/float(self.mcount)
                 # For CDF plot only
-                self.cdf.append(ratio)
+                try:
+                    self.cdf[ratio] += 1
+                except:
+                    self.cdf[ratio] = 1
                 if ratio <= self.active_t: # not active pfx
                     continue
                 pcount += 1

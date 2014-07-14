@@ -102,19 +102,12 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
     plt.close()
     return 0
 
-def cdf_plot(active_t, granu, my_list, describe): # start date is always first attribute
-    tmp_dict = {}
-    for item in my_list:
-        try:
-            tmp_dict[item] += 1
-        except:
-            tmp_dict[item] = 1
-    
+def cdf_plot(active_t, granu, my_dict, describe): # start date is always first attribute
     xlist = [0]
     ylist = [0]
-    for key in sorted(tmp_dict):
+    for key in sorted(my_dict):
         xlist.append(key)
-        ylist.append(tmp_dict[key])
+        ylist.append(my_dict[key])
 
     for i in xrange(1, len(ylist)):
         ylist[i] += ylist[i-1]
