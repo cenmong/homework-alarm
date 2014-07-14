@@ -87,7 +87,7 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
         value.append(my_dict[key])
     dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
     
-    fig = plt.figure(figsize=(16, 8))
+    fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
     ax.plot(dt, value, 'b-')
     ax.set_ylabel(describe)
@@ -95,7 +95,41 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
     myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
     ax.xaxis.set_major_formatter(myFmt)
     plt.xticks(rotation=45)
-    #plt.plot()
+
+    sdate = describe.split('_')[0]
+    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
+    plt.close()
+    return 0
+
+def cdf_plot(active_t, granu, my_list, describe): # start date is always first attribute
+    tmp_dict = {}
+    for item in my_list:
+        try:
+            tmp_dict[item] += 1
+        except:
+            tmp_dict[item] = 1
+    
+    xlist = [0]
+    ylist = [0]
+    for key in sorted(tmp_dict):
+        xlist.append(key)
+        ylist.append(tmp_dict[key])
+
+    for i in xrange(1, len(ylist)):
+        ylist[i] += ylist[i-1]
+
+    giant = ylist[-1]
+    for i in xrange(0, len(ylist)):
+        ylist[i] = float(ylist[i])/float(giant)
+
+    fig = plt.figure(figsize=(16, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(xlist, ylist, 'b-')
+    ax.set_ylim([0,1.1])
+    ax.set_xlim([-0.1,1])
+    ax.set_ylabel('prefix-times (%)')
+    ax.set_xlabel('monitor count (%)')
 
     sdate = describe.split('_')[0]
     make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')

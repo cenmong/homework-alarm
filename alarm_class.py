@@ -99,6 +99,9 @@ class Alarm():
 
         self.all_pcount = cmlib.get_all_pcount(self.sdate)
 
+        # For CDF
+        self.cdf = []
+
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybofy is ready
             return 0
@@ -236,6 +239,8 @@ class Alarm():
 
                 # only count active prefixes from now on
                 ratio = float(len(trie[p]))/float(self.mcount)
+                # For CDF plot only
+                self.cdf.append(ratio)
                 if ratio <= self.active_t: # not active pfx
                     continue
                 pcount += 1
@@ -412,8 +417,12 @@ class Alarm():
         cmlib.simple_plot(self.active_t, self.granu, self.wpctg, describe_add+'withdraw_percentage')
         '''
 
+        # total update and prefix count
         cmlib.simple_plot(self.active_t, self.granu, self.ucount, describe_add+'update_count')
         cmlib.simple_plot(self.active_t, self.granu, self.pfxcount, describe_add+'prefix_count')
+
+        # CDF in introduction
+        cmlib.cdf_plot(self.active_t, self.granu, self.cdf, describe_add+'CDF')
 
     def plot_level(self, low, high, describe_add):
         # fill the empty values with 0
