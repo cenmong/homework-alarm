@@ -363,7 +363,8 @@ class Alarm():
         for i in xrange(0, len(self.dvi)):
             for key_dt in self.dvi[i].keys():
                 value = self.dvi[i][key_dt]
-                self.dvi[i][key_dt] = float(value)/float(self.all_pcount)
+                # get the percentage
+                self.dvi[i][key_dt] = float(value)/float(self.all_pcount) * 100
 
         # plot all DVIs
         describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
