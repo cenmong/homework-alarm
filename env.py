@@ -35,4 +35,13 @@ daterange = [('20061225', 4, 168, '2006 taiwan cable cut', 0, 11),\
             ('20100413', 4, -1, '2010 Sea-Me undersea cable cut', 13, 00),\
             ('20120221', 4, -1, 'Australia route leakage', 14, 00),\
             ('20120807', 4, -1, 'Canada route leakage', 15, 00),\
+            ('20030124', 4, -1, '2003 Slammer worm', 16, 00),\
+            ('20130321', 4, -1, '20130322 EASSy/SEACOM Outages', 17, 00),\
+            ('20130213', 4, -1, '20130214 SEACOM Outages', 18, 00),\
+            ('20110327', 4, -1, '20110328 Caucasus cable cut', 19, 00),\
+            ('20121222', 4, -1, '20121223 Georgia-Russia cable cut', 20, 00),\
+            ('20120224', 4, -1, '20120225 0913 TEAMS cable cut in east Africa', 21, 00),\
+            ('20120425', 4, -1, '20120426 0904 TEAMS cable cut again in east\
+                    Africa', 22, 00),\
+            ('20110824', 4, -1, '201108 hurricane Irene in east U.S.', 23, 00),\
             ]
