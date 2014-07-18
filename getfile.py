@@ -57,7 +57,7 @@ def parse_updates(sdate, cl_name):
 
 
 def del_tabletran_updates(peer, sdate, cl_name, cl_type):
-    f_results = open(homedir+'tmp/'+peer+'_result.txt', 'r')
+    f_results = open(hdname+'tmp/'+peer+'_result.txt', 'r')
     for line in f_results:  # get all affection info of this peer
         line = line.replace('\n', '')
         attr = line.split(',')
@@ -98,7 +98,7 @@ def del_tabletran_updates(peer, sdate, cl_name, cl_type):
                     myfilename, shell=True)
             # only .txt from now on!
             oldfile = open(myfilename, 'r')
-            newfile = open(homedir+'tmp/'+myfilename.split('/')[-1], 'w')
+            newfile = open(hdname+'tmp/'+myfilename.split('/')[-1], 'w')
 
             counted_pfx = patricia.trie(None)
             for updt in oldfile:  # loop over each update
@@ -121,7 +121,7 @@ def del_tabletran_updates(peer, sdate, cl_name, cl_type):
 
             os.remove(updatefile)  # remove old .gz file
             # compress .txt into txt.gz to replace the old file
-            subprocess.call('gzip -c '+homedir+'tmp/'+myfilename.split('/')[-1]+\
+            subprocess.call('gzip -c '+hdname+'tmp/'+myfilename.split('/')[-1]+\
                     ' > '+updatefile, shell=True)
             size_after = os.path.getsize(updatefile)
             print 'size(b):', size_before, ',size(a):', size_after
@@ -155,7 +155,7 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in xrange(10, 11):
+    for i in xrange(13, 16):
         for clctr in collectors:
             try:
                 if int(daterange[i][0]) < int(clctr[2]):
@@ -335,18 +335,18 @@ def get_file():
                 print 'processing ',peer,'...'
                 subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
                         hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
-                        homedir+'tmp/'+peer+'_result.txt', shell=True)
+                        hdname+'tmp/'+peer+'_result.txt', shell=True)
                     
             print 'delete updates caused by session reset for each peer...'
             for peer in peers:
                 # No reset from this peer, so nothing in the file
-                if os.path.getsize(homedir+'tmp/'+peer+'_result.txt') == 0:
+                if os.path.getsize(hdname+'tmp/'+peer+'_result.txt') == 0:
                     continue
                 print '\nculprit now: ', peer
                 del_tabletran_updates(peer, sdate, cl_name, cl_type)
 
             # delete all rubbish in the end
-            subprocess.call('rm '+homedir+'tmp/*', shell=True)
+            subprocess.call('rm '+hdname+'tmp/*', shell=True)
                                 
         combine_flist(sdate)
     return
