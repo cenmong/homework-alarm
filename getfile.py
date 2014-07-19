@@ -340,7 +340,10 @@ def get_file():
             print 'delete updates caused by session reset for each peer...'
             for peer in peers:
                 # No reset from this peer, so nothing in the file
-                if os.path.getsize(hdname+'tmp/'+peer+'_result.txt') == 0:
+                try:
+                    if os.path.getsize(hdname+'tmp/'+peer+'_result.txt') == 0:
+                        continue
+                except: # cannot find file
                     continue
                 print '\nculprit now: ', peer
                 del_tabletran_updates(peer, sdate, cl_name, cl_type)
