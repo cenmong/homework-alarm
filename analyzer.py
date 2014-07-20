@@ -30,6 +30,15 @@ class Analyzer():
             self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype
 
+        direct_success = True
+        try:
+            self.alarm.direct_plot()
+        except:
+            direct_success = False
+
+        if direct_success: # work done :)
+            print 'Directly plotted from initial data. Program abort.'
+            sys.exit()
         #cmlib.get_pfx2as_file(sdate)
 
     def is_normal(self, update):

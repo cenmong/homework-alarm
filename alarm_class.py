@@ -102,6 +102,9 @@ class Alarm():
         # For CDF
         self.cdf = dict()
 
+        # for naming the plots 
+        self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
+
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybofy is ready
             return 0
@@ -357,6 +360,29 @@ class Alarm():
 
         return 0
 
+    def direct_plot(self): # this is called before everybody!
+        # polt from intial data directly
+        # get name of the interested data and divide into categories according
+        # to diffrent polting needs
+        array1 = []
+        array2 = []
+        array3 = []
+        array1.append(self.dvi_desc[4]) # the DVI we've decided
+        array2.append('update_count')
+        array2.append('prefix_count')
+        array3.append('CDF')
+
+        # Now, let's rock and roll
+        for name in array1:
+            cmlib.direct_simple_plot(self.active_t, self.granu,\
+                    self.describe_add+name)
+        for name in array2:
+            cmlib.direct_simple_plot(self.active_t, self.granu,\
+                    self.describe_add+name)
+        for name in array3:
+            cmlib.direct_cdf_plot(self.active_t, self.granu,\
+                    self.describe_add+name)
+
     def plot(self): # plot everything here!
 
         # devide DVIs by total prefix count
@@ -367,45 +393,44 @@ class Alarm():
                 self.dvi[i][key_dt] = float(value)/float(self.all_pcount) * 100
 
         # plot all DVIs
-        describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
         for i in xrange(0, len(self.dvi)):
-            cmlib.simple_plot(self.active_t, self.granu, self.dvi[i], describe_add+self.dvi_desc[i])
+            cmlib.simple_plot(self.active_t, self.granu, self.dvi[i], self.describe_add+self.dvi_desc[i])
 
         '''
         # plot peer count
         peercount = {}
         for key in self.peerlist.keys():
             peercount[key] = len(self.peerlist[key])
-        cmlib.simple_plot(self.active_t, self.granu, peercount, describe_add+'peercount')
+        cmlib.simple_plot(self.active_t, self.granu, peercount, self.describe_add+'peercount')
 
         # plot peer AS count
         peerascount = {}
         for key in self.peeraslist.keys():
             peerascount[key] = len(self.peeraslist[key])
-        cmlib.simple_plot(self.active_t, self.granu, peerascount, describe_add+'peerAScount')
+        cmlib.simple_plot(self.active_t, self.granu, peerascount, self.describe_add+'peerAScount')
         '''
 
         # active pfx count
-        cmlib.simple_plot(self.active_t, self.granu, self.act_c, describe_add+'act_pfx_count')
+        cmlib.simple_plot(self.active_t, self.granu, self.act_c, self.describe_add+'act_pfx_count')
 
         # plot interested levels
-        self.plot_level(10, 80, describe_add)
+        self.plot_level(10, 80, self.describe_add)
 
         '''
-        cmlib.simple_plot(self.active_t, self.granu, self.actas_c, describe_add+'originAS(act_pfx)count')
-        cmlib.simple_plot(self.active_t, self.granu, self.actnation_c, describe_add+'State(active_pfx)count')
+        cmlib.simple_plot(self.active_t, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
+        cmlib.simple_plot(self.active_t, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
 
         # top 10 AS and State
         cmlib.simple_plot(self.active_t, self.granu, self.pfx_as_top10,\
-                describe_add+'pfx_ratio_of_top10_originAS(active)')
+                self.describe_add+'pfx_ratio_of_top10_originAS(active)')
         cmlib.simple_plot(self.active_t, self.granu, self.pfx_nation_top10,\
-                describe_add+'pfx_ratio_of_top10_originState(active)')
+                self.describe_add+'pfx_ratio_of_top10_originState(active)')
 
         # top 10% AS and State
         cmlib.simple_plot(self.active_t, self.granu, self.pfx_as_top10pctg,\
-                describe_add+'pfx_ratio_of_top10%_originAS(active)')
+                self.describe_add+'pfx_ratio_of_top10%_originAS(active)')
         cmlib.simple_plot(self.active_t, self.granu, self.pfx_nation_top10pctg,\
-                describe_add+'pfx_ratio_of_top10%_originState(active)')
+                self.describe_add+'pfx_ratio_of_top10%_originState(active)')
 
         # different levels of origin AS ranks
         sign = 'rank_level_'
@@ -413,22 +438,22 @@ class Alarm():
             sign = sign + str(item) + '_'
         sign += '_'
         for i in xrange(0, len(self.rank_thsd)+1):
-            cmlib.simple_plot(self.active_t, self.granu, self.rank_count[i], describe_add+sign+str(i+1))
+            cmlib.simple_plot(self.active_t, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
 
         # announcement withdrawal update prefix count
-        cmlib.simple_plot(self.active_t, self.granu, self.acount, describe_add+'announce_count')
-        cmlib.simple_plot(self.active_t, self.granu, self.wcount, describe_add+'withdraw_count')
-        cmlib.simple_plot(self.active_t, self.granu, self.wpctg, describe_add+'withdraw_percentage')
+        cmlib.simple_plot(self.active_t, self.granu, self.acount, self.describe_add+'announce_count')
+        cmlib.simple_plot(self.active_t, self.granu, self.wcount, self.describe_add+'withdraw_count')
+        cmlib.simple_plot(self.active_t, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
         '''
 
         # total update and prefix count
-        cmlib.simple_plot(self.active_t, self.granu, self.ucount, describe_add+'update_count')
-        cmlib.simple_plot(self.active_t, self.granu, self.pfxcount, describe_add+'prefix_count')
+        cmlib.simple_plot(self.active_t, self.granu, self.ucount, self.describe_add+'update_count')
+        cmlib.simple_plot(self.active_t, self.granu, self.pfxcount, self.describe_add+'prefix_count')
 
         # CDF in introduction
-        cmlib.cdf_plot(self.active_t, self.granu, self.cdf, describe_add+'CDF')
+        cmlib.cdf_plot(self.active_t, self.granu, self.cdf, self.describe_add+'CDF')
 
-    def plot_level(self, low, high, describe_add):
+    def plot_level(self, low, high):
         # fill the empty values with 0
         for key in self.level.keys():
             for dt in self.dt_list:
@@ -440,7 +465,7 @@ class Alarm():
         for key in self.level.keys():
             if key < low or key > high:
                 continue
-            cmlib.simple_plot(self.active_t, self.granu, self.level[key], describe_add+'='+str(key))
+            cmlib.simple_plot(self.active_t, self.granu, self.level[key], self.describe_add+'='+str(key))
 
     '''
     def pfx_to_as(self, mypfx):

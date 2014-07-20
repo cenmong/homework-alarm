@@ -89,7 +89,7 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
     
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
-    ax.plot(dt, value, 'b-')
+    ax.plot(dt, value, 'k-')
     ax.set_ylabel(describe)
     ax.set_xlabel('Datetime')
     myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
@@ -100,7 +100,40 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
     make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
     plt.close()
+
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+\
+            describe+'.txt', 'w')
+    for i in xrange(0, len(dt)):
+        f.write(str(dt[i])+','+str(value[i])+'\n')
+    f.close()
     return 0
+
+def direct_simple_plot(active_t, granu, describe):
+    sdate = describe.split('_')[0]
+    fname =\
+            hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
+    dt = []
+    value = []
+    f = open(fname, 'r')
+    for line in f:
+        line = line.replace('\n', '').split(',')
+        tmp = line[0]
+        tmp = datetime.datetime.strptime(tmp, '%Y-%m-%d %H:%M:%S')
+        dt.append(tmp)
+        value.append(float(line[1]))
+    f.close()
+
+    fig = plt.figure(figsize=(16, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(dt, value, 'k-')
+    ax.set_ylabel(describe)
+    ax.set_xlabel('Datetime')
+    myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
+    ax.xaxis.set_major_formatter(myFmt)
+    plt.xticks(rotation=45)
+
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')
+    plt.close()
 
 def cdf_plot(active_t, granu, my_dict, describe): # start date is always first attribute
     xlist = [0]
@@ -116,19 +149,55 @@ def cdf_plot(active_t, granu, my_dict, describe): # start date is always first a
     for i in xrange(0, len(ylist)):
         ylist[i] = float(ylist[i])/float(giant)
 
+    for i in xrange(0, len(xlist)):
+        xlist[i] = xlist[i] * 100
+        ylist[i] = ylist[i] * 100
+
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
-    ax.plot(xlist, ylist, 'b-')
-    ax.set_ylim([0,1.1])
-    ax.set_xlim([-0.1,1])
-    ax.set_ylabel('prefix-times (%)')
-    ax.set_xlabel('monitor count (%)')
+    ax.plot(xlist, ylist, 'k-')
+    ax.set_ylim([0,110])
+    ax.set_xlim([-10,100])
+    ax.set_ylabel('prefix-time (%) CDF')
+    ax.set_xlabel('route monitor (%)')
 
     sdate = describe.split('_')[0]
     make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
     plt.close()
+
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+\
+            describe+'.txt', 'w')
+    for i in xrange(0, len(xlist)):
+        f.write(str(xlist[i])+','+str(ylist[i])+'\n')
+    f.close()
+
     return 0
+
+def direct_cdf_plot(active_t, granu, describe):
+    sdate = describe.split('_')[0]
+    fname =\
+            hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
+    xlist = []
+    ylist = []
+    f = open(fname, 'r')
+    for line in f:
+        line = line.replace('\n', '').split(',')
+        xlist.append(float(line[0]))
+        ylist.append(float(line[1]))
+    f.close()
+
+    fig = plt.figure(figsize=(16, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(xlist, ylist, 'k-')
+    ax.set_ylim([0,110])
+    ax.set_xlim([-10,100])
+    ax.set_ylabel('prefix-time (%) CDF')
+    ax.set_xlabel('route monitor (%)')
+
+    sdate = describe.split('_')[0]
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')
+    plt.close()
 
 def print_dt(dt):
     try:
