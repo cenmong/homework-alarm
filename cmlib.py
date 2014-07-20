@@ -302,8 +302,8 @@ def get_monitor_c(sdate):
             rib_location = rib_location.replace('.txt.gz', '.txt')
         elif not rib_location.endswith('txt'):  # .bz2/.gz file exists
             parse_mrt(rib_location, rib_location+'.txt')
-            rib_location = rib_location + '.txt'
             os.remove(rib_location)  # then remove .bz2/.gz
+            rib_location = rib_location + '.txt'
         # now rib file definitely ends with .txt  
         with open(rib_location, 'r') as f:  # get peers from RIB
             for line in f:
