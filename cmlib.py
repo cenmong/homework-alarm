@@ -241,6 +241,8 @@ def get_collector(sdate):
         cl = f.split('_')[-1]
         if cl == 'comb':
             continue
+        if cl.endswith('~'):
+            continue
         clist.append(cl)
     return clist
 
@@ -294,7 +296,10 @@ def get_monitor_c(sdate):
                 dir_list =\
                     os.listdir(hdname+'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/')
 
-        rib_location = rib_location + dir_list[0] # if RIB is of the same month. That's OK.
+        for f in dir_list:
+            if not f.startswith('.'):
+                rib_location = rib_location + f # if RIB is of the same month. That's OK.
+                break
         print 'getting peer count from RIB file: ', rib_location
 
         if rib_location.endswith('txt.gz'):

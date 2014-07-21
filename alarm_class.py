@@ -414,7 +414,7 @@ class Alarm():
         cmlib.simple_plot(self.active_t, self.granu, self.act_c, self.describe_add+'act_pfx_count')
 
         # plot interested levels
-        self.plot_level(10, 80, self.describe_add)
+        self.plot_level(10, 80)
 
         '''
         cmlib.simple_plot(self.active_t, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
