@@ -17,6 +17,7 @@ import time as time_lib
 from matplotlib.dates import HourLocator
 from matplotlib.dates import DayLocator
 from matplotlib.patches import Ellipse
+from matplotlib.patches import Rectangle
 from netaddr import *
 from env import *
 
@@ -156,12 +157,17 @@ def cdf_plot(active_t, granu, my_dict, describe): # start date is always first a
 
     return 0
 
-def direct_simple_plot(active_t, granu, describe):
+def direct_simple_plot(active_t, granu, describe, thres, soccur, eoccur):
     sdate = describe.split('_')[0]
     fname =\
             hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
     dt = []
     value = []
+    circlex = []
+    circley = []
+    detectx = -1
+    detecty = -1
+
     f = open(fname, 'r')
     for line in f:
         line = line.replace('\n', '').split(',')
@@ -169,10 +175,29 @@ def direct_simple_plot(active_t, granu, describe):
         tmp = datetime.datetime.strptime(tmp, '%Y-%m-%d %H:%M:%S')
         dt.append(tmp)
         value.append(float(line[1]))
+        # novelty detection
+        if float(line[1]) > thres:
+            circlex.append(tmp)
+            circley.append(float(line[1]))
     f.close()
 
-    occur_dt = dt[len(dt)/2] + datetime.timedelta(seconds=-10)
+    for j in xrange(0, len(circlex)):
+        circlex[j] = mpldates.date2num(circlex[j])
 
+    try:
+        detectx = circlex[0]
+        detecty = circley[0]
+    except:
+        pass
+
+    #occur_dt = dt[len(dt)/2] + datetime.timedelta(seconds=-10)
+    occur_dt = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
+    soccur = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
+
+    if eoccur != '': # '' means not a range
+        eoccur = datetime.datetime.strptime(eoccur, '%Y-%m-%d %H:%M:%S')
+
+    # Plotting
     fig = plt.figure(figsize=(20, 10))
     ax = fig.add_subplot(111)
     ax.plot(dt, value, 'k-')
@@ -181,6 +206,7 @@ def direct_simple_plot(active_t, granu, describe):
         ax.set_ylabel('Dynamic Visibility Index')
         ax.set_ylim([0, 3])
 
+    # setting axises
     ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=12, tz=None))
     ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=4, tz=None))
     ax.xaxis.set_tick_params(which='major', width=3, size=8)
@@ -189,14 +215,26 @@ def direct_simple_plot(active_t, granu, describe):
     ax.yaxis.set_ticks_position('left')
     myFmt = mpldates.DateFormatter('%H:00\n%b %d')
     ax.xaxis.set_major_formatter(myFmt)
-    #ax.set_xlabel('Date time')
 
-    ax.annotate('Event\nhappen',(mpldates.date2num(occur_dt),0),xytext=(-200,200),textcoords='offset\
-            points',arrowprops=dict(arrowstyle='simple',fc='0.6',ec='none',patchB=el,\
-            connectionstyle='arc3,rad=0.3'))
+    # add annotation
+    if eoccur == '':
+        ax.annotate('Event',(mpldates.date2num(occur_dt),0),xytext=(-200,200),textcoords='offset\
+                points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',patchB=el,\
+                connectionstyle='arc3,rad=0.3',alpha=0.5))
+    else: # happen inside a range
+        ax.annotate('Event\nrange',(mpldates.date2num(soccur),0),xytext=(0,500),textcoords='offset\
+                points',)
+        plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
 
-    plt.scatter([mpldates.date2num(occur_dt)],[2],s=80,facecolors='none',edgecolors='k')
+    if not detectx == -1: # really detected
+        ax.annotate('Detect',(detectx,detecty),xytext=(-100,50),textcoords='offset\
+                points',arrowprops=dict(arrowstyle='->',\
+                connectionstyle='arc3'))
 
+    # all novelties
+    plt.scatter(circlex,circley,s=80,facecolors='none',edgecolors='k')
+
+    # save figure
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf',\
             bbox_inches='tight')
     plt.close()
