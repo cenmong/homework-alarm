@@ -190,9 +190,9 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur, eoccur):
     except:
         pass
 
-    #occur_dt = dt[len(dt)/2] + datetime.timedelta(seconds=-10)
-    occur_dt = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
-    soccur = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
+    if soccur != '':
+        occur_dt = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
+        soccur = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
 
     if eoccur != '': # '' means not a range
         eoccur = datetime.datetime.strptime(eoccur, '%Y-%m-%d %H:%M:%S')
@@ -207,20 +207,21 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur, eoccur):
         ax.set_ylim([0, 3])
 
     # setting axises
-    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=12, tz=None))
+    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=24, tz=None))
     ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=4, tz=None))
     ax.xaxis.set_tick_params(which='major', width=3, size=8)
     ax.xaxis.set_tick_params(which='minor', width=2, size=5)
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
-    myFmt = mpldates.DateFormatter('%H:00\n%b %d')
+    myFmt = mpldates.DateFormatter('%H:00\n%b%d')
     ax.xaxis.set_major_formatter(myFmt)
 
     # add annotation
     if eoccur == '':
-        ax.annotate('Event',(mpldates.date2num(occur_dt),0),xytext=(-200,200),textcoords='offset\
-                points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',patchB=el,\
-                connectionstyle='arc3,rad=0.3',alpha=0.5))
+        if soccur != '':
+            ax.annotate('Event',(mpldates.date2num(occur_dt),0),xytext=(-200,200),textcoords='offset\
+                    points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',\
+                    connectionstyle='arc3',alpha=0.5))
     else: # happen inside a range
         ax.annotate('Event\nrange',(mpldates.date2num(soccur),0),xytext=(0,500),textcoords='offset\
                 points',)
