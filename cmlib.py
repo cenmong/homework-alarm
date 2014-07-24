@@ -23,7 +23,7 @@ from env import *
 
 font = {
     #'weight': 'bold',
-    'size': 34,}
+    'size': 36,}
 matplotlib.rc('font', **font)
 
 el = Ellipse((2,-1),0.5,0.5)
@@ -182,6 +182,9 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
             circley.append(float(line[1]))
     f.close()
 
+    sdt = dt[0]
+    edt = dt[-1]
+
     for j in xrange(0, len(circlex)):
         circlex[j] = mpldates.date2num(circlex[j])
 
@@ -207,11 +210,13 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         ax.set_ylabel('Dynamic Visibility Index')
         ax.set_ylim([0, 3])
 
+    ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
+
     # setting axises
-    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=24, tz=None))
+    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=12, tz=None))
     ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=4, tz=None))
-    ax.xaxis.set_tick_params(which='major', width=3, size=8)
-    ax.xaxis.set_tick_params(which='minor', width=2, size=5)
+    ax.xaxis.set_tick_params(which='major', width=4, size=8)
+    ax.xaxis.set_tick_params(which='minor', width=2, size=4)
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
     myFmt = mpldates.DateFormatter('%H:00\n%b%d')
@@ -220,7 +225,7 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
     # add annotation
     if eoccur == '':
         if soccur != '':
-            ax.annotate(des,(mpldates.date2num(occur_dt),0),xytext=(-220,280),textcoords='offset\
+            ax.annotate(des,(mpldates.date2num(occur_dt),0),xytext=(-180,350),textcoords='offset\
                     points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',\
                     connectionstyle='arc3',alpha=0.5))
     else: # happen inside a range
@@ -229,10 +234,9 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
 
     if not detectx == -1: # really detected
-        ax.annotate('Detect',(detectx,detecty),xytext=(-100,50),textcoords='offset\
+        ax.annotate('Detect',(detectx,detecty),xytext=(-50,50),textcoords='offset\
                 points',arrowprops=dict(arrowstyle='->',\
                 connectionstyle='arc3'))
-
     # all novelties
     plt.scatter(circlex,circley,s=80,facecolors='none',edgecolors='k')
 
