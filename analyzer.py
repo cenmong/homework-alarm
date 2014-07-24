@@ -13,7 +13,7 @@ from env import *
 class Analyzer():
 
     def __init__(self, filelist, granu, sdate, act_threshold, atype, thres,\
-                soccur, eoccur):  # granularity in minutes
+                soccur, eoccur, des):  # granularity in minutes
         self.filelist = filelist  # filelist file name 
         self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
                 '+'{'+'}'+','+'-')
@@ -27,7 +27,7 @@ class Analyzer():
                 
         if atype == 1:
             self.alarm = Alarm(granu, sdate, act_threshold, self.cl_list,\
-                    thres, soccur, eoccur)
+                    thres, soccur, eoccur, des)
         if atype == 2:  # longitudinal
             self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype

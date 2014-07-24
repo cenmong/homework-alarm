@@ -157,7 +157,8 @@ def cdf_plot(active_t, granu, my_dict, describe): # start date is always first a
 
     return 0
 
-def direct_simple_plot(active_t, granu, describe, thres, soccur, eoccur):
+def direct_simple_plot(active_t, granu, describe, thres, soccur,\
+        eoccur, des):
     sdate = describe.split('_')[0]
     fname =\
             hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
@@ -219,11 +220,11 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur, eoccur):
     # add annotation
     if eoccur == '':
         if soccur != '':
-            ax.annotate('Event',(mpldates.date2num(occur_dt),0),xytext=(-200,200),textcoords='offset\
+            ax.annotate(des,(mpldates.date2num(occur_dt),0),xytext=(-220,280),textcoords='offset\
                     points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',\
                     connectionstyle='arc3',alpha=0.5))
     else: # happen inside a range
-        ax.annotate('Event\nrange',(mpldates.date2num(soccur),0),xytext=(0,500),textcoords='offset\
+        ax.annotate(des,(mpldates.date2num(soccur),0),xytext=(0,500),textcoords='offset\
                 points',)
         plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
 

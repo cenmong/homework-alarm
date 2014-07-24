@@ -9,7 +9,8 @@ from env import *
 
 class Alarm():
 
-    def __init__(self, granu, sdate, active_t, cl_list, thres, soccur, eoccur):
+    def __init__(self, granu, sdate, active_t, cl_list, thres, soccur,\
+                eoccur, des):
         # for scheduling date time order
         self.cl_list = cl_list
         self.cl_dt = {}  # collector: [from_dt, now_dt] 
@@ -25,6 +26,7 @@ class Alarm():
         self.thres = thres
         self.soccur = soccur
         self.eoccur = eoccur
+        self.des = des
 
         '''
         self.pfx2as = None  # all pfxes in the globe
@@ -380,11 +382,11 @@ class Alarm():
         for name in array1:
             cmlib.direct_simple_plot(self.active_t, self.granu,\
                     self.describe_add+name, self.thres,\
-                    self.soccur, self.eoccur)
+                    self.soccur, self.eoccur, self.des)
         for name in array2:
             cmlib.direct_simple_plot(self.active_t, self.granu,\
                     self.describe_add+name, self.thres,\
-                    self.soccur, self.eoccur)
+                    self.soccur, self.eoccur, self.des)
         for name in array3:
             cmlib.direct_cdf_plot(self.active_t, self.granu,\
                     self.describe_add+name)
