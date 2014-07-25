@@ -52,7 +52,8 @@ daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
             ('20130321', 4, 185, '20130322 EASSy/SEACOM Outages', 17, 10),\
             ('20130213', 4, 192, '20130214 SEACOM Outages', 18, 10),\
             ('20110327', 4, 179, '20110328 Caucasus cable cut', 19, 10),\
-            ('20121222', 4, 177, '20121223 Georgia-Russia cable cut', 20, 01),\
+            ('20121222', 4, 177, '20121223 Georgia-Russia cable cut', 20, 01,\
+                '', '', ''),
             ('20120224', 4, -1, '20120225 0913 TEAMS cable cut in east Africa', 21, 00),\
             ('20120425', 4, -1, '20120426 0904 TEAMS cable cut again in east\
                     Africa', 22, 00),\

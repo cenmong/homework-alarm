@@ -258,13 +258,50 @@ def direct_cdf_plot(active_t, granu, describe):
         ylist.append(float(line[1]))
     f.close()
 
+    t1 = 80
+    t2 = 95
+    t3 = 98
+    x1, y1 = 0, 0
+    x2, y2 = 0, 0
+    x3, y3 = 0, 0
+
+    for j in xrange(0, len(ylist)):
+        if ylist[j] > t1:
+            x1 = xlist[j]
+            y1 = ylist[j]
+            break
+    for j in xrange(0, len(ylist)):
+        if ylist[j] > t2:
+            x2 = xlist[j]
+            y2 = ylist[j]
+            break
+    for j in xrange(0, len(ylist)):
+        if ylist[j] > t3:
+            x3 = xlist[j]
+            y3 = ylist[j]
+            break
+
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
     ax.plot(xlist, ylist, 'k-')
-    ax.set_ylim([0,110])
-    ax.set_xlim([-10,100])
+    ax.set_ylim([0,105])
+    ax.set_xlim([-5,70])
     ax.set_ylabel('prefix-time (%) CDF')
     ax.set_xlabel('route monitor (%)')
+
+    # annotate
+    plt.plot([x1,x1],[0,y1],'k--',lw=4)
+    plt.plot([-5,x1],[y1,y1],'k--',lw=4)
+    ax.annotate('p1',(x1,y1),xytext=(20,-30),textcoords='offset points',)
+    plt.plot([x2,x2],[0,y2],'k--',lw=4)
+    plt.plot([-5,x2],[y2,y2],'k--',lw=4)
+    ax.annotate('p2',(x2,y2),xytext=(20,-30),textcoords='offset points',)
+    plt.plot([x3,x3],[0,y3],'k--',lw=4)
+    plt.plot([-5,x3],[y3,y3],'k--',lw=4)
+    ax.annotate('p3',(x3,y3),xytext=(20,-30),textcoords='offset points',)
+    print 'p1',x1,y1
+    print 'p2',x2,y2
+    print 'p3',x3,y3
 
     sdate = describe.split('_')[0]
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')
