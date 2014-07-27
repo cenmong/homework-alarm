@@ -18,8 +18,11 @@ class Analyzer():
         self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
                 '+'{'+'}'+','+'-')
 
-        self.cl_list = cmlib.get_collector(sdate)  # the collectors this analyzer has
-        print 'cl_list:',str(self.cl_list)
+        try:
+            self.cl_list = cmlib.get_collector(sdate)  # the collectors this analyzer has
+            print 'cl_list:',str(self.cl_list)
+        except:
+            self.cl_list = []
 
         self.cl_first = dict()  # cl: True or False
         for cl in collectors:
@@ -50,6 +53,7 @@ class Analyzer():
             return False
 
     def parse_update(self):
+        self.alarm.get_monitor()
         filelist = open(self.filelist, 'r')
         for ff in filelist:
             ff = ff.replace('\n', '')

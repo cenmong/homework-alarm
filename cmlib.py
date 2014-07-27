@@ -23,7 +23,7 @@ from env import *
 
 font = {
     #'weight': 'bold',
-    'size': 36,}
+    'size': 38,}
 matplotlib.rc('font', **font)
 
 el = Ellipse((2,-1),0.5,0.5)
@@ -157,6 +157,132 @@ def cdf_plot(active_t, granu, my_dict, describe): # start date is always first a
 
     return 0
 
+def combine_slot_dvi():
+    flist = []
+    flist.append(hdname + 'output/20100226_3_0.3/20100226_3_0.3_dvi(1).txt')
+    flist.append(hdname + 'output/20100226_10_0.3/20100226_10_0.3_dvi(1).txt')
+    flist.append(hdname + 'output/20100226_30_0.3/20100226_30_0.3_dvi(1).txt')
+    print flist
+
+    xlists = []
+    ylists = []
+
+    for fname in flist:
+        dt = []
+        value = []
+        f = open(fname, 'r')
+        for line in f:
+            line = line.replace('\n', '').split(',')
+            tmp = line[0]
+            tmp = datetime.datetime.strptime(tmp, '%Y-%m-%d %H:%M:%S')
+            dt.append(tmp)
+            value.append(float(line[1]))
+        f.close()
+        xlists.append(dt)
+        ylists.append(value)
+
+    # Plotting
+    xlists[0] = xlists[0][0:480]
+    ylists[0] = ylists[0][0:480]
+    xlists[1] = xlists[1][0:144]
+    ylists[1] = ylists[1][0:144]
+    xlists[2] = xlists[2][0:48]
+    ylists[2] = ylists[2][0:48]
+    sdt = xlists[1][0]+datetime.timedelta(minutes=1)
+    print sdt
+    edt = xlists[1][-10]+datetime.timedelta(days=1)
+    edt = edt.replace(hour=0,minute=0,second=0,microsecond=0)
+    print edt
+
+    fig = plt.figure(figsize=(20, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(xlists[0], ylists[0], 'k-', label='3 min')
+    ax.plot(xlists[1], ylists[1], 'k--', label='10 min')
+    ax.plot(xlists[2], ylists[2], 'k^-', label='30 min')
+
+    legend = ax.legend(loc='upper left',shadow=False)
+    ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
+    # setting axises
+    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=3, tz=None))
+    ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=1, tz=None))
+    ax.xaxis.set_tick_params(which='major', width=4, size=8)
+    ax.xaxis.set_tick_params(which='minor', width=2, size=4)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
+    myFmt = mpldates.DateFormatter('%H:00\n%b%d')
+    ax.xaxis.set_major_formatter(myFmt)
+    # 10^x
+    ax.annotate(r'$\times10^{-2}$',(mpldates.date2num(sdt),0),xytext=(0, 585),textcoords='offset\
+            points',)
+    # save figure
+    ax.tick_params(axis='y',pad=10)
+    ax.set_ylabel('Dynamic Visibility Index')
+    plt.savefig(hdname+'output/combine_slot.pdf',\
+            bbox_inches='tight')
+    plt.close()
+
+def combine_ht(): # use for once and independently
+    flist = []
+    flist.append(hdname + 'output/20130317_10_0.3/20130317_10_0.3_=10.txt')
+    flist.append(hdname + 'output/20130317_10_0.3/20130317_10_0.3_=30.txt')
+    flist.append(hdname + 'output/20130317_10_0.3/20130317_10_0.3_=40.txt')
+    print flist
+
+    xlists = []
+    ylists = []
+    
+    for fname in flist:
+        dt = []
+        value = []
+        f = open(fname, 'r')
+        for line in f:
+            line = line.replace('\n', '').split(',')
+            tmp = line[0]
+            tmp = datetime.datetime.strptime(tmp, '%Y-%m-%d %H:%M:%S')
+            dt.append(tmp)
+            value.append(float(line[1]))
+        f.close()
+        xlists.append(dt)
+        ylists.append(value)
+
+    # Plotting
+    xlists[0] = xlists[0][0:144]
+    ylists[0] = ylists[0][0:144]
+    xlists[1] = xlists[1][0:144]
+    ylists[1] = ylists[1][0:144]
+    xlists[2] = xlists[2][0:144]
+    ylists[2] = ylists[2][0:144]
+    sdt = xlists[0][0]+datetime.timedelta(minutes=1)
+    edt = xlists[0][-1]+datetime.timedelta(days=1)
+    edt = edt.replace(hour=0,minute=0,second=0,microsecond=0)
+
+    fig = plt.figure(figsize=(20, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(xlists[0], ylists[0], 'k^-', label=r'$\theta_h\geq10$')
+    ax.plot(xlists[1], ylists[1], 'k--', label=r'$\theta_h\geq30$')
+    ax.plot(xlists[2], ylists[2], 'k-', label=r'$\theta_h\geq40$')
+    
+    legend = ax.legend(loc='upper center',bbox_to_anchor=(0.45,1),shadow=False)
+
+    ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
+
+    # setting axises
+    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=3, tz=None))
+    ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=1, tz=None))
+    ax.xaxis.set_tick_params(which='major', width=4, size=8)
+    ax.xaxis.set_tick_params(which='minor', width=2, size=4)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
+    myFmt = mpldates.DateFormatter('%H:00\n%b%d')
+    ax.xaxis.set_major_formatter(myFmt)
+
+    ax.set_ylabel(r'Quantity of HDVPs')
+    ax.tick_params(axis='y',pad=10)
+    # save figure
+    plt.savefig(hdname+'output/combine_ht.pdf',\
+            bbox_inches='tight')
+    plt.close()
+
 def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         eoccur, des):
     sdate = describe.split('_')[0]
@@ -182,9 +308,6 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
             circley.append(float(line[1]))
     f.close()
 
-    sdt = dt[0]
-    edt = dt[-1]
-
     for j in xrange(0, len(circlex)):
         circlex[j] = mpldates.date2num(circlex[j])
 
@@ -201,20 +324,32 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
     if eoccur != '': # '' means not a range
         eoccur = datetime.datetime.strptime(eoccur, '%Y-%m-%d %H:%M:%S')
 
+    if len(dt) > 600:
+        dt = dt[:577]
+        value = value[:577]
+
+    sdt = dt[0]
+    edt = dt[-10]+datetime.timedelta(days=1)
+    edt = edt.replace(hour=0,minute=0,second=0,microsecond=0)
+
+    if 'update' in describe:
+        for i in xrange(0, len(value)):
+            value[i] = float(value[i]*0.00001)
+    if 'prefix' in describe:
+        for i in xrange(0, len(value)):
+            value[i] = float(value[i]*0.0001)
+
     # Plotting
     fig = plt.figure(figsize=(20, 10))
+    if 'prefix' in describe or 'update' in describe:
+        fig = plt.figure(figsize=(20, 11))
     ax = fig.add_subplot(111)
     ax.plot(dt, value, 'k-')
-
-    if 'dvi' in describe:
-        ax.set_ylabel('Dynamic Visibility Index')
-        ax.set_ylim([0, 3])
-
     ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
 
     # setting axises
     ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=12, tz=None))
-    ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=4, tz=None))
+    ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=2, tz=None))
     ax.xaxis.set_tick_params(which='major', width=4, size=8)
     ax.xaxis.set_tick_params(which='minor', width=2, size=4)
     ax.xaxis.set_ticks_position('bottom')
@@ -222,27 +357,69 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
     myFmt = mpldates.DateFormatter('%H:00\n%b%d')
     ax.xaxis.set_major_formatter(myFmt)
 
+    x1 = -180
+    y1 = 350
+    x2 = -50
+    y2 = 50
+    if sdate == '20130213':
+        x1 = 20
+        y1 = 300
+        x2 = -150
+        y2 = -100
+        
     # add annotation
-    if eoccur == '':
-        if soccur != '':
-            ax.annotate(des,(mpldates.date2num(occur_dt),0),xytext=(-180,350),textcoords='offset\
-                    points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',\
-                    connectionstyle='arc3',alpha=0.5))
-    else: # happen inside a range
-        ax.annotate(des,(mpldates.date2num(soccur),0),xytext=(0,500),textcoords='offset\
+    if 'prefix' not in describe:
+        if eoccur == '':
+            if soccur != '':
+                ax.annotate(des,(mpldates.date2num(occur_dt),0),xytext=(x1,y1),textcoords='offset\
+                        points',arrowprops=dict(arrowstyle='simple',fc='0.3',ec='none',\
+                        connectionstyle='arc3',alpha=0.5))
+        else: # happen inside a range
+            ax.annotate(des,(mpldates.date2num(soccur),0),xytext=(0, 465),textcoords='offset\
+                    points',)
+            plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
+
+    if 'dvi' in describe :
+        ax.set_ylabel('Dynamic Visibility Index')
+        ax.set_ylim([0, 3])
+
+        if not detectx == -1: # really detected
+            ax.annotate('Detect',(detectx,detecty),xytext=(x2,y2),textcoords='offset\
+                    points',arrowprops=dict(arrowstyle='->',\
+                    connectionstyle='arc3'))
+        # all novelties
+        plt.scatter(circlex,circley,s=80,facecolors='none',edgecolors='k')
+    
+    if 'prefix' in describe:
+        ax.set_ylabel('Prefix quantity')
+    if 'update' in describe:
+        ax.set_ylabel('Update quantity')
+
+    # 10^x
+    if 'dvi' in describe:
+        ax.annotate(r'$\times10^{-2}$',(mpldates.date2num(sdt),0),xytext=(0, 585),textcoords='offset\
                 points',)
-        plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
+    if 'update' in describe:
+        ax.annotate(r'$\times10^{5}$',(mpldates.date2num(sdt),0),xytext=(0, 645),textcoords='offset\
+                points',)
+    if 'prefix' in describe:
+        ax.annotate(r'$\times10^{4}$',(mpldates.date2num(sdt),0),xytext=(0, 645),textcoords='offset\
+                points',)
 
-    if not detectx == -1: # really detected
-        ax.annotate('Detect',(detectx,detecty),xytext=(-50,50),textcoords='offset\
-                points',arrowprops=dict(arrowstyle='->',\
-                connectionstyle='arc3'))
-    # all novelties
-    plt.scatter(circlex,circley,s=80,facecolors='none',edgecolors='k')
-
+    ax.tick_params(axis='y',pad=10)
     # save figure
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf',\
-            bbox_inches='tight')
+    if 'dvi' in describe:
+        plt.savefig(hdname+'output/'+sdate+'.pdf',\
+                bbox_inches='tight')
+    if 'update' in describe:
+        if sdate == '20030813' or sdate == '20110310':
+            plt.savefig(hdname+'output/'+sdate+'update.pdf',\
+                    bbox_inches='tight')
+    if 'prefix' in describe:
+        if sdate == '20030813' or sdate == '20110310':
+            plt.savefig(hdname+'output/'+sdate+'prefix.pdf',\
+                    bbox_inches='tight')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')
     plt.close()
 
 def direct_cdf_plot(active_t, granu, describe):

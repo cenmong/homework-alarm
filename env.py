@@ -40,23 +40,36 @@ daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2012-10-24 19:00:00', '', 'Jamaica\nlandfall'),
             ('20130317', 4, 190, '2013 Spamhaus DDoS', 9, 10,\
                 '2013-03-18 00:00:00', '2013-03-19 00:00:00', 'Attack\nbegin'),
-            ('20140601', 7, 186, 'for CDF in intro 2014', 10, 01),\
-            ('20060601', 7, 152, 'for CDF in intro 2006', 11, 01),\
-            ('20130207', 4, 191, '2013 Northeastern U.S. Blackout', 12, 01),\
+            ('20140601', 7, 186, 'for CDF in intro 2014', 10, 01,\
+                '', '', ''),
+            ('20060601', 7, 152, 'for CDF in intro 2006', 11, 01,\
+                '', '', ''),
+            ('20130207', 4, 191, '2013 Northeastern U.S. Blackout', 12, 01,\
+                '2013-02-08 21:15:00', '2013-02-09 23:59:59',
+                'Several\nregions\nblackouts'),
             ('20100413', 4, 180, '2010 Sea-Me undersea cable cut', 13, 01,\
                 '', '', ''),
-            ('20120221', 4, -1, 'Australia route leakage', 14, 00),\
-            ('20120807', 4, -1, 'Canada route leakage', 15, 00),\
-            ('20030124', 4, 168, '2003 Slammer worm', 16, 10,\
-                '2003-01-25 05:30:00', ''),
-            ('20130321', 4, 185, '20130322 EASSy/SEACOM Outages', 17, 10),\
-            ('20130213', 4, 192, '20130214 SEACOM Outages', 18, 10),\
-            ('20110327', 4, 179, '20110328 Caucasus cable cut', 19, 10),\
-            ('20121222', 4, 177, '20121223 Georgia-Russia cable cut', 20, 01,\
+            ('20120221', 4, -1, 'Australia route leakage', 14, 00,\
                 '', '', ''),
-            ('20120224', 4, -1, '20120225 0913 TEAMS cable cut in east Africa', 21, 00),\
+            ('20120807', 4, -1, 'Canada route leakage', 15, 00,\
+                '', '', ''),
+            ('20030124', 4, 168, '2003 Slammer worm', 16, 10,\
+                '2003-01-25 05:30:00', '', 'Worm\nstart'),
+            ('20130321', 4, 185, '20130322 EASSy/SEACOM Outages', 17, 10,\
+                '', '', ''),
+            ('20130213', 4, 192, '20130214 SEACOM Outages', 18, 10,\
+                '2013-02-14 11:59:00', '', 'Outage\nconfirmed'),
+            ('20110327', 4, 179, '20110328 Caucasus cable cut', 19, 10,\
+                '2011-03-28 13:00:00', '', 'Cable\ncut'),
+            ('20121222', 4, 177, '20121223 Georgia-Russia cable cut', 20, 01,\
+                '2012-12-23 00:00:00', '2012-12-23 23:59:59', 'Cable\ncut'),
+            ('20120224', 4, -1, '20120225 0913 TEAMS cable cut in east Africa', 21, 00,\
+                '', '', ''),
             ('20120425', 4, -1, '20120426 0904 TEAMS cable cut again in east\
-                    Africa', 22, 00),\
+                    Africa', 22, 00,\
+                '', '', ''),
             ('20110824', 4, -1, '201108 hurricane Irene in east U.S.', 23, 01,\
+                '', '', ''),
+            ('20070701', 4, -1, '2007 training data', 24, 00,\
                 '', '', ''),
             ]

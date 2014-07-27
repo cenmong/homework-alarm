@@ -59,12 +59,6 @@ class Alarm():
         self.ucount = dict() # dt: update count
         self.pfxcount = dict() # dt: prefix (in updates) count
 
-        for dr in daterange:
-            if dr[0] == self.sdate:
-                self.mcount = dr[2]
-        if self.mcount == -1:
-            self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
-
         #self.busy_cont_bypfx = dict() # dt: the busiest continent by DAP
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
         #self.cont2num = {'EU':1,'NA':2,'AS':3,'SA':4,'OC':5,'AF':6}
@@ -110,6 +104,14 @@ class Alarm():
 
         # for naming the plots 
         self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
+
+    def get_monitor(self):
+        for dr in daterange:
+            if dr[0] == self.sdate:
+                self.mcount = dr[2]
+        if self.mcount == -1:
+            self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
+
 
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybofy is ready
