@@ -25,6 +25,7 @@ font = {
     #'weight': 'bold',
     'size': 38,}
 matplotlib.rc('font', **font)
+plt.rc('legend',**{'fontsize':38})
 
 el = Ellipse((2,-1),0.5,0.5)
 
@@ -119,6 +120,45 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
     return 0
 
 def cdf_plot(active_t, granu, my_dict, describe): # start date is always first attribute
+    xlist = [0]
+    ylist = [0]
+    for key in sorted(my_dict):
+        xlist.append(key)
+        ylist.append(my_dict[key])
+
+    for i in xrange(1, len(ylist)):
+        ylist[i] += ylist[i-1]
+
+    giant = ylist[-1]
+    for i in xrange(0, len(ylist)):
+        ylist[i] = float(ylist[i])/float(giant)
+
+    for i in xrange(0, len(xlist)):
+        xlist[i] = xlist[i] * 100
+        ylist[i] = ylist[i] * 100
+
+    fig = plt.figure(figsize=(16, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(xlist, ylist, 'k-')
+    ax.set_ylim([0,110])
+    ax.set_xlim([-10,100])
+    ax.set_ylabel('prefix-time (%) CDF')
+    ax.set_xlabel('route monitor (%)')
+
+    sdate = describe.split('_')[0]
+    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
+    plt.close()
+
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+\
+            describe+'.txt', 'w')
+    for i in xrange(0, len(xlist)):
+        f.write(str(xlist[i])+','+str(ylist[i])+'\n')
+    f.close()
+
+    return 0
+
+def avg_cdf_plot(active_t, granu, my_dict, describe): # start date is always first attribute
     xlist = [0]
     ylist = [0]
     for key in sorted(my_dict):
@@ -258,11 +298,11 @@ def combine_ht(): # use for once and independently
 
     fig = plt.figure(figsize=(20, 10))
     ax = fig.add_subplot(111)
-    ax.plot(xlists[0], ylists[0], 'k^-', label=r'$\theta_h\geq10$')
-    ax.plot(xlists[1], ylists[1], 'k--', label=r'$\theta_h\geq30$')
-    ax.plot(xlists[2], ylists[2], 'k-', label=r'$\theta_h\geq40$')
+    ax.plot(xlists[0], ylists[0], 'k^-', label=r'$\theta_h=10\%$')
+    ax.plot(xlists[1], ylists[1], 'k--', label=r'$\theta_h=30\%$')
+    ax.plot(xlists[2], ylists[2], 'k-', label=r'$\theta_h=40\%$')
     
-    legend = ax.legend(loc='upper center',bbox_to_anchor=(0.45,1),shadow=False)
+    legend = ax.legend(loc='upper center',bbox_to_anchor=(0.43,1),shadow=False)
 
     ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
 
@@ -283,9 +323,61 @@ def combine_ht(): # use for once and independently
             bbox_inches='tight')
     plt.close()
 
+def combine_cdf():
+    flist = []
+    flist.append(hdname + 'output/20061225_10_0.3/20061225_10_0.3_CDFbfr.txt')
+    flist.append(hdname + 'output/20061225_10_0.3/20061225_10_0.3_CDFaft.txt')
+    print flist
+    xlists = []
+    ylists = []
+    for fname in flist:
+        xl = []
+        yl = []
+        f = open(fname, 'r')
+        for line in f:
+            line = line.replace('\n', '').split(',')
+            xl.append(float(line[0]))
+            yl.append(100-float(line[1]))
+        f.close()
+        xlists.append(xl)
+        ylists.append(yl)
+
+    tl = [5,10,20]
+    x1, y1 = 0, 0
+    x2, y2 = 0, 0
+    x3, y3 = 0, 0
+
+    for t in tl:
+        for j in xrange(0, len(xlists[0])):
+            if xlists[0][j] > t:
+                print xlists[0][j]
+                print ylists[0][j]
+                break
+        for j in xrange(0, len(xlists[1])):
+            if xlists[1][j] > t:
+                print xlists[1][j]
+                print ylists[1][j]
+                break
+
+    fig = plt.figure(figsize=(16, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(xlists[0], ylists[0], 'k--', label='before earthquake')
+    ax.plot(xlists[1], ylists[1], 'k-', label='after earthquake')
+    legend = ax.legend(loc='upper right',shadow=False)
+
+    ax.set_ylabel('Percentage of Prefixes')
+    ax.set_xlabel('Percentage of route monitors')
+    ax.set_ylim([-2,102])
+    ax.set_xlim([-5,75])
+    ax.tick_params(axis='y',pad=10)
+    plt.savefig(hdname+'output/combine_cdf.pdf',\
+            bbox_inches='tight')
+    plt.close()
+
 def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         eoccur, des):
     sdate = describe.split('_')[0]
+    count_peak = 0
     fname =\
             hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
     dt = []
@@ -304,9 +396,14 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         value.append(float(line[1]))
         # novelty detection
         if float(line[1]) > thres:
+            count_peak += 1
             circlex.append(tmp)
             circley.append(float(line[1]))
     f.close()
+
+    if 'dvi' in describe:
+        print sdate,':',count_peak
+        print circley
 
     for j in xrange(0, len(circlex)):
         circlex[j] = mpldates.date2num(circlex[j])
@@ -364,8 +461,12 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
     if sdate == '20130213':
         x1 = 20
         y1 = 300
-        x2 = -150
+        x2 = -180
         y2 = -100
+    if sdate == '20061225':
+        x2 = -75
+    if sdate == '20100226':
+        x2 = -40
         
     # add annotation
     if 'prefix' not in describe:
@@ -384,7 +485,7 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         ax.set_ylim([0, 3])
 
         if not detectx == -1: # really detected
-            ax.annotate('Detect',(detectx,detecty),xytext=(x2,y2),textcoords='offset\
+            ax.annotate('Detected',(detectx,detecty),xytext=(x2,y2),textcoords='offset\
                     points',arrowprops=dict(arrowstyle='->',\
                     connectionstyle='arc3'))
         # all novelties
@@ -476,9 +577,9 @@ def direct_cdf_plot(active_t, granu, describe):
     plt.plot([x3,x3],[0,y3],'k--',lw=4)
     plt.plot([-5,x3],[y3,y3],'k--',lw=4)
     ax.annotate('p3',(x3,y3),xytext=(20,-30),textcoords='offset points',)
-    print 'p1',x1,y1
-    print 'p2',x2,y2
-    print 'p3',x3,y3
+    #print 'p1',x1,y1
+    #print 'p2',x2,y2
+    #print 'p3',x3,y3
 
     sdate = describe.split('_')[0]
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')

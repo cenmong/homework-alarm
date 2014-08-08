@@ -20,7 +20,7 @@ class Analyzer():
 
         try:
             self.cl_list = cmlib.get_collector(sdate)  # the collectors this analyzer has
-            print 'cl_list:',str(self.cl_list)
+            #print 'cl_list:',str(self.cl_list)
         except:
             self.cl_list = []
 

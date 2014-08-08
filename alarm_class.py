@@ -101,7 +101,17 @@ class Alarm():
 
         # For CDF
         self.cdf = dict()
-
+        '''
+        self.cdfbfr = dict()
+        self.cdfaft = dict()
+        self.occur_dt = datetime.datetime.strptime(soccur,\
+                '%Y-%m-%d %H:%M:%S')
+        self.bfr_start = time_lib.mktime((self.occur_dt +\
+                datetime.timedelta(hours=-15)).timetuple())
+        self.aft_end = time_lib.mktime((self.occur_dt +\
+                datetime.timedelta(hours=15)).timetuple())
+        self.occur_dt = time_lib.mktime(self.occur_dt.timetuple())
+        '''
         # for naming the plots 
         self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
 
@@ -255,6 +265,18 @@ class Alarm():
                     self.cdf[ratio] += 1
                 except:
                     self.cdf[ratio] = 1
+                if dt >= self.bfr_start and dt < self.occur_dt:
+                    try:
+                        self.cdfbfr[ratio] += 1
+                    except:
+                        self.cdfbfr[ratio] = 1
+                elif dt >= self.occur_dt and dt < self.aft_end:
+                    try:
+                        self.cdfaft[ratio] += 1
+                    except:
+                        self.cdfaft[ratio] = 1
+                else:
+                    pass
                 if ratio <= self.active_t: # not active pfx
                     continue
                 pcount += 1
@@ -462,6 +484,12 @@ class Alarm():
 
         # CDF in introduction
         cmlib.cdf_plot(self.active_t, self.granu, self.cdf, self.describe_add+'CDF')
+
+        # plot 2 CDFs: before event and after event
+        cmlib.cdf_plot(self.active_t, self.granu, self.cdfbfr,\
+                self.describe_add+'CDFbfr')
+        cmlib.cdf_plot(self.active_t, self.granu, self.cdfaft,\
+                self.describe_add+'CDFaft')
 
     def plot_level(self, low, high):
         # fill the empty values with 0

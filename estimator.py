@@ -21,7 +21,7 @@ class Estimator():
             dist = self.get_avg_dist(neighbors, my_list[i])
             dist_list.append(dist)
             
-        print dist_list
+        #print dist_list
         sum_dist = 0
         for d in dist_list:
             sum_dist += d
