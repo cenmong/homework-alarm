@@ -1,14 +1,15 @@
 import cmlib
-from env import *
 import datetime
 import patricia
 import subprocess
+
+from env import *
 
 global TEST
 #TEST = True
 TEST = False
 
-if TEST:
+if TEST: # excute only when we are testing
     collectors = [('', 0), ('rrc00', 1), ('rrc01', 1),]
     #collectors = [('rrc01', 1)]
 
@@ -19,11 +20,11 @@ def combine_flist(sdate):
     clist = cmlib.get_collector(sdate)
     for cl_name in clist:
         if cl_name.startswith('rrc'):
-            cl_type = 1
+            cl_type = 1 # collector type
         else:
             cl_type = 0
-
-        flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .bz2.txt.gz file name
+        # .bz2.txt.gz file name
+        flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
         for filename in flist:
             filename = filename.replace('\n', '')
             file_attr = filename.split('.')
@@ -155,7 +156,7 @@ def get_peers(rib_location): # should end with .bz2/.gz
     return peers
 
 def get_file():
-    for i in [11,13,23]:
+    for i in [10]:
         for clctr in collectors:
             try:
                 if int(daterange[i][0]) < int(clctr[2]):
@@ -203,7 +204,7 @@ def get_file():
                     webraw = cmlib.get_weblist('http://' + filelocation)
 
                 if TEST:
-                    testcount = 0  # TODO: testonly
+                    testcount = 0
 
                 cmlib.make_dir(hdname+filelocation)
                 for line in webraw.split('\n'):
@@ -226,7 +227,7 @@ def get_file():
                     print filename
 
                     if TEST:
-                        testcount += 1 #TODO: 3 lines testonly
+                        testcount += 1
                         if testcount == 5:
                             break
 
@@ -329,7 +330,7 @@ def get_file():
             
             print 'determining table transfers start and end time for each peer...'
             if TEST:
-                peers = peers[0:2]  # TODO: testonly
+                peers = peers[0:2]
             for peer in peers:  # must process each peer one by one
                 peer = peer.rstrip()
                 print 'processing ',peer,'...'

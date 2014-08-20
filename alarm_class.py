@@ -11,6 +11,7 @@ class Alarm():
 
     def __init__(self, granu, sdate, active_t, cl_list, thres, soccur,\
                 eoccur, des):
+
         # for scheduling date time order
         self.cl_list = cl_list
         self.cl_dt = {}  # collector: [from_dt, now_dt] 
@@ -18,59 +19,57 @@ class Alarm():
             self.cl_dt[cl] = [0, 0]  # start dt, now dt
         self.ceiling = 0  # we aggregate everything before ceiling
         self.floor = 0  # for not recording the lowest dt
+        # End
 
-        self.sdate = sdate
+        self.sdate = sdate # Starting date
         self.granu = granu  # Time granularity in minutes
         self.active_t = active_t # active threshold
 
-        self.thres = thres
-        self.soccur = soccur
-        self.eoccur = eoccur
-        self.des = des
+        self.thres = thres # Threshold
+        self.soccur = soccur # Event occurrence start
+        self.eoccur = eoccur # Event occurrence end
+        self.des = des # Describe
 
-        '''
-        self.pfx2as = None  # all pfxes in the globe
-        # here stores info about global ASes
+        self.pfx2as = None  # map all prefixes in the world to AS in a trie
+        # info about all ASes in the world
         self.as2nation = dict() # asn: nation
         self.as2type = dict() # asn: type
         self.as2rank = dict() # asn: rank (2012 datasource)
-        # here stores info about nations
+        # info about nations
         self.nation2cont = dict() # nation: continent
 
+        # peer, also known as monitor
         self.peerlist = dict()  # dt: peer list
         self.peeraslist = dict() # dt: peer AS list
 
-        self.actas_c = dict() # dt: origin AS(of DAPs) count
-        self.actnation_c = dict() # dt: origin nation(od DAPs) count
+        self.actas_c = dict() # dt: origin ASes (of HDVPs) count
+        self.actnation_c = dict() # dt: origin nations (of HDVPs) count
         
-        self.acount = dict() # dt: announcement count
-        self.wcount = dict() # dt: withdrawl count
-        self.wpctg = dict() # dt: withdrawl percentage 
-        '''
-
-        # from now on is what we are really interested in, or what we can plot
-        # figures from.
-
-        self.pfx_trie = dict()  # dt: trie. (garbage deletion target)
-        self.act_c = dict() # dt: active prefix count
-
+        # the list of datetime
         self.dt_list = list()
 
+        # every dt has a trie and some other values
+        self.pfx_trie = dict()  # dt: trie. (costs memory, deleted periodically)
+        self.act_c = dict() # dt: active prefix count
+
+        # Values related to the number of updates
         self.ucount = dict() # dt: update count
         self.pfxcount = dict() # dt: prefix (in updates) count
+        self.acount = dict() # dt: announcement count
+        self.wcount = dict() # dt: withdrawal count
+        self.wpctg = dict() # dt: withdrawal percentage 
 
         #self.busy_cont_bypfx = dict() # dt: the busiest continent by DAP
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
         #self.cont2num = {'EU':1,'NA':2,'AS':3,'SA':4,'OC':5,'AF':6}
 
+        # TODO: CDF will be sufficient
         '''
-        # distribution skewness 
-        # TODO: more statistics needed
         self.pfx_as_top10 = dict() # dt: top 10 ASes
         self.pfx_nation_top10 = dict()
         self.pfx_as_top10pctg = dict() # dt: top 10% ASes
         self.pfx_nation_top10pctg = dict()
-
+        '''
         # TODO: nation and continent
 
         # get origin AS rank levels (among several pre-setted levels)
@@ -78,8 +77,8 @@ class Alarm():
         self.rank_count = [] # class(0~): {dt: count}
         for i in xrange(0, len(self.rank_thsd)+1):
             self.rank_count.append(dict())
-        '''
 
+        # TODO: CDF will be OK
         # diff levels of visibility, from 0~10 to 90~100 and 100
         self.level = dict() # level(e.g.,>=0,>=10,>=20,...): dt: value
         for i in xrange(0, 101):
@@ -99,7 +98,7 @@ class Alarm():
 
         self.all_pcount = cmlib.get_all_pcount(self.sdate)
 
-        # For CDF
+        # For the CDF figure in introduction
         self.cdf = dict()
         '''
         self.cdfbfr = dict()
@@ -112,7 +111,7 @@ class Alarm():
                 datetime.timedelta(hours=15)).timetuple())
         self.occur_dt = time_lib.mktime(self.occur_dt.timetuple())
         '''
-        # for naming the plots 
+        # for naming all the plots 
         self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
 
     def get_monitor(self):
@@ -136,7 +135,7 @@ class Alarm():
                 new_ceil = self.cl_dt[cl][1]
 
         if is_end == False:
-            if new_ceil - self.ceiling >= 4 * 60 * self.granu:  # not so frequent
+            if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # frequent
                 # e.g., aggregate 10:50 only when now > 11:00
                 self.ceiling = new_ceil - 60 * self.granu
                 self.release_memo()
@@ -163,15 +162,15 @@ class Alarm():
     # delete large and unaggregated memory usage
     def del_garbage(self):
         print 'Deleting garbage...'
-        rel_dt = []  # dt for processing
         for dt in self.pfx_trie.keys():  # all dt that exists
             if dt <= self.ceiling:
                 #cmlib.print_dt(dt)
                 del self.pfx_trie[dt]
         return 0
 
+    # add a new line of update to our monitoring system
     def add(self, update):
-        attr = update.split('|')[0:6]  # no need for other attrs now
+        attr = update.split('|')[0:6]  # no need for other attributes now
 
         intdt = int(attr[1])
         objdt = datetime.datetime.fromtimestamp(intdt).\
@@ -192,7 +191,6 @@ class Alarm():
             self.ucount[dt] = 0
             self.pfx_trie[dt] = patricia.trie(None)
     
-            '''
             self.acount[dt] = 0
             self.wcount[dt] = 0
             for i in xrange(0, len(self.rank_thsd)+1):
@@ -204,11 +202,9 @@ class Alarm():
             self.acount[dt] += 1
         else: # 'W'
             self.wcount[dt] += 1
-        '''
         self.ucount[dt] += 1
 
         peer = attr[3]
-        '''
         # fullfill the peerlist
         if peer not in self.peerlist[dt]:
             self.peerlist[dt].append(peer)
@@ -217,22 +213,23 @@ class Alarm():
         peeras = int(attr[4])
         if peeras not in self.peeraslist[dt]:
             self.peeraslist[dt].append(peeras)
-        '''    
 
         # now let's deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
         try:
             try:  # Test whether the trie has the node
-                test = self.pfx_trie[dt][pfx]
-            except:  # Node does not exist
+                pfx_peer = self.pfx_trie[dt][pfx]
+            except:  # Node does not exist, then we create a new node
                 self.pfx_trie[dt][pfx] = [peer]
-            if peer not in self.pfx_trie[dt][pfx]:
+                pfx_peer = self.pfx_trie[dt][pfx]
+            if peer not in pfx_peer:
                 self.pfx_trie[dt][pfx].append(peer)
-        except: # this self.pfx_trie[dt] has been deleted
+        except:  # self.pfx_trie[dt] has already been deleted
             pass
 
         return 0
 
+    # get/calculate the infomation we need from the designated tries
     def aggregate(self, rel_dt):
         print 'aggregating...'
         for dt in rel_dt:
@@ -247,8 +244,10 @@ class Alarm():
             #pfx_as_distri = {} # ASN: pfx list
             #pfx_nation_distri = {} # nation: pfx list
             for p in trie:
-                if p == '':
+                if p == '': # the root node (the source of a potential bug)
                     continue
+
+                # TODO: modify these 7 lines. we need CDF now.
                 ratio = len(trie[p])*10 / self.mcount * 10 # 0,10,...,90,100
                 for lv in self.level.keys():
                     if ratio >= lv: # e.g., 20 >= 0, 10, 20
@@ -257,7 +256,6 @@ class Alarm():
                         except:
                             self.level[lv][dt] = 1
 
-
                 # only count active prefixes from now on
                 ratio = float(len(trie[p]))/float(self.mcount)
                 # For CDF plot only
@@ -265,6 +263,8 @@ class Alarm():
                     self.cdf[ratio] += 1
                 except:
                     self.cdf[ratio] = 1
+                '''
+                # for CDF comparison only
                 if dt >= self.bfr_start and dt < self.occur_dt:
                     try:
                         self.cdfbfr[ratio] += 1
@@ -277,6 +277,7 @@ class Alarm():
                         self.cdfaft[ratio] = 1
                 else:
                     pass
+                '''
                 if ratio <= self.active_t: # not active pfx
                     continue
                 pcount += 1
@@ -481,7 +482,8 @@ class Alarm():
         # total update and prefix count
         cmlib.simple_plot(self.active_t, self.granu, self.ucount, self.describe_add+'update_count')
         cmlib.simple_plot(self.active_t, self.granu, self.pfxcount, self.describe_add+'prefix_count')
-
+        
+        '''
         # CDF in introduction
         cmlib.cdf_plot(self.active_t, self.granu, self.cdf, self.describe_add+'CDF')
 
@@ -490,6 +492,7 @@ class Alarm():
                 self.describe_add+'CDFbfr')
         cmlib.cdf_plot(self.active_t, self.granu, self.cdfaft,\
                 self.describe_add+'CDFaft')
+        '''
 
     def plot_level(self, low, high):
         # fill the empty values with 0
