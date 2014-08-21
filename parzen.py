@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats
 import math
+from env import *
 
 class Estimator():
 
@@ -90,3 +91,21 @@ class Estimator():
             value += self.loc[key] * scipy.stats.norm.pdf(x, loc=key,\
                     scale=self.scale)
         return math.log10(value)
+
+if __name__ == '__main__':
+    mylist = []
+
+    fname = hdname + 'output/20060601_10_0.3/20060601_10_0.3_dvi(1).txt'
+    f = open(fname,'r')
+    for line in f:
+        value = float(line.split(',')[1])
+        mylist.append(value)
+
+    mylist = mylist[:144]
+        
+    emt = Estimator()
+    emt.train(mylist)
+    res = emt.get_likelihood(0.6)
+    print res
+    res = emt.get_log_likelihood(0.5785)
+    print res

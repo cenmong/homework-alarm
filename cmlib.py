@@ -716,6 +716,7 @@ def get_monitor_c(sdate):
 
     return len(peers)
 
+# get the number of all prefixes at certain date time
 def get_all_pcount(sdate):
     objdt = datetime.datetime.strptime(sdate, '%Y%m%d') 
     intdt = time_lib.mktime(objdt.timetuple())

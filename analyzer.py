@@ -1,12 +1,9 @@
 import os
-import time 
 import subprocess
-import sys
 import string
 import cmlib
 
 from alarm_class import *
-from datetime import datetime
 from netaddr import *
 from env import *
 
@@ -19,22 +16,22 @@ class Analyzer():
                 '+'{'+'}'+','+'-')
 
         try:
-            self.cl_list = cmlib.get_collector(sdate)  # the collectors this analyzer has
-            #print 'cl_list:',str(self.cl_list)
+            self.cl_list = cmlib.get_collector(sdate)  # the collectors this event has
         except:
             self.cl_list = []
 
-        self.cl_first = dict()  # cl: True or False
+        self.cl_first = dict()  # collector: First existence True or False
         for cl in collectors:
             self.cl_first[cl[0]] = True
                 
         if atype == 1:
             self.alarm = Alarm(granu, sdate, act_threshold, self.cl_list,\
                     thres, soccur, eoccur, des)
-        if atype == 2:  # longitudinal
+        if atype == 2:  # longitudinal study
             self.alarm = Alarm_c(granu, self.cl_list)
         self.atype = atype
-        #cmlib.get_pfx2as_file(sdate)
+        # TODO: define a new class to get these values
+        cmlib.get_pfx2as_file(sdate)
 
     def direct(self):
         try:

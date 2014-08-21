@@ -9,8 +9,8 @@ from env import *
 
 class Alarm():
 
-    def __init__(self, granu, sdate, active_t, cl_list, thres, soccur,\
-                eoccur, des):
+    def __init__(self, granu, sdate, hthres, cl_list, dthres, soccur,\
+                eoccur, desc):
 
         # for scheduling date time order
         self.cl_list = cl_list
@@ -19,38 +19,37 @@ class Alarm():
             self.cl_dt[cl] = [0, 0]  # start dt, now dt
         self.ceiling = 0  # we aggregate everything before ceiling
         self.floor = 0  # for not recording the lowest dt
-        # End
 
+        # most basic infomation about this event        
         self.sdate = sdate # Starting date
         self.granu = granu  # Time granularity in minutes
-        self.active_t = active_t # active threshold
-
-        self.thres = thres # Threshold
+        self.hthres = hthres # active threshold, also known as \theta_h
+        self.dthres = dthres # detection threshold, also known as \theta_d
         self.soccur = soccur # Event occurrence start
         self.eoccur = eoccur # Event occurrence end
-        self.des = des # Describe
+        self.desc = desc # description
 
+        # (global) related information
         self.pfx2as = None  # map all prefixes in the world to AS in a trie
-        # info about all ASes in the world
         self.as2nation = dict() # asn: nation
         self.as2type = dict() # asn: type
         self.as2rank = dict() # asn: rank (2012 datasource)
-        # info about nations
         self.nation2cont = dict() # nation: continent
 
+        # (local) origin AS and nation information
+        self.actas_c = dict() # dt: origin ASes (of HDVPs) count
+        self.actnation_c = dict() # dt: origin nations (of HDVPs) count
+        
         # peer, also known as monitor
         self.peerlist = dict()  # dt: peer list
         self.peeraslist = dict() # dt: peer AS list
 
-        self.actas_c = dict() # dt: origin ASes (of HDVPs) count
-        self.actnation_c = dict() # dt: origin nations (of HDVPs) count
-        
-        # the list of datetime
+        # the list of datetime, for better control
         self.dt_list = list()
 
         # every dt has a trie and some other values
         self.pfx_trie = dict()  # dt: trie. (costs memory, deleted periodically)
-        self.act_c = dict() # dt: active prefix count
+        self.hdvp_count = dict() # dt: active prefix count
 
         # Values related to the number of updates
         self.ucount = dict() # dt: update count
@@ -59,23 +58,26 @@ class Alarm():
         self.wcount = dict() # dt: withdrawal count
         self.wpctg = dict() # dt: withdrawal percentage 
 
+        # information about continent
         #self.busy_cont_bypfx = dict() # dt: the busiest continent by DAP
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
         #self.cont2num = {'EU':1,'NA':2,'AS':3,'SA':4,'OC':5,'AF':6}
 
-        # TODO: CDF will be sufficient
+        # TODO: CDF will be sufficient for origin as and nation
+        self.as_cdf = dict()
+        self.nation_cdf = dict()
         '''
         self.pfx_as_top10 = dict() # dt: top 10 ASes
         self.pfx_nation_top10 = dict()
         self.pfx_as_top10pctg = dict() # dt: top 10% ASes
         self.pfx_nation_top10pctg = dict()
         '''
-        # TODO: nation and continent
 
+        # TODO: decide better method here
         # get origin AS rank levels (among several pre-setted levels)
-        self.rank_thsd = [100, 1000] # threshold for classifying ASes
+        self.as_rank_thres = [100, 1000] # threshold for classifying ASes
         self.rank_count = [] # class(0~): {dt: count}
-        for i in xrange(0, len(self.rank_thsd)+1):
+        for i in xrange(0, len(self.as_rank_thres)+1):
             self.rank_count.append(dict())
 
         # TODO: CDF will be OK
@@ -100,7 +102,7 @@ class Alarm():
 
         # For the CDF figure in introduction
         self.cdf = dict()
-        '''
+        ''' CDFs for 15 hours before and after the event
         self.cdfbfr = dict()
         self.cdfaft = dict()
         self.occur_dt = datetime.datetime.strptime(soccur,\
@@ -112,7 +114,7 @@ class Alarm():
         self.occur_dt = time_lib.mktime(self.occur_dt.timetuple())
         '''
         # for naming all the plots 
-        self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.active_t)+'_'
+        self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'_'
 
     def get_monitor(self):
         for dr in daterange:
@@ -193,14 +195,14 @@ class Alarm():
     
             self.acount[dt] = 0
             self.wcount[dt] = 0
-            for i in xrange(0, len(self.rank_thsd)+1):
+            for i in xrange(0, len(self.as_rank_thres)+1):
                 self.rank_count[i][dt] = 0
 
         # get and record update type and number
         ty = attr[2]
         if ty == 'A':
             self.acount[dt] += 1
-        else: # 'W'
+        else:  # 'W'
             self.wcount[dt] += 1
         self.ucount[dt] += 1
 
@@ -264,7 +266,7 @@ class Alarm():
                 except:
                     self.cdf[ratio] = 1
                 '''
-                # for CDF comparison only
+                # for CDF (in introduction) comparison only
                 if dt >= self.bfr_start and dt < self.occur_dt:
                     try:
                         self.cdfbfr[ratio] += 1
@@ -278,11 +280,10 @@ class Alarm():
                 else:
                     pass
                 '''
-                if ratio <= self.active_t: # not active pfx
+                if ratio <= self.hthres: # not active pfx
                     continue
                 pcount += 1
 
-                '''
                 asn = self.pfx_to_as(p)
                 if asn not in as_list:
                     as_list.append(asn)
@@ -307,21 +308,20 @@ class Alarm():
                         pfxlist = pfx_nation_distri[nation]
                     except:
                         pfx_nation_distri[nation] = [p]
-                    if p not in pfx_nation_distri[nation]:
+                        pfxlist = pfx_nation_distri[nation]
+                    if p not in pfxlist:
                         pfx_nation_distri[nation].append(p)
-                '''
 
                 # a bunch of DVIs
-                self.dvi[0][dt] += ratio - self.active_t
+                self.dvi[0][dt] += ratio - self.hthres
                 self.dvi[1][dt] += np.power(2, (ratio-0.9)*10)
                 self.dvi[2][dt] += np.power(5, (ratio-0.9)*10)
                 self.dvi[3][dt] += ratio
                 self.dvi[4][dt] += 1
 
-            self.act_c[dt] = pcount
+            self.hdvp_count[dt] = pcount
             self.pfxcount[dt] = len(trie)
 
-            '''
             self.actas_c[dt] = len(as_list)
             self.actnation_c[dt] = len(nation_list)
 
@@ -330,12 +330,12 @@ class Alarm():
                 rank = self.as_to_rank(item)
                 if rank == -1: # no rank found
                     continue
-                for i in xrange(0, len(self.rank_thsd)):
-                    if rank <= self.rank_thsd[i]: # find rank!
+                for i in xrange(0, len(self.as_rank_thres)):
+                    if rank <= self.as_rank_thres[i]: # find rank!
                         self.rank_count[i][dt] += 1
                         break
                 # in last rank
-                self.rank_count[len(self.rank_thsd)][dt] += 1
+                self.rank_count[len(self.as_rank_thres)][dt] += 1
             
             # TODO: get features of origin nations here!
             #self.busy_cont_byas
@@ -387,7 +387,6 @@ class Alarm():
 
             # get withdrawal/(W+A) value
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
-            '''
 
         return 0
 
@@ -405,15 +404,15 @@ class Alarm():
 
         # Now, let's rock and roll
         for name in array1:
-            cmlib.direct_simple_plot(self.active_t, self.granu,\
-                    self.describe_add+name, self.thres,\
-                    self.soccur, self.eoccur, self.des)
+            cmlib.direct_simple_plot(self.hthres, self.granu,\
+                    self.describe_add+name, self.dthres,\
+                    self.soccur, self.eoccur, self.desc)
         for name in array2:
-            cmlib.direct_simple_plot(self.active_t, self.granu,\
-                    self.describe_add+name, self.thres,\
-                    self.soccur, self.eoccur, self.des)
+            cmlib.direct_simple_plot(self.hthres, self.granu,\
+                    self.describe_add+name, self.dthres,\
+                    self.soccur, self.eoccur, self.desc)
         for name in array3:
-            cmlib.direct_cdf_plot(self.active_t, self.granu,\
+            cmlib.direct_cdf_plot(self.hthres, self.granu,\
                     self.describe_add+name)
 
     def plot(self): # plot everything here!
@@ -427,72 +426,66 @@ class Alarm():
 
         # plot all DVIs
         for i in xrange(0, len(self.dvi)):
-            cmlib.simple_plot(self.active_t, self.granu, self.dvi[i], self.describe_add+self.dvi_desc[i])
+            cmlib.simple_plot(self.hthres, self.granu, self.dvi[i], self.describe_add+self.dvi_desc[i])
 
-        '''
         # plot peer count
         peercount = {}
         for key in self.peerlist.keys():
             peercount[key] = len(self.peerlist[key])
-        cmlib.simple_plot(self.active_t, self.granu, peercount, self.describe_add+'peercount')
+        cmlib.simple_plot(self.hthres, self.granu, peercount, self.describe_add+'peercount')
 
         # plot peer AS count
         peerascount = {}
         for key in self.peeraslist.keys():
             peerascount[key] = len(self.peeraslist[key])
-        cmlib.simple_plot(self.active_t, self.granu, peerascount, self.describe_add+'peerAScount')
-        '''
+        cmlib.simple_plot(self.hthres, self.granu, peerascount, self.describe_add+'peerAScount')
 
         # active pfx count
-        cmlib.simple_plot(self.active_t, self.granu, self.act_c, self.describe_add+'act_pfx_count')
+        cmlib.simple_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
 
         # plot interested levels
         self.plot_level(10, 80)
 
-        '''
-        cmlib.simple_plot(self.active_t, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
-        cmlib.simple_plot(self.active_t, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
+        cmlib.simple_plot(self.hthres, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
+        cmlib.simple_plot(self.hthres, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
 
         # top 10 AS and State
-        cmlib.simple_plot(self.active_t, self.granu, self.pfx_as_top10,\
+        cmlib.simple_plot(self.hthres, self.granu, self.pfx_as_top10,\
                 self.describe_add+'pfx_ratio_of_top10_originAS(active)')
-        cmlib.simple_plot(self.active_t, self.granu, self.pfx_nation_top10,\
+        cmlib.simple_plot(self.hthres, self.granu, self.pfx_nation_top10,\
                 self.describe_add+'pfx_ratio_of_top10_originState(active)')
 
         # top 10% AS and State
-        cmlib.simple_plot(self.active_t, self.granu, self.pfx_as_top10pctg,\
+        cmlib.simple_plot(self.hthres, self.granu, self.pfx_as_top10pctg,\
                 self.describe_add+'pfx_ratio_of_top10%_originAS(active)')
-        cmlib.simple_plot(self.active_t, self.granu, self.pfx_nation_top10pctg,\
+        cmlib.simple_plot(self.hthres, self.granu, self.pfx_nation_top10pctg,\
                 self.describe_add+'pfx_ratio_of_top10%_originState(active)')
 
         # different levels of origin AS ranks
         sign = 'rank_level_'
-        for item in self.rank_thsd:
+        for item in self.as_rank_thres:
             sign = sign + str(item) + '_'
         sign += '_'
-        for i in xrange(0, len(self.rank_thsd)+1):
-            cmlib.simple_plot(self.active_t, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
+        for i in xrange(0, len(self.as_rank_thres)+1):
+            cmlib.simple_plot(self.hthres, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
 
         # announcement withdrawal update prefix count
-        cmlib.simple_plot(self.active_t, self.granu, self.acount, self.describe_add+'announce_count')
-        cmlib.simple_plot(self.active_t, self.granu, self.wcount, self.describe_add+'withdraw_count')
-        cmlib.simple_plot(self.active_t, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
-        '''
+        cmlib.simple_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
+        cmlib.simple_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
+        cmlib.simple_plot(self.hthres, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
 
         # total update and prefix count
-        cmlib.simple_plot(self.active_t, self.granu, self.ucount, self.describe_add+'update_count')
-        cmlib.simple_plot(self.active_t, self.granu, self.pfxcount, self.describe_add+'prefix_count')
+        cmlib.simple_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
+        cmlib.simple_plot(self.hthres, self.granu, self.pfxcount, self.describe_add+'prefix_count')
         
-        '''
         # CDF in introduction
-        cmlib.cdf_plot(self.active_t, self.granu, self.cdf, self.describe_add+'CDF')
+        cmlib.cdf_plot(self.hthres, self.granu, self.cdf, self.describe_add+'CDF')
 
         # plot 2 CDFs: before event and after event
-        cmlib.cdf_plot(self.active_t, self.granu, self.cdfbfr,\
+        cmlib.cdf_plot(self.hthres, self.granu, self.cdfbfr,\
                 self.describe_add+'CDFbfr')
-        cmlib.cdf_plot(self.active_t, self.granu, self.cdfaft,\
+        cmlib.cdf_plot(self.hthres, self.granu, self.cdfaft,\
                 self.describe_add+'CDFaft')
-        '''
 
     def plot_level(self, low, high):
         # fill the empty values with 0
@@ -506,9 +499,8 @@ class Alarm():
         for key in self.level.keys():
             if key < low or key > high:
                 continue
-            cmlib.simple_plot(self.active_t, self.granu, self.level[key], self.describe_add+'='+str(key))
+            cmlib.simple_plot(self.hthres, self.granu, self.level[key], self.describe_add+'='+str(key))
 
-    '''
     def pfx_to_as(self, mypfx):
         if self.pfx2as == None:
             self.pfx2as = patricia.trie(None)
@@ -594,7 +586,6 @@ class Alarm():
             return self.nation2cont[mynation]
         except:
             return -1
-    '''    
 
     def shang_qu_zheng(self, value, tp):  # 'm': minute, 's': second
         if tp == 's':
