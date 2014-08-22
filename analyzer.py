@@ -72,7 +72,7 @@ class Analyzer():
                         if not self.is_normal(line):
                             continue
                         break
-                    self.alarm.set_first(cl, line)  # set colllector's dt
+                    self.alarm.set_start(cl, line)  # set colllector's dt
                     self.alarm.add(line)
                     self.cl_first[cl] = False
                 for line in f:

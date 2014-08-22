@@ -68,7 +68,7 @@ daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
             ('20120425', 4, -1, '20120426 0904 TEAMS cable cut again in east\
                     Africa', 22, 00,\
                 '', '', ''),
-            ('20110824', 4, -1, '201108 hurricane Irene in east U.S.', 23, 01,\
+            ('20110824', 4, 196, '201108 hurricane Irene in east U.S.', 23, 01,\
                 '', '', ''),
             ('20070701', 4, -1, '2007 training data', 24, 00,\
                 '', '', ''),

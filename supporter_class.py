@@ -9,7 +9,7 @@ class Supporter():
     def __init__(self):
         return 0
 
-    def get_as2nation(self):
+    def get_as2nation_file(self):
         if os.path.exists(hdname+'topofile/as2nation.txt'):
             return 0
         rows = cmlib.get_weblist('http://bgp.potaroo.net/cidr/autnums.html')
@@ -24,7 +24,7 @@ class Supporter():
 
         return 0
 
-    def get_as_rank(self):
+    def get_asrank_file(self):
         date = '20121102'
         n = '42697'
 
@@ -67,3 +67,72 @@ class Supporter():
 
         fr.close()
         fw.close()
+
+    def get_pfx2as_trie(self, sdate):
+        pfx2as = patricia.trie(None)
+
+        pfx2as_file = ''
+        tmp = os.listdir(hdname+'topofile/'+sdate+'/')
+        for line in tmp:
+            if 'pfx2as' in line:
+                pfx2as_file = line
+                break
+
+        f = open(hdname+'topofile/'+sdate+'/'+pfx2as_file)
+        for line in f:
+            print line
+            line = line.rstrip('\n')
+            attr = line.split()
+            if '_' in attr[2] or ',' in attr[2]:
+                continue
+            pfx = cmlib.ip_to_binary(attr[0]+'/'+attr[1], '0.0.0.0')
+            try:
+                pfx2as[pfx] = int(attr[2]) # pfx: origin AS
+            except:
+                pfx2as[pfx] = -1
+        f.close()
+
+        return pfx2as
+
+    def get_as2nation_dict(self, sdate):  # TODO: should consider datetime
+        as2nation = {}
+
+        f = open(hdname+'topofile/as2nation.txt')
+        for line in f:
+            as2nation[int(line.split()[0])] = line.split()[1]
+        f.close()
+
+        return as2nation
+
+    def get_as2type_dict(self, sdate):
+        as2type == {}
+
+        f = open(hdname+'topofile/as2attr.txt')
+        for line in f:
+            line = line.strip('\n')
+            as2type[int(line.split()[0])] = line.split()[-1]
+        f.close()
+
+        return as2type
+
+    def get_as2rank_dict(self, sdate):
+        as2rank == {}
+
+        f = open(hdname+'topofile/asrank_20121102.txt')
+        for line in f:
+            line = line.strip('\n')
+            as2rank[int(line.split()[1])] = int(line.split()[0])
+        f.close()
+
+        return as2rank
+
+    def get_nation2cont_dict(self):
+        nation2cont == {}
+
+        f = open(hdname+'topofile/continents.txt')
+        for line in f:
+            line = line.strip('\n')
+            nation2cont[line.split(',')[0]] = line.split(',')[1]
+        f.close()
+
+        return nation2cont

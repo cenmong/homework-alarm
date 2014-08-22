@@ -6,6 +6,7 @@ import cmlib
 
 from netaddr import *
 from env import *
+from supporter_class import *
 
 class Alarm():
 
@@ -30,11 +31,12 @@ class Alarm():
         self.desc = desc # description
 
         # (global) related information
-        self.pfx2as = None  # map all prefixes in the world to AS in a trie
-        self.as2nation = dict() # asn: nation
-        self.as2type = dict() # asn: type
-        self.as2rank = dict() # asn: rank (2012 datasource)
-        self.nation2cont = dict() # nation: continent
+        supporter = supporter() # TODO: fill
+        self.pfx2as = supporter.get_pfx2as_trie(self.sdate)  # all prefixes to AS in a trie
+        self.as2nation = supporter.get_as2nation_dict(self.sdate)
+        self.as2type = supporter.get_as2type_dict(self.sdate)
+        self.as2rank = supporter.get_as2rank_dict(self.sdate)
+        self.nation2cont = supporter.get_nation2cont_dict(self.sdate)  # nation: continent
 
         # (local) origin AS and nation information
         self.actas_c = dict() # dt: origin ASes (of HDVPs) count
@@ -43,6 +45,8 @@ class Alarm():
         # peer, also known as monitor
         self.peerlist = dict()  # dt: peer list
         self.peeraslist = dict() # dt: peer AS list
+        self.mcount = 0
+        self.get_monitor()
 
         # the list of datetime, for better control
         self.dt_list = list()
@@ -80,7 +84,7 @@ class Alarm():
         for i in xrange(0, len(self.as_rank_thres)+1):
             self.rank_count.append(dict())
 
-        # TODO: CDF will be OK
+        # TODO: CDF will be OK?
         # diff levels of visibility, from 0~10 to 90~100 and 100
         self.level = dict() # level(e.g.,>=0,>=10,>=20,...): dt: value
         for i in xrange(0, 101):
@@ -117,15 +121,16 @@ class Alarm():
         self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'_'
 
     def get_monitor(self):
+        # try to get the value from env.py directly
         for dr in daterange:
             if dr[0] == self.sdate:
                 self.mcount = dr[2]
+        # no record
         if self.mcount == -1:
             self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
 
-
     def check_memo(self, is_end):
-        if self.ceiling == 0:  # not everybofy is ready
+        if self.ceiling == 0:  # not everybody is ready
             return 0
     
         # We are now sure that all collectors exist and any info that is 
@@ -138,7 +143,7 @@ class Alarm():
 
         if is_end == False:
             if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # frequent
-                # e.g., aggregate 10:50 only when now > 11:00
+                # e.g., aggregate everything <= 10:50 only when now > 11:00
                 self.ceiling = new_ceil - 60 * self.granu
                 self.release_memo()
         else:
@@ -149,24 +154,22 @@ class Alarm():
 
     # aggregate everything before ceiling and remove garbage
     def release_memo(self):
-        print 'deciding dt to release...'
-        rel_dt = []  # dt for processing
-        for dt in self.pfx_trie.keys():  # all dt that exists
+        print 'deciding the dt list to  get info and release memory'
+        rel_dt = []  # target dt list
+        for dt in self.pfx_trie.keys():
             if self.floor <= dt <= self.ceiling:
-                #cmlib.print_dt(dt)
                 rel_dt.append(dt)
-        # Put major businesses here
+
         self.aggregate(rel_dt)
 
         self.del_garbage()
         return 0
 
-    # delete large and unaggregated memory usage
+    # delete the tires that have already been used
     def del_garbage(self):
         print 'Deleting garbage...'
         for dt in self.pfx_trie.keys():  # all dt that exists
             if dt <= self.ceiling:
-                #cmlib.print_dt(dt)
                 del self.pfx_trie[dt]
         return 0
 
@@ -179,44 +182,40 @@ class Alarm():
                 replace(second = 0, microsecond = 0) +\
                 datetime.timedelta(hours=-8) # note the 8H shift
 
-        # Reset time to fit granularity
+        # Reset date time to fit granularity
         mi = self.xia_qu_zheng(objdt.minute, 'm')
         objdt = objdt.replace(minute = mi)
         dt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
 
-
-        if dt not in self.dt_list: # a brand new dt for sure!
+        # meet a brand new dt for sure!
+        if dt not in self.dt_list:
             self.dt_list.append(dt)
-            # initialization
-            #self.peerlist[dt] = []
-            #self.peeraslist[dt] = []
+            self.peerlist[dt] = []
+            self.peeraslist[dt] = []
             self.ucount[dt] = 0
             self.pfx_trie[dt] = patricia.trie(None)
-    
             self.acount[dt] = 0
             self.wcount[dt] = 0
             for i in xrange(0, len(self.as_rank_thres)+1):
                 self.rank_count[i][dt] = 0
 
-        # get and record update type and number
-        ty = attr[2]
-        if ty == 'A':
+        # record update type and number
+        if attr[2] == 'A':  # announcement
             self.acount[dt] += 1
-        else:  # 'W'
+        else:  # withdrawal
             self.wcount[dt] += 1
         self.ucount[dt] += 1
 
+        # fullfill the peerlist and peer as list
         peer = attr[3]
-        # fullfill the peerlist
         if peer not in self.peerlist[dt]:
             self.peerlist[dt].append(peer)
 
-        # fullfill the peeraslist
         peeras = int(attr[4])
         if peeras not in self.peeraslist[dt]:
             self.peeraslist[dt].append(peeras)
 
-        # now let's deal with the prefix -- the core mission!
+        # deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
         try:
             try:  # Test whether the trie has the node
@@ -235,16 +234,15 @@ class Alarm():
     def aggregate(self, rel_dt):
         print 'aggregating...'
         for dt in rel_dt:
-            # TODO
             trie = self.pfx_trie[dt]
             pcount = 0
-            #as_list = [] # list of origin ASes in this dt
-            #nation_list = [] # list of origin nations in this dt
+            as_list = [] # list of origin ASes in this dt
+            nation_list = [] # list of origin nations in this dt
             for i in xrange(0, len(self.dvi)):
                 self.dvi[i][dt] = 0
 
-            #pfx_as_distri = {} # ASN: pfx list
-            #pfx_nation_distri = {} # nation: pfx list
+            pfx_as_distri = {} # ASN: pfx list
+            pfx_nation_distri = {} # nation: pfx list
             for p in trie:
                 if p == '': # the root node (the source of a potential bug)
                     continue
@@ -404,11 +402,11 @@ class Alarm():
 
         # Now, let's rock and roll
         for name in array1:
-            cmlib.direct_simple_plot(self.hthres, self.granu,\
+            cmlib.direct_ts_plot(self.hthres, self.granu,\
                     self.describe_add+name, self.dthres,\
                     self.soccur, self.eoccur, self.desc)
         for name in array2:
-            cmlib.direct_simple_plot(self.hthres, self.granu,\
+            cmlib.direct_ts_plot(self.hthres, self.granu,\
                     self.describe_add+name, self.dthres,\
                     self.soccur, self.eoccur, self.desc)
         for name in array3:
@@ -426,39 +424,38 @@ class Alarm():
 
         # plot all DVIs
         for i in xrange(0, len(self.dvi)):
-            cmlib.simple_plot(self.hthres, self.granu, self.dvi[i], self.describe_add+self.dvi_desc[i])
+            cmlib.time_series_plot(self.hthres, self.granu, self.dvi[i], self.describe_add+self.dvi_desc[i])
 
-        # plot peer count
+        # plot peer count and peer AS count
         peercount = {}
         for key in self.peerlist.keys():
             peercount[key] = len(self.peerlist[key])
-        cmlib.simple_plot(self.hthres, self.granu, peercount, self.describe_add+'peercount')
-
-        # plot peer AS count
+        cmlib.time_series_plot(self.hthres, self.granu, peercount, self.describe_add+'peercount')
+        
         peerascount = {}
         for key in self.peeraslist.keys():
             peerascount[key] = len(self.peeraslist[key])
-        cmlib.simple_plot(self.hthres, self.granu, peerascount, self.describe_add+'peerAScount')
+        cmlib.time_series_plot(self.hthres, self.granu, peerascount, self.describe_add+'peerAScount')
 
         # active pfx count
-        cmlib.simple_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
 
         # plot interested levels
         self.plot_level(10, 80)
 
-        cmlib.simple_plot(self.hthres, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
-        cmlib.simple_plot(self.hthres, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
 
         # top 10 AS and State
-        cmlib.simple_plot(self.hthres, self.granu, self.pfx_as_top10,\
+        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10,\
                 self.describe_add+'pfx_ratio_of_top10_originAS(active)')
-        cmlib.simple_plot(self.hthres, self.granu, self.pfx_nation_top10,\
+        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10,\
                 self.describe_add+'pfx_ratio_of_top10_originState(active)')
 
         # top 10% AS and State
-        cmlib.simple_plot(self.hthres, self.granu, self.pfx_as_top10pctg,\
+        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10pctg,\
                 self.describe_add+'pfx_ratio_of_top10%_originAS(active)')
-        cmlib.simple_plot(self.hthres, self.granu, self.pfx_nation_top10pctg,\
+        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10pctg,\
                 self.describe_add+'pfx_ratio_of_top10%_originState(active)')
 
         # different levels of origin AS ranks
@@ -467,16 +464,16 @@ class Alarm():
             sign = sign + str(item) + '_'
         sign += '_'
         for i in xrange(0, len(self.as_rank_thres)+1):
-            cmlib.simple_plot(self.hthres, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
+            cmlib.time_series_plot(self.hthres, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
 
         # announcement withdrawal update prefix count
-        cmlib.simple_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
-        cmlib.simple_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
-        cmlib.simple_plot(self.hthres, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
+        cmlib.time_series_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
 
         # total update and prefix count
-        cmlib.simple_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
-        cmlib.simple_plot(self.hthres, self.granu, self.pfxcount, self.describe_add+'prefix_count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount, self.describe_add+'prefix_count')
         
         # CDF in introduction
         cmlib.cdf_plot(self.hthres, self.granu, self.cdf, self.describe_add+'CDF')
@@ -499,33 +496,9 @@ class Alarm():
         for key in self.level.keys():
             if key < low or key > high:
                 continue
-            cmlib.simple_plot(self.hthres, self.granu, self.level[key], self.describe_add+'='+str(key))
+            cmlib.time_series_plot(self.hthres, self.granu, self.level[key], self.describe_add+'='+str(key))
 
     def pfx_to_as(self, mypfx):
-        if self.pfx2as == None:
-            self.pfx2as = patricia.trie(None)
-
-            pfx2as_file = ''
-            tmp = os.listdir(hdname+'topofile/'+self.sdate+'/')
-            for line in tmp:
-                if 'pfx2as' in line:
-                    pfx2as_file = line
-                    break
-
-            f = open(hdname+'topofile/'+self.sdate+'/'+pfx2as_file)
-            for line in f:
-                print line
-                line = line.rstrip('\n')
-                attr = line.split()
-                if '_' in attr[2] or ',' in attr[2]:
-                    continue
-                pfx = cmlib.ip_to_binary(attr[0]+'/'+attr[1], '0.0.0.0')
-                try:
-                    self.pfx2as[pfx] = int(attr[2]) # pfx: origin AS
-                except:
-                    self.pfx2as[pfx] = -1
-            f.close()
-        # We already have a global trie
         try:
             asn = self.pfx2as[mypfx]
             return asn
@@ -533,55 +506,24 @@ class Alarm():
             return -1
 
     def as_to_nation(self, myasn):
-        if self.as2nation == {}:
-            f = open(hdname+'topofile/as2nation.txt')
-            for line in f:
-                self.as2nation[int(line.split()[0])] = line.split()[1]
-            f.close()
-   
-        # We already have as2nation database
         try:
             return self.as2nation[myasn]
         except:
             return -1
 
     def as_to_type(self, myasn): # TODO: this is based on old data (2004) :(
-        if self.as2type == {}:
-            f = open(hdname+'topofile/as2attr.txt')
-            for line in f:
-                line = line.strip('\n')
-                self.as2type[int(line.split()[0])] = line.split()[-1]
-            f.close()
-   
-        # We already have as2type database
         try:
             return self.as2type[myasn]
         except:
             return -1
 
     def as_to_rank(self, myasn):
-        if self.as2rank == {}:
-            f = open(hdname+'topofile/asrank_20121102.txt')
-            for line in f:
-                line = line.strip('\n')
-                self.as2rank[int(line.split()[1])] = int(line.split()[0])
-            f.close()
-   
-        # We already have as2rank database
         try:
             return self.as2rank[myasn]
         except:
             return -1
 
     def nation_to_cont(self, mynation):
-        if self.nation2cont == {}:
-            f = open(hdname+'topofile/continents.txt')
-            for line in f:
-                line = line.strip('\n')
-                self.nation2cont[line.split(',')[0]] = line.split(',')[1]
-            f.close()
-   
-        # We already have as2rank database
         try:
             return self.nation2cont[mynation]
         except:
@@ -606,16 +548,16 @@ class Alarm():
             return False
 
     def set_now(self, cl, line):
-        self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # -8 Hours
+        self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
         return 0
     
-    def set_first(self, cl, first_line):
+    def set_start(self, cl, first_line):
         self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
-        non_zero = True
+        non_zero = True # True if all collectors have started
         for cl in self.cl_list:
             if self.cl_dt[cl][0] == 0:
                 non_zero = False
-        if non_zero == True:  # all cl has file exist
+        if non_zero == True:
             for cl in self.cl_list:
                 if self.cl_dt[cl][0] > self.ceiling:
                     self.ceiling = self.cl_dt[cl][0]

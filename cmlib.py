@@ -90,13 +90,14 @@ def parse_mrt(old_loc_fname, new_loc_fname):
     else:  # file already exists
         pass
 
-def simple_plot(active_t, granu, my_dict, describe): # start date is always first attribute
+def time_series_plot(hthres, granu, my_dict, describe): 
     value = []
+
     dt = my_dict.keys()
     dt.sort()
     for key in dt:
         value.append(my_dict[key])
-    dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj
+    dt = [datetime.datetime.fromtimestamp(ts) for ts in dt]  # int to obj. required!
     
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
@@ -107,31 +108,37 @@ def simple_plot(active_t, granu, my_dict, describe): # start date is always firs
     ax.xaxis.set_major_formatter(myFmt)
     plt.xticks(rotation=45)
 
+    # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
+    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'.pdf')
     plt.close()
 
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+\
+    # Record plot data in a separate file for future use
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+\
             describe+'.txt', 'w')
     for i in xrange(0, len(dt)):
         f.write(str(dt[i])+','+str(value[i])+'\n')
     f.close()
+
     return 0
 
-def cdf_plot(active_t, granu, my_dict, describe): # start date is always first attribute
+def cdf_plot(hthres, granu, my_dict, describe):
+    # my_dict DV value: exist time
     xlist = [0]
     ylist = [0]
     for key in sorted(my_dict):
         xlist.append(key)
         ylist.append(my_dict[key])
 
+    # y = the number of values that <= x
+    # TODO: do not put logic here
     for i in xrange(1, len(ylist)):
         ylist[i] += ylist[i-1]
 
-    giant = ylist[-1]
+    giant = ylist[-1] # the largest y value
     for i in xrange(0, len(ylist)):
-        ylist[i] = float(ylist[i])/float(giant)
+        ylist[i] = float(ylist[i])/float(giant) # get %
 
     for i in xrange(0, len(xlist)):
         xlist[i] = xlist[i] * 100
@@ -145,12 +152,14 @@ def cdf_plot(active_t, granu, my_dict, describe): # start date is always first a
     ax.set_ylabel('prefix-time (%) CDF')
     ax.set_xlabel('route monitor (%)')
 
+    # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
+    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'.pdf')
     plt.close()
 
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+\
+    # Record plot data in a separate file for future use
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+\
             describe+'.txt', 'w')
     for i in xrange(0, len(xlist)):
         f.write(str(xlist[i])+','+str(ylist[i])+'\n')
@@ -158,51 +167,12 @@ def cdf_plot(active_t, granu, my_dict, describe): # start date is always first a
 
     return 0
 
-def avg_cdf_plot(active_t, granu, my_dict, describe): # start date is always first attribute
-    xlist = [0]
-    ylist = [0]
-    for key in sorted(my_dict):
-        xlist.append(key)
-        ylist.append(my_dict[key])
-
-    for i in xrange(1, len(ylist)):
-        ylist[i] += ylist[i-1]
-
-    giant = ylist[-1]
-    for i in xrange(0, len(ylist)):
-        ylist[i] = float(ylist[i])/float(giant)
-
-    for i in xrange(0, len(xlist)):
-        xlist[i] = xlist[i] * 100
-        ylist[i] = ylist[i] * 100
-
-    fig = plt.figure(figsize=(16, 10))
-    ax = fig.add_subplot(111)
-    ax.plot(xlist, ylist, 'k-')
-    ax.set_ylim([0,110])
-    ax.set_xlim([-10,100])
-    ax.set_ylabel('prefix-time (%) CDF')
-    ax.set_xlabel('route monitor (%)')
-
-    sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.pdf')
-    plt.close()
-
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+\
-            describe+'.txt', 'w')
-    for i in xrange(0, len(xlist)):
-        f.write(str(xlist[i])+','+str(ylist[i])+'\n')
-    f.close()
-
-    return 0
-
-def combine_slot_dvi():
+def combine_ts_diffgranu(fdict, xlabel, ylabel):
     flist = []
-    flist.append(hdname + 'output/20100226_3_0.3/20100226_3_0.3_dvi(1).txt')
-    flist.append(hdname + 'output/20100226_10_0.3/20100226_10_0.3_dvi(1).txt')
-    flist.append(hdname + 'output/20100226_30_0.3/20100226_30_0.3_dvi(1).txt')
-    print flist
+    lglist = [] # legend list
+    for fname in sorted(fdict):
+        flist.append(fname)
+        lglist.append(fdict[fname])
 
     xlists = []
     ylists = []
@@ -261,12 +231,12 @@ def combine_slot_dvi():
             bbox_inches='tight')
     plt.close()
 
-def combine_ht(): # use for once and independently
+def combine_ts_samegranu(fdict, xlabel, ylabel):
     flist = []
-    flist.append(hdname + 'output/20130317_10_0.3/20130317_10_0.3_=10.txt')
-    flist.append(hdname + 'output/20130317_10_0.3/20130317_10_0.3_=30.txt')
-    flist.append(hdname + 'output/20130317_10_0.3/20130317_10_0.3_=40.txt')
-    print flist
+    lglist = [] # legend list
+    for fname in sorted(fdict):
+        flist.append(fname)
+        lglist.append(fdict[fname])
 
     xlists = []
     ylists = []
@@ -286,23 +256,24 @@ def combine_ht(): # use for once and independently
         ylists.append(value)
 
     # Plotting
-    xlists[0] = xlists[0][0:144]
-    ylists[0] = ylists[0][0:144]
-    xlists[1] = xlists[1][0:144]
-    ylists[1] = ylists[1][0:144]
-    xlists[2] = xlists[2][0:144]
-    ylists[2] = ylists[2][0:144]
+    cut = 144 # just plot one day (granu = 10 minutes) #TODO
+    for i in xrange(0, len(flist)): # set every curve same x points
+        xlists[i] = xlists[i][0:cut]
+        ylists[i] = ylists[i][0:cut]
+
+    # set x range to exactly a day
     sdt = xlists[0][0]+datetime.timedelta(minutes=1)
     edt = xlists[0][-1]+datetime.timedelta(days=1)
     edt = edt.replace(hour=0,minute=0,second=0,microsecond=0)
 
     fig = plt.figure(figsize=(20, 10))
     ax = fig.add_subplot(111)
-    ax.plot(xlists[0], ylists[0], 'k^-', label=r'$\theta_h=10\%$')
-    ax.plot(xlists[1], ylists[1], 'k--', label=r'$\theta_h=30\%$')
-    ax.plot(xlists[2], ylists[2], 'k-', label=r'$\theta_h=40\%$')
+    line_type = ['k--', 'k-', 'k^-'] # line type (hard code) TODO
+    for i in xrange(0, len(flist)):
+        ax.plot(xlists[i], ylists[i], line_type[i], label=lglist[i])
     
-    legend = ax.legend(loc='upper center',bbox_to_anchor=(0.43,1),shadow=False)
+    # TODO: do not hard code
+    legend = ax.legend(loc='upper center',bbox_to_anchor=(0.43,1),shadow=False) 
 
     ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
 
@@ -316,19 +287,21 @@ def combine_ht(): # use for once and independently
     myFmt = mpldates.DateFormatter('%H:00\n%b%d')
     ax.xaxis.set_major_formatter(myFmt)
 
-    ax.set_ylabel(r'Quantity of HDVPs')
+    ax.set_ylabel(ylabel)
     ax.tick_params(axis='y',pad=10)
     # save figure
-    plt.savefig(hdname+'output/combine_ht.pdf',\
+    plt.savefig(hdname+'output/combine_ts_samegranu_'+flist[0]+'.pdf',\
             bbox_inches='tight')
     plt.close()
 
-def combine_cdf():
+def combine_cdf(fdict, xlabel, ylabel): # fdict {filename: legend}
     flist = []
-    flist.append(hdname + 'output/20061225_10_0.3/20061225_10_0.3_CDFbfr.txt')
-    flist.append(hdname + 'output/20061225_10_0.3/20061225_10_0.3_CDFaft.txt')
-    print flist
-    xlists = []
+    lglist = [] # legend list
+    for fname in sorted(fdict):
+        flist.append(fname)
+        lglist.append(fdict[fname])
+
+    xlists = [] # list of list
     ylists = []
     for fname in flist:
         xl = []
@@ -337,49 +310,47 @@ def combine_cdf():
         for line in f:
             line = line.replace('\n', '').split(',')
             xl.append(float(line[0]))
-            yl.append(100-float(line[1]))
+            yl.append(100-float(line[1])) # this is actually CCDF
         f.close()
         xlists.append(xl)
         ylists.append(yl)
 
-    tl = [5,10,20]
+    
+    interest = [5,10,20] # get exact data later and write in the paper
     x1, y1 = 0, 0
     x2, y2 = 0, 0
     x3, y3 = 0, 0
 
-    for t in tl:
-        for j in xrange(0, len(xlists[0])):
-            if xlists[0][j] > t:
-                print xlists[0][j]
-                print ylists[0][j]
-                break
-        for j in xrange(0, len(xlists[1])):
-            if xlists[1][j] > t:
-                print xlists[1][j]
-                print ylists[1][j]
-                break
+    # get data and write paper
+    for t in interest:
+        for ii in xrange(0, len(xlists)):
+            for j in xrange(0, len(xlists[ii])):
+                if xlists[ii][j] > t:
+                    print xlists[ii][j]
+                    print ylists[ii][j]
+                    break
 
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
-    ax.plot(xlists[0], ylists[0], 'k--', label='before earthquake')
-    ax.plot(xlists[1], ylists[1], 'k-', label='after earthquake')
+    line_type = ['k--', 'k-', 'k^-'] # line type (hard code) TODO
+    for i in xrange(0, len(flist)):
+        ax.plot(xlists[i], ylists[i], line_type[i], label=lglist[i])
     legend = ax.legend(loc='upper right',shadow=False)
 
-    ax.set_ylabel('Percentage of Prefixes')
-    ax.set_xlabel('Percentage of route monitors')
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    # TODO: do not hard code these values
     ax.set_ylim([-2,102])
     ax.set_xlim([-5,75])
-    ax.tick_params(axis='y',pad=10)
-    plt.savefig(hdname+'output/combine_cdf.pdf',\
-            bbox_inches='tight')
+    ax.tick_params(axis='y', pad=10)
+    plt.savefig(hdname+'output/combine_cdf_'+flist[0]+'.pdf', bbox_inches='tight')
     plt.close()
 
-def direct_simple_plot(active_t, granu, describe, thres, soccur,\
-        eoccur, des):
+def direct_ts_plot(hthres, granu, describe, thres, soccur, eoccur, des):
     sdate = describe.split('_')[0]
     count_peak = 0
     fname =\
-            hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
+            hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'.txt'
     dt = []
     value = []
     circlex = []
@@ -454,6 +425,7 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
     myFmt = mpldates.DateFormatter('%H:00\n%b%d')
     ax.xaxis.set_major_formatter(myFmt)
 
+    # TODO: set these parameters in function parameter
     x1 = -180
     y1 = 350
     x2 = -50
@@ -520,13 +492,13 @@ def direct_simple_plot(active_t, granu, describe, thres, soccur,\
         if sdate == '20030813' or sdate == '20110310':
             plt.savefig(hdname+'output/'+sdate+'prefix.pdf',\
                     bbox_inches='tight')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'_new.pdf')
     plt.close()
 
-def direct_cdf_plot(active_t, granu, describe):
+def direct_cdf_plot(hthres, granu, describe):
     sdate = describe.split('_')[0]
     fname =\
-            hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'.txt'
+            hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'.txt'
     xlist = []
     ylist = []
     f = open(fname, 'r')
@@ -536,6 +508,7 @@ def direct_cdf_plot(active_t, granu, describe):
         ylist.append(float(line[1]))
     f.close()
 
+    # TODO: do not hard code these values
     t1 = 80
     t2 = 95
     t3 = 98
@@ -582,7 +555,7 @@ def direct_cdf_plot(active_t, granu, describe):
     #print 'p3',x3,y3
 
     sdate = describe.split('_')[0]
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(active_t)+'/'+describe+'_new.pdf')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'_new.pdf')
     plt.close()
 
 def print_dt(dt):
