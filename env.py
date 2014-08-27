@@ -18,7 +18,7 @@ collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
                      '20010901'), ('rrc07', 1, '20020501'),\
              ]
 
-# number of days in total
+# number of days in total 10:tsj 01:acer
 daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2006-12-26 12:25:00', '', 'Earthquake\nhappened'),
             ('20081218', 4, 181, '2008 mediterranean cable cut 2', 1, 11,\
@@ -47,7 +47,7 @@ daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
             ('20130207', 4, 191, '2013 Northeastern U.S. Blackout', 12, 01,\
                 '2013-02-08 21:15:00', '2013-02-09 23:59:59',
                 'Several\nregions\nblackouts'),
-            ('20100413', 4, 180, '2010 Sea-Me undersea cable cut', 13, 01,\
+            ('20100413', 4, 180, '2010 Sea-Me undersea cable cut', 13, 11,\
                 '', '', ''),
             ('20120221', 4, -1, 'Australia route leakage', 14, 00,\
                 '', '', ''),
@@ -68,11 +68,13 @@ daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
             ('20120425', 4, -1, '20120426 0904 TEAMS cable cut again in east\
                     Africa', 22, 00,\
                 '', '', ''),
-            ('20110824', 4, 196, '201108 hurricane Irene in east U.S.', 23, 01,\
+            ('20110824', 4, 196, '201108 hurricane Irene in east U.S.', 23, 11,\
                 '', '', ''),
             ('20070701', 4, -1, '2007 training data', 24, 00,\
                 '', '', ''),
             ('20090601', 14, -1, 'Reference 2009', 25, 10,\
+                '', '', ''),
+            ('20040601', 14, -1, 'Reference 2004', 26, 10,\
                 '', '', ''),
             ('20040601', 14, -1, 'Reference 2004', 26, 10,\
                 '', '', ''),

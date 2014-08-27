@@ -21,6 +21,8 @@ from matplotlib.patches import Rectangle
 from netaddr import *
 from env import *
 
+line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
+
 font = {
     #'weight': 'bold',
     'size': 38,}
@@ -28,6 +30,8 @@ matplotlib.rc('font', **font)
 plt.rc('legend',**{'fontsize':38})
 
 el = Ellipse((2,-1),0.5,0.5)
+
+# TODO: plots far from perfect yet, too many hard code values
 
 def download_file(url, save_loc, filename):
     make_dir(save_loc)
@@ -168,11 +172,14 @@ def cdf_plot(hthres, granu, my_dict, describe):
     return 0
 
 def combine_ts_diffgranu(fdict, xlabel, ylabel):
+    #fdict = {fname:[legend, cut]}
     flist = []
     lglist = [] # legend list
+    cutlist = []
     for fname in sorted(fdict):
         flist.append(fname)
-        lglist.append(fdict[fname])
+        lglist.append(fdict[fname][0])
+        cutlist.append(fdict[fname][1])
 
     xlists = []
     ylists = []
@@ -192,23 +199,18 @@ def combine_ts_diffgranu(fdict, xlabel, ylabel):
         ylists.append(value)
 
     # Plotting
-    xlists[0] = xlists[0][0:480]
-    ylists[0] = ylists[0][0:480]
-    xlists[1] = xlists[1][0:144]
-    ylists[1] = ylists[1][0:144]
-    xlists[2] = xlists[2][0:48]
-    ylists[2] = ylists[2][0:48]
+    for i in xrange(0, len(flist)):
+        xlists[i] = xlists[i][0:cutlist[i]]
+        ylists[i] = ylists[i][0:cutlist[i]]
+
     sdt = xlists[1][0]+datetime.timedelta(minutes=1)
-    print sdt
     edt = xlists[1][-10]+datetime.timedelta(days=1)
     edt = edt.replace(hour=0,minute=0,second=0,microsecond=0)
-    print edt
 
     fig = plt.figure(figsize=(20, 10))
     ax = fig.add_subplot(111)
-    ax.plot(xlists[0], ylists[0], 'k-', label='3 min')
-    ax.plot(xlists[1], ylists[1], 'k--', label='10 min')
-    ax.plot(xlists[2], ylists[2], 'k^-', label='30 min')
+    for i in xrange(0, len(flist)):
+        ax.plot(xlists[i], ylists[i], line_type[i], label=lglist[i])
 
     legend = ax.legend(loc='upper left',shadow=False)
     ax.set_xlim([mpldates.date2num(sdt), mpldates.date2num(edt)])
@@ -221,22 +223,25 @@ def combine_ts_diffgranu(fdict, xlabel, ylabel):
     ax.yaxis.set_ticks_position('left')
     myFmt = mpldates.DateFormatter('%H:00\n%b%d')
     ax.xaxis.set_major_formatter(myFmt)
-    # 10^x
+    # add the label 10^x to the left upper side of the figure
     ax.annotate(r'$\times10^{-2}$',(mpldates.date2num(sdt),0),xytext=(0, 585),textcoords='offset\
             points',)
     # save figure
     ax.tick_params(axis='y',pad=10)
-    ax.set_ylabel('Dynamic Visibility Index')
-    plt.savefig(hdname+'output/combine_slot.pdf',\
+    ax.set_ylabel(ylabel)
+    plt.savefig(hdname+'output/combine_slot_'+flist[0]+'.pdf',\
             bbox_inches='tight')
     plt.close()
 
-def combine_ts_samegranu(fdict, xlabel, ylabel):
+def combine_ts_samegranu(fdict, xlabel, ylabel): 
+    #fdict = {fname:[legend, cut]}
     flist = []
     lglist = [] # legend list
+    cutlist = []
     for fname in sorted(fdict):
         flist.append(fname)
-        lglist.append(fdict[fname])
+        lglist.append(fdict[fname][0])
+        cutlist.append(fdict[fname][1])
 
     xlists = []
     ylists = []
@@ -255,11 +260,9 @@ def combine_ts_samegranu(fdict, xlabel, ylabel):
         xlists.append(dt)
         ylists.append(value)
 
-    # Plotting
-    cut = 144 # just plot one day (granu = 10 minutes) #TODO
-    for i in xrange(0, len(flist)): # set every curve same x points
-        xlists[i] = xlists[i][0:cut]
-        ylists[i] = ylists[i][0:cut]
+    for i in xrange(0, len(flist)):
+        xlists[i] = xlists[i][0:cutlist[i]]
+        ylists[i] = ylists[i][0:cutlist[i]]
 
     # set x range to exactly a day
     sdt = xlists[0][0]+datetime.timedelta(minutes=1)
@@ -268,7 +271,6 @@ def combine_ts_samegranu(fdict, xlabel, ylabel):
 
     fig = plt.figure(figsize=(20, 10))
     ax = fig.add_subplot(111)
-    line_type = ['k--', 'k-', 'k^-'] # line type (hard code) TODO
     for i in xrange(0, len(flist)):
         ax.plot(xlists[i], ylists[i], line_type[i], label=lglist[i])
     
@@ -332,7 +334,6 @@ def combine_cdf(fdict, xlabel, ylabel): # fdict {filename: legend}
 
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
-    line_type = ['k--', 'k-', 'k^-'] # line type (hard code) TODO
     for i in xrange(0, len(flist)):
         ax.plot(xlists[i], ylists[i], line_type[i], label=lglist[i])
     legend = ax.legend(loc='upper right',shadow=False)

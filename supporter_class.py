@@ -12,6 +12,9 @@ class Supporter():
     def get_as2nation_file(self):
         if os.path.exists(hdname+'topofile/as2nation.txt'):
             return 0
+
+        # get the latest AS to nation mapping
+        # this mapping seems stable across years
         rows = cmlib.get_weblist('http://bgp.potaroo.net/cidr/autnums.html')
         f = open(hdname+'topofile/as2nation.txt', 'w')
         for line in rows.split('\n'):
@@ -24,11 +27,14 @@ class Supporter():
 
         return 0
 
-    def get_asrank_file(self):
+    def get_as2rank_file(self):
+        # TODO: get data from all 3 date
+        # only 3 date available
         date = '20121102'
         n = '42697'
 
-        # download and write everything
+        # TODO: if target file already exists
+        # download from CAIDA
         rows = cmlib.get_weblist('http://as-rank.caida.org/?data-selected=\
                     2012-11-02&n=42697&ranksort=1&mode0=as-ranking')
         f = open(hdname+'topofile/asrank_'+date+'.txt', 'w')
@@ -71,6 +77,8 @@ class Supporter():
     def get_pfx2as_trie(self, sdate):
         pfx2as = patricia.trie(None)
 
+        # TODO: download or extract from RIB
+
         pfx2as_file = ''
         tmp = os.listdir(hdname+'topofile/'+sdate+'/')
         for line in tmp:
@@ -107,6 +115,7 @@ class Supporter():
     def get_as2type_dict(self, sdate):
         as2type == {}
 
+        # TODO: consider datetime
         f = open(hdname+'topofile/as2attr.txt')
         for line in f:
             line = line.strip('\n')
@@ -118,6 +127,7 @@ class Supporter():
     def get_as2rank_dict(self, sdate):
         as2rank == {}
 
+        # TODO: consider datetime
         f = open(hdname+'topofile/asrank_20121102.txt')
         for line in f:
             line = line.strip('\n')

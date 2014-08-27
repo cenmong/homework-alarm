@@ -8,8 +8,8 @@ from env import *
 
 class Downloader():
 
-    def __init__(self):
-        return 0
+    def __init__(self, order_list):
+        self.order_list = order_list
 
     def combine_flist(self, sdate):
         fnames = {}
@@ -152,9 +152,10 @@ class Downloader():
 
         return peers
 
-    def get_file(self, order_list):
-        for order in order_list:
+    def get_file(self):
+        for order in self.order_list:
             for clctr in collectors:
+                print 'banana'
                 try:
                     if int(daterange[order][0]) < int(clctr[2]):
                         print'this collector is born later than we want'
@@ -162,6 +163,7 @@ class Downloader():
                 except:  # usually when testing, clctr[2] may not be set
                     pass
 
+                print 'canada'
                 cl_name = clctr[0]
                 cl_type = clctr[1]
 
@@ -172,6 +174,7 @@ class Downloader():
                 else:
                     hdname_detail = hdname + 'data.ris.ripe.net/' + cl_name + '/'
 
+                print 'doraemon'
                 sdate = daterange[order][0]
                 sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
                 edate_obj = sdate_obj + datetime.timedelta(days=(daterange[order][1]-1))
@@ -353,5 +356,5 @@ class Downloader():
         return 0
 
 if __name__ == '__main__':
-    dl = Downloader()
-    dl.get_file([x,x,x])
+    dl = Downloader([14,15])
+    dl.get_file()
