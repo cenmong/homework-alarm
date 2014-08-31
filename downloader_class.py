@@ -5,6 +5,7 @@ import subprocess
 
 from env import *
 # TODO: change file name: RV & < Feb, 2003.
+TEST = False
 
 class Downloader():
 
@@ -155,7 +156,6 @@ class Downloader():
     def get_file(self):
         for order in self.order_list:
             for clctr in collectors:
-                print 'banana'
                 try:
                     if int(daterange[order][0]) < int(clctr[2]):
                         print'this collector is born later than we want'
@@ -163,7 +163,6 @@ class Downloader():
                 except:  # usually when testing, clctr[2] may not be set
                     pass
 
-                print 'canada'
                 cl_name = clctr[0]
                 cl_type = clctr[1]
 
@@ -174,7 +173,6 @@ class Downloader():
                 else:
                     hdname_detail = hdname + 'data.ris.ripe.net/' + cl_name + '/'
 
-                print 'doraemon'
                 sdate = daterange[order][0]
                 sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
                 edate_obj = sdate_obj + datetime.timedelta(days=(daterange[order][1]-1))
@@ -272,50 +270,51 @@ class Downloader():
                 
                 cmlib.make_dir(hdname+filelocation)
 
-                # for each event, we only download one RIB (on the sdate)
+                # for each event, we only download one RIB (on or near the sdate)
                 rib_fname = ''
-                for line in webraw.split('\n'):
+                rib_list = webraw.split('\n')
+                filter(lambda a: a != '', rib_list)
+                filter(lambda a: a != '\n', rib_list)
+                rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
 
-                    if not 'rib' in line and not 'bview' in line:
-                        continue
-                    if line == '' or line == '\n':
-                        continue
+                target_line = ''
+                closest = 99999
+                for line in rib_list:
+                    fdate = line.split()[0].split('.')[-3]
+                    diff = abs(int(fdate)-int(sdate)) # >0
+                    if diff < closest:
+                        closest = diff
+                        target_line = line
 
-                    size = line.split()[-1]
-                    if size.isdigit():
-                        fsize = float(size)
-                    else:
-                        fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+                size = target_line.split()[-1]
+                if size.isdigit():
+                    fsize = float(size)
+                else:
+                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
 
-                    filename = line.split()[0]
-                    if not int(filename.split('.')[-3]) == int(sdate):
-                        continue
-                    print filename
-                    origin_floc = hdname + filelocation + filename # original file loc&name
+                filename = target_line.split()[0]
+                print filename
+                origin_floc = hdname + filelocation + filename # RIB .bz2/.gz loc+name
 
-                    try:
-                        os.remove(origin_floc+'.txt')
-                    except:
-                        pass
+                try:
+                    os.remove(origin_floc+'.txt')
+                except:
+                    pass
 
-                    rib_fname = filelocation + filename
-                    if os.path.exists(origin_floc+'.txt.gz'): 
-                        if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
-                            if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
-                                os.remove(origin_floc)
-                            break
-                        else:
-                            os.remove(origin_floc+'.txt.gz')
-
-                    if os.path.exists(origin_floc): 
-                        if os.path.getsize(origin_floc) > 0.9 * fsize:
-                            break
-                        else:
+                rib_fname = filelocation + filename
+                if os.path.exists(origin_floc+'.txt.gz'): 
+                    if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
+                        if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
                             os.remove(origin_floc)
+                    else:
+                        os.remove(origin_floc+'.txt.gz')
 
-                    cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename)
+                if os.path.exists(origin_floc): 
+                    if os.path.getsize(origin_floc) <= 0.9 * fsize:
+                        os.remove(origin_floc)
 
-                    break
+                cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename)
+
 
                 ## now for update and RIB files, their formats are either .bz2/gz or
                 ## .xx.txt.gz!!!
@@ -356,5 +355,5 @@ class Downloader():
         return 0
 
 if __name__ == '__main__':
-    dl = Downloader([14,15])
+    dl = Downloader([28])
     dl.get_file()
