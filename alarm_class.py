@@ -10,8 +10,7 @@ from supporter_class import *
 
 class Alarm():
 
-    def __init__(self, granu, sdate, hthres, cl_list, dthres, soccur,\
-                eoccur, desc):
+    def __init__(self, granu, sdate, hthres, cl_list, dthres, soccur, eoccur, desc):
 
         # for scheduling date time order
         self.cl_list = cl_list
@@ -28,32 +27,43 @@ class Alarm():
         self.dthres = dthres # detection threshold, also known as \theta_d
         self.soccur = soccur # Event occurrence start
         self.eoccur = eoccur # Event occurrence end
-        self.desc = desc # description
+        self.desc = desc # Event description
 
         # (global) related information
-        supporter = supporter() # TODO: fill
-        self.pfx2as = supporter.get_pfx2as_trie(self.sdate)  # all prefixes to AS in a trie
-        self.as2nation = supporter.get_as2nation_dict(self.sdate)
-        self.as2type = supporter.get_as2type_dict(self.sdate)
-        self.as2rank = supporter.get_as2rank_dict(self.sdate)
-        self.nation2cont = supporter.get_nation2cont_dict(self.sdate)  # nation: continent
+        spt = Supporter(sdate) # TODO: fill
+        # TODO: supporter download file here or implicitly
+        self.pfx2as = spt.get_pfx2as_trie(self.sdate)  # all prefixes to AS in a trie
+        #self.as2nation = supporter.get_as2nation_dict(self.sdate)
+        #self.as2type = supporter.get_as2type_dict(self.sdate)
+        #self.as2rank = supporter.get_as2rank_dict(self.sdate)
+        #self.nation2cont = supporter.get_nation2cont_dict(self.sdate)  # nation: continent
 
         # (local) origin AS and nation information
         self.actas_c = dict() # dt: origin ASes (of HDVPs) count
-        self.actnation_c = dict() # dt: origin nations (of HDVPs) count
+        #self.actnation_c = dict() # dt: origin nations (of HDVPs) count
         
         # peer, also known as monitor
         self.peerlist = dict()  # dt: peer list
         self.peeraslist = dict() # dt: peer AS list
-        self.mcount = 0
-        self.get_monitor()
+
+        # get the number of monitors
+        self.mcount = 0 
+        for dr in daterange:
+            if dr[0] == self.sdate:
+                self.mcount = dr[2]
+                break
+        # no record exists in env.py
+        if self.mcount == -1:
+            self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
 
         # the list of datetime, for better control
         self.dt_list = list()
 
-        # every dt has a trie and some other values
-        self.pfx_trie = dict()  # dt: trie. (costs memory, deleted periodically)
-        self.hdvp_count = dict() # dt: active prefix count
+        # every dt has a corresponding trie, deleted periodically
+        self.pfx_trie = dict()
+        
+        # dt: active prefix count
+        self.hdvp_count = dict()
 
         # Values related to the number of updates
         self.ucount = dict() # dt: update count
@@ -67,9 +77,9 @@ class Alarm():
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
         #self.cont2num = {'EU':1,'NA':2,'AS':3,'SA':4,'OC':5,'AF':6}
 
-        # TODO: CDF will be sufficient for origin as and nation
-        self.as_cdf = dict()
-        self.nation_cdf = dict()
+        # TODO: CDF will be sufficient for origin AS
+        self.as_cdf = dict() # x: origin AS count; y: prefix (DV > ??) count
+        # self.nation_cdf = dict()
         '''
         self.pfx_as_top10 = dict() # dt: top 10 ASes
         self.pfx_nation_top10 = dict()
@@ -79,18 +89,18 @@ class Alarm():
 
         # TODO: decide better method here
         # get origin AS rank levels (among several pre-setted levels)
-        self.as_rank_thres = [100, 1000] # threshold for classifying ASes
-        self.rank_count = [] # class(0~): {dt: count}
-        for i in xrange(0, len(self.as_rank_thres)+1):
-            self.rank_count.append(dict())
+        #self.as_rank_thres = [100, 1000] # threshold for classifying ASes
+        #self.rank_count = [] # class(0~): {dt: count}
+        #for i in xrange(0, len(self.as_rank_thres)+1):
+        #    self.rank_count.append(dict())
 
-        # TODO: CDF will be OK?
-        # diff levels of visibility, from 0~10 to 90~100 and 100
+        # 3D-dict, diff levels of visibility, from 0~10 to 90~100 and 100
         self.level = dict() # level(e.g.,>=0,>=10,>=20,...): dt: value
         for i in xrange(0, 101):
             if i % 10 == 0:
                 self.level[i] = dict()
 
+        # TODO: hard-code is bad manner
         # Dynamic Visibility Index
         self.dvi = []  # DVI No.: dt: value
         for i in xrange(0, 5): # control total number of DVIs here
@@ -102,32 +112,25 @@ class Alarm():
         self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
         self.dvi_desc[4] = 'dvi(1)' # div No.: describe
 
+        # Get the quantity of all prefixes in the Internet.
         self.all_pcount = cmlib.get_all_pcount(self.sdate)
 
         # For the CDF figure in introduction
-        self.cdf = dict()
-        ''' CDFs for 15 hours before and after the event
+        self.ratio_count = dict() # ratio value: existence count
+        ''' 
+        # CDFs for 15 hours before and after the event
         self.cdfbfr = dict()
         self.cdfaft = dict()
-        self.occur_dt = datetime.datetime.strptime(soccur,\
-                '%Y-%m-%d %H:%M:%S')
+        self.occur_dt = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
         self.bfr_start = time_lib.mktime((self.occur_dt +\
                 datetime.timedelta(hours=-15)).timetuple())
         self.aft_end = time_lib.mktime((self.occur_dt +\
                 datetime.timedelta(hours=15)).timetuple())
         self.occur_dt = time_lib.mktime(self.occur_dt.timetuple())
         '''
-        # for naming all the plots 
-        self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'_'
 
-    def get_monitor(self):
-        # try to get the value from env.py directly
-        for dr in daterange:
-            if dr[0] == self.sdate:
-                self.mcount = dr[2]
-        # no record
-        if self.mcount == -1:
-            self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
+        # For naming all the figures.
+        self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'_'
 
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybody is ready
@@ -247,7 +250,6 @@ class Alarm():
                 if p == '': # the root node (the source of a potential bug)
                     continue
 
-                # TODO: modify these 7 lines. we need CDF now.
                 ratio = len(trie[p])*10 / self.mcount * 10 # 0,10,...,90,100
                 for lv in self.level.keys():
                     if ratio >= lv: # e.g., 20 >= 0, 10, 20
@@ -260,9 +262,9 @@ class Alarm():
                 ratio = float(len(trie[p]))/float(self.mcount)
                 # For CDF plot only
                 try:
-                    self.cdf[ratio] += 1
+                    self.ratio_count[ratio] += 1
                 except:
-                    self.cdf[ratio] = 1
+                    self.ratio_count[ratio] = 1
                 '''
                 # for CDF (in introduction) comparison only
                 if dt >= self.bfr_start and dt < self.occur_dt:
@@ -388,6 +390,7 @@ class Alarm():
 
         return 0
 
+    # TODO: make it scalable
     def direct_plot(self): # this is called before everybody!
         # polt from intial data directly
         # get name of the interested data and divide into categories according
@@ -476,13 +479,14 @@ class Alarm():
         cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount, self.describe_add+'prefix_count')
         
         # CDF in introduction
-        cmlib.cdf_plot(self.hthres, self.granu, self.cdf, self.describe_add+'CDF')
+        cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.ratio_count),\
+                self.describe_add+'CDF')
 
         # plot 2 CDFs: before event and after event
-        cmlib.cdf_plot(self.hthres, self.granu, self.cdfbfr,\
-                self.describe_add+'CDFbfr')
-        cmlib.cdf_plot(self.hthres, self.granu, self.cdfaft,\
-                self.describe_add+'CDFaft')
+        #cmlib.cdf_plot(self.hthres, self.granu, self.cdfbfr,\
+        #        self.describe_add+'CDFbfr')
+        #cmlib.cdf_plot(self.hthres, self.granu, self.cdfaft,\
+        #        self.describe_add+'CDFaft')
 
     def plot_level(self, low, high):
         # fill the empty values with 0
@@ -497,6 +501,26 @@ class Alarm():
             if key < low or key > high:
                 continue
             cmlib.time_series_plot(self.hthres, self.granu, self.level[key], self.describe_add+'='+str(key))
+
+    def value_count2cdf(vc_dict):
+        cdf = dict()
+        xlist = [0]
+        ylist = [0]
+        for key in sorted(vc_dict): # sort by key
+            xlist.append(key)
+            ylist.append(vc_dict[key])
+
+        # y = the number of values that <= x
+        for i in xrange(1, len(ylist)):
+            ylist[i] += ylist[i-1]
+
+        # change y into percentage
+        giant = ylist[-1] # the largest y value
+        for i in xrange(0, len(ylist)):
+            ylist[i] = float(ylist[i])/float(giant) * 100 # get %
+            cdf[xlist[i]] = ylist[i]
+
+        return cdf
 
     def pfx_to_as(self, mypfx):
         try:

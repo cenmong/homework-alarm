@@ -131,28 +131,18 @@ def cdf_plot(hthres, granu, my_dict, describe):
     # my_dict DV value: exist time
     xlist = [0]
     ylist = [0]
-    for key in sorted(my_dict):
+    for key in sorted(my_dict): # must sort by key
         xlist.append(key)
         ylist.append(my_dict[key])
 
-    # y = the number of values that <= x
-    # TODO: do not put logic here
-    for i in xrange(1, len(ylist)):
-        ylist[i] += ylist[i-1]
-
-    giant = ylist[-1] # the largest y value
-    for i in xrange(0, len(ylist)):
-        ylist[i] = float(ylist[i])/float(giant) # get %
-
-    for i in xrange(0, len(xlist)):
-        xlist[i] = xlist[i] * 100
-        ylist[i] = ylist[i] * 100
+    xmax = max(xlist)
+    ymax = max(ylist)
 
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
     ax.plot(xlist, ylist, 'k-')
-    ax.set_ylim([0,110])
-    ax.set_xlim([-10,100])
+    ax.set_ylim([0, 1.1*ymax])
+    ax.set_xlim([-0.1*xmax, 1.1*xmax])
     ax.set_ylabel('prefix-time (%) CDF')
     ax.set_xlabel('route monitor (%)')
 
@@ -614,26 +604,6 @@ def size_u2v(unit):
     if unit in ['g', 'G']:
         return 1073741824
 
-def get_pfx2as_file(sdate):
-    location = hdname + 'topofile/' + sdate + '/'
-    print 'get pfx2as file ... (only after 2005.06)'
-    year, month = sdate[:4], sdate[4:6] # YYYY, MM
-    webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
-                    '/' + year + '/' + month + '/'
-    webraw = get_weblist(webloc)
-    for line in webraw.split('\n'):
-        if not sdate in line:
-            continue
-        if os.path.exists(hdname+location+line.split()[0].replace('.gz',\
-                    '')):
-            break
-
-        make_dir(location)
-        urllib.urlretrieve(webloc+line.split()[0], location+line.split()[0])
-        subprocess.call('gunzip -c '+location+line.split()[0]+' > '+\
-                location+line.split()[0].replace('.gz', ''), shell=True)
-        os.remove(location+line.split()[0])
-
 def get_monitor_c(sdate):
     mydate = sdate[0:4] + '.' + sdate[4:6]
     clist = get_collector(sdate)
@@ -697,7 +667,7 @@ def get_all_pcount(sdate):
 
     dtlist = []
     pclist = []
-    floc = hdname + 'topofile/bgp-active.txt'
+    floc = hdname + 'support/bgp-active.txt'
     f = open(floc, 'r')
     for line in f:
         dt = line.split()[0]
