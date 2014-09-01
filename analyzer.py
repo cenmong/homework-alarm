@@ -31,9 +31,6 @@ class Analyzer():
         #    self.alarm = Alarm_c(granu, self.cl_list)
         #self.atype = atype
 
-        # TODO: define a new class to get these values
-        cmlib.get_pfx2as_file(sdate)
-
     def direct(self):
         try:
             self.alarm.direct_plot()

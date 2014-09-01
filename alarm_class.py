@@ -30,13 +30,12 @@ class Alarm():
         self.desc = desc # Event description
 
         # (global) related information
-        spt = Supporter(sdate) # TODO: fill
-        # TODO: supporter download file here or implicitly
-        self.pfx2as = spt.get_pfx2as_trie(self.sdate)  # all prefixes to AS in a trie
-        #self.as2nation = supporter.get_as2nation_dict(self.sdate)
-        #self.as2type = supporter.get_as2type_dict(self.sdate)
-        #self.as2rank = supporter.get_as2rank_dict(self.sdate)
-        #self.nation2cont = supporter.get_nation2cont_dict(self.sdate)  # nation: continent
+        spt = Supporter(sdate)
+        self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
+        #self.as2nation = supporter.get_as2nation_dict()
+        #self.as2type = supporter.get_as2type_dict()
+        #self.as2rank = supporter.get_as2rank_dict()
+        #self.nation2cont = supporter.get_nation2cont_dict()  # nation: continent
 
         # (local) origin AS and nation information
         self.actas_c = dict() # dt: origin ASes (of HDVPs) count
@@ -199,8 +198,8 @@ class Alarm():
             self.pfx_trie[dt] = patricia.trie(None)
             self.acount[dt] = 0
             self.wcount[dt] = 0
-            for i in xrange(0, len(self.as_rank_thres)+1):
-                self.rank_count[i][dt] = 0
+            #for i in xrange(0, len(self.as_rank_thres)+1):
+            #    self.rank_count[i][dt] = 0
 
         # record update type and number
         if attr[2] == 'A':  # announcement
@@ -323,8 +322,9 @@ class Alarm():
             self.pfxcount[dt] = len(trie)
 
             self.actas_c[dt] = len(as_list)
-            self.actnation_c[dt] = len(nation_list)
+            #self.actnation_c[dt] = len(nation_list)
 
+            '''
             # get rank levels of origin ASes
             for item in as_list:
                 rank = self.as_to_rank(item)
@@ -336,11 +336,12 @@ class Alarm():
                         break
                 # in last rank
                 self.rank_count[len(self.as_rank_thres)][dt] += 1
-            
+            '''
             # TODO: get features of origin nations here!
             #self.busy_cont_byas
             #self.busy_cont_bypfx
 
+            ''' 
             # get active pfx count ratio of top 10 ASes and States
             top10as_ratio = 0 
             top10nation_ratio = 0 
@@ -384,7 +385,7 @@ class Alarm():
             else: # tmp_len < 0
                 top10nation_pctg_ratio = 0 
             self.pfx_nation_top10pctg[dt] = top10nation_pctg_ratio
-
+            '''
             # get withdrawal/(W+A) value
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
 
@@ -447,20 +448,21 @@ class Alarm():
         self.plot_level(10, 80)
 
         cmlib.time_series_plot(self.hthres, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
-        cmlib.time_series_plot(self.hthres, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
+        #cmlib.time_series_plot(self.hthres, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
 
         # top 10 AS and State
-        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10,\
-                self.describe_add+'pfx_ratio_of_top10_originAS(active)')
-        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10,\
-                self.describe_add+'pfx_ratio_of_top10_originState(active)')
+        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10,\
+        #        self.describe_add+'pfx_ratio_of_top10_originAS(active)')
+        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10,\
+        #        self.describe_add+'pfx_ratio_of_top10_originState(active)')
 
         # top 10% AS and State
-        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10pctg,\
-                self.describe_add+'pfx_ratio_of_top10%_originAS(active)')
-        cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10pctg,\
-                self.describe_add+'pfx_ratio_of_top10%_originState(active)')
+        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10pctg,\
+        #        self.describe_add+'pfx_ratio_of_top10%_originAS(active)')
+        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10pctg,\
+        #        self.describe_add+'pfx_ratio_of_top10%_originState(active)')
 
+        '''
         # different levels of origin AS ranks
         sign = 'rank_level_'
         for item in self.as_rank_thres:
@@ -468,7 +470,7 @@ class Alarm():
         sign += '_'
         for i in xrange(0, len(self.as_rank_thres)+1):
             cmlib.time_series_plot(self.hthres, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
-
+        '''
         # announcement withdrawal update prefix count
         cmlib.time_series_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
@@ -502,7 +504,7 @@ class Alarm():
                 continue
             cmlib.time_series_plot(self.hthres, self.granu, self.level[key], self.describe_add+'='+str(key))
 
-    def value_count2cdf(vc_dict):
+    def value_count2cdf(self, vc_dict):
         cdf = dict()
         xlist = [0]
         ylist = [0]

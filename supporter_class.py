@@ -1,6 +1,7 @@
 import cmlib
 import subprocess
 import os
+import patricia
 
 from env import *
 
@@ -9,7 +10,6 @@ class Supporter():
     def __init__(self, sdate):
         self.sdate = sdate
         cmlib.make_dir(hdname+'support/')
-        return 0
 
     def get_as2nation_file(self):
         if os.path.exists(hdname+'support/as2nation.txt'):
