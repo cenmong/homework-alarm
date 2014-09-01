@@ -10,7 +10,7 @@ TEST = False
 #cmlib.combine_cdf()
 thres = 0.5785
 #for i in xrange(0,len(daterange)):
-for i in [0]: # change this list according to needs
+for i in [1]: # change this list according to needs
 
     # TODO: download supporting files using a supporter object
     if TEST:

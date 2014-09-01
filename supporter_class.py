@@ -2,6 +2,7 @@ import cmlib
 import subprocess
 import os
 import patricia
+import urllib
 
 from env import *
 
@@ -90,7 +91,7 @@ class Supporter():
         webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
                 '/' + year + '/' + month + '/'
 
-        webraw = get_weblist(webloc)
+        webraw = cmlib.get_weblist(webloc)
         target_line = ''
         for line in webraw.split('\n'):
             if self.sdate in line:
