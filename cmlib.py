@@ -141,10 +141,10 @@ def cdf_plot(hthres, granu, my_dict, describe):
     fig = plt.figure(figsize=(16, 10))
     ax = fig.add_subplot(111)
     ax.plot(xlist, ylist, 'k-')
-    ax.set_ylim([0, 1.1*ymax])
+    ax.set_ylim([-0.1*ymax, 1.1*ymax])
     ax.set_xlim([-0.1*xmax, 1.1*xmax])
-    ax.set_ylabel('prefix-time (%) CDF')
-    ax.set_xlabel('route monitor (%)')
+    ax.set_ylabel('y')
+    ax.set_xlabel('x')
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]

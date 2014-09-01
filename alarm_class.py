@@ -55,6 +55,9 @@ class Alarm():
         if self.mcount == -1:
             self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
 
+        # Get the quantity of all prefixes in the Internet.
+        self.all_pcount = cmlib.get_all_pcount(self.sdate)
+
         # the list of datetime, for better control
         self.dt_list = list()
 
@@ -76,28 +79,12 @@ class Alarm():
         #self.busy_cont_byas = dict() # dt: the busiest continent by AS
         #self.cont2num = {'EU':1,'NA':2,'AS':3,'SA':4,'OC':5,'AF':6}
 
-        # TODO: CDF will be sufficient for origin AS
-        self.as_cdf = dict() # x: origin AS count; y: prefix (DV > ??) count
-        # self.nation_cdf = dict()
-        '''
-        self.pfx_as_top10 = dict() # dt: top 10 ASes
-        self.pfx_nation_top10 = dict()
-        self.pfx_as_top10pctg = dict() # dt: top 10% ASes
-        self.pfx_nation_top10pctg = dict()
-        '''
-
         # TODO: decide better method here
         # get origin AS rank levels (among several pre-setted levels)
         #self.as_rank_thres = [100, 1000] # threshold for classifying ASes
         #self.rank_count = [] # class(0~): {dt: count}
         #for i in xrange(0, len(self.as_rank_thres)+1):
         #    self.rank_count.append(dict())
-
-        # 3D-dict, diff levels of visibility, from 0~10 to 90~100 and 100
-        self.level = dict() # level(e.g.,>=0,>=10,>=20,...): dt: value
-        for i in xrange(0, 101):
-            if i % 10 == 0:
-                self.level[i] = dict()
 
         # TODO: hard-code is bad manner
         # Dynamic Visibility Index
@@ -111,11 +98,19 @@ class Alarm():
         self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
         self.dvi_desc[4] = 'dvi(1)' # div No.: describe
 
-        # Get the quantity of all prefixes in the Internet.
-        self.all_pcount = cmlib.get_all_pcount(self.sdate)
-
         # For the CDF figure in introduction
         self.ratio_count = dict() # ratio value: existence count
+
+        self.dv_level = [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+        # depicts prefix-length for different ratio levels (>0, >5, >10~50)
+        self.dv_len_pfx = dict() # DV value: prefix length: existence
+        self.dv_asn_hdvp = dict() # DV value (threshold_h): AS: hdvp count #TODO:detect point
+        self.dv_dt_hdvp = dict() # DV value: dt: hdvp count
+        for rl in self.dv_level:
+            self.dv_len_pfx[rl] = dict()
+            self.dv_asn_hdvp[rl] = dict()
+            self.dv_dt_hdvp[rl] = dict()
+
         ''' 
         # CDFs for 15 hours before and after the event
         self.cdfbfr = dict()
@@ -249,16 +244,29 @@ class Alarm():
                 if p == '': # the root node (the source of a potential bug)
                     continue
 
-                ratio = len(trie[p])*10 / self.mcount * 10 # 0,10,...,90,100
-                for lv in self.level.keys():
-                    if ratio >= lv: # e.g., 20 >= 0, 10, 20
-                        try:
-                            self.level[lv][dt] += 1 
-                        except:
-                            self.level[lv][dt] = 1
-
-                # only count active prefixes from now on
                 ratio = float(len(trie[p]))/float(self.mcount)
+
+                plen = len(p) # get prefix length
+                asn = self.pfx_to_as(p) # get origin AS number
+
+                for rl in self.dv_level:
+                    if ratio > rl:
+                        try:
+                            self.dv_len_pfx[rl][plen] += 1
+                        except:
+                            self.dv_len_pfx[rl][plen] = 1
+                            
+                        if asn != -1:
+                            try:
+                                self.dv_asn_hdvp[rl][asn] += 1
+                            except:
+                                self.dv_asn_hdvp[rl][asn] = 1
+
+                        try:
+                            self.dv_dt_hdvp[rl][dt] += 1 
+                        except:
+                            self.dv_dt_hdvp[rl][dt] = 1
+
                 # For CDF plot only
                 try:
                     self.ratio_count[ratio] += 1
@@ -279,37 +287,37 @@ class Alarm():
                 else:
                     pass
                 '''
+                # only count active prefixes from now on
                 if ratio <= self.hthres: # not active pfx
                     continue
                 pcount += 1
 
-                asn = self.pfx_to_as(p)
-                if asn not in as_list:
-                    as_list.append(asn)
-                nation = self.as_to_nation(asn)
-                if nation not in nation_list:
-                    nation_list.append(nation)
+                if asn != -1: #really found
+                    if asn not in as_list:
+                        as_list.append(asn)
+                    #nation = self.as_to_nation(asn)
+                    #if nation not in nation_list:
+                        #nation_list.append(nation)
 
                 # active prefix to origin AS distribution
-                ori_as = self.pfx_to_as(p)
-                if ori_as != -1: #really found
+                if asn != -1: #really found
                     try:
-                        pfxlist = pfx_as_distri[ori_as]
+                        pfxlist = pfx_as_distri[asn]
                     except:
-                        pfx_as_distri[ori_as] = [p]
-                    if p not in pfx_as_distri[ori_as]:
-                        pfx_as_distri[ori_as].append(p)
+                        pfx_as_distri[asn] = [p]
+                    if p not in pfx_as_distri[asn]:
+                        pfx_as_distri[asn].append(p)
 
                 # active prefix to origin nation distribution
-                nation = self.as_to_nation(ori_as)
-                if nation != -1:
-                    try:
-                        pfxlist = pfx_nation_distri[nation]
-                    except:
-                        pfx_nation_distri[nation] = [p]
-                        pfxlist = pfx_nation_distri[nation]
-                    if p not in pfxlist:
-                        pfx_nation_distri[nation].append(p)
+                #nation = self.as_to_nation(asn)
+                #if nation != -1:
+                    #try:
+                        #pfxlist = pfx_nation_distri[nation]
+                    #except:
+                        #pfx_nation_distri[nation] = [p]
+                        #pfxlist = pfx_nation_distri[nation]
+                    #if p not in pfxlist:
+                        #pfx_nation_distri[nation].append(p)
 
                 # a bunch of DVIs
                 self.dvi[0][dt] += ratio - self.hthres
@@ -324,68 +332,22 @@ class Alarm():
             self.actas_c[dt] = len(as_list)
             #self.actnation_c[dt] = len(nation_list)
 
-            '''
-            # get rank levels of origin ASes
-            for item in as_list:
-                rank = self.as_to_rank(item)
-                if rank == -1: # no rank found
-                    continue
-                for i in xrange(0, len(self.as_rank_thres)):
-                    if rank <= self.as_rank_thres[i]: # find rank!
-                        self.rank_count[i][dt] += 1
-                        break
-                # in last rank
-                self.rank_count[len(self.as_rank_thres)][dt] += 1
-            '''
+            ## get rank levels of origin ASes
+            #for item in as_list:
+                #rank = self.as_to_rank(item)
+                #if rank == -1: # no rank found
+                    #continue
+                #for i in xrange(0, len(self.as_rank_thres)):
+                    #if rank <= self.as_rank_thres[i]: # find rank!
+                        #self.rank_count[i][dt] += 1
+                        #break
+                ## in last rank
+                #self.rank_count[len(self.as_rank_thres)][dt] += 1
+
             # TODO: get features of origin nations here!
             #self.busy_cont_byas
             #self.busy_cont_bypfx
 
-            ''' 
-            # get active pfx count ratio of top 10 ASes and States
-            top10as_ratio = 0 
-            top10nation_ratio = 0 
-            try:
-                for k in sorted(pfx_as_distri, key=lambda k:\
-                        len(pfx_as_distri[k]), reverse=True)[:10]:
-                    top10as_ratio += len(pfx_as_distri[k])
-                top10as_ratio = float(top10as_ratio) / pcount
-            except: # < 10
-                top10as_ratio = 1
-            self.pfx_as_top10[dt] = top10as_ratio
-
-            try:
-                for k in sorted(pfx_nation_distri, key=lambda k:\
-                        len(pfx_nation_distri[k]), reverse=True)[:10]:
-                    top10nation_ratio += len(pfx_nation_distri[k])
-                top10nation_ratio = float(top10nation_ratio) / pcount
-            except: # < 10
-                top10nation_ratio = 1
-            self.pfx_nation_top10[dt] = top10nation_ratio
-
-            # get active pfx count ratio of top 10% ASes and States
-            top10as_pctg_ratio = 0 
-            top10nation_pctg_ratio = 0 
-            tmp_len = len(pfx_as_distri.keys()) / 10
-            if tmp_len > 0:
-                for k in sorted(pfx_as_distri, key=lambda k:\
-                        len(pfx_as_distri[k]), reverse=True)[:tmp_len]:
-                    top10as_pctg_ratio += len(pfx_as_distri[k])
-                top10as_pctg_ratio = float(top10as_pctg_ratio) / pcount
-            else: # tmp_len < 0
-                top10as_pctg_ratio = 0 
-            self.pfx_as_top10pctg[dt] = top10as_pctg_ratio
-
-            tmp_len = len(pfx_nation_distri.keys()) / 10
-            if tmp_len > 0:
-                for k in sorted(pfx_nation_distri, key=lambda k:\
-                        len(pfx_nation_distri[k]), reverse=True)[:tmp_len]:
-                    top10nation_pctg_ratio += len(pfx_nation_distri[k])
-                top10nation_pctg_ratio = float(top10nation_pctg_ratio) / pcount
-            else: # tmp_len < 0
-                top10nation_pctg_ratio = 0 
-            self.pfx_nation_top10pctg[dt] = top10nation_pctg_ratio
-            '''
             # get withdrawal/(W+A) value
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
 
@@ -418,6 +380,7 @@ class Alarm():
                     self.describe_add+name)
 
     def plot(self): # plot everything here!
+        print 'Plotting...'
 
         # devide DVIs by total prefix count
         for i in xrange(0, len(self.dvi)):
@@ -444,33 +407,17 @@ class Alarm():
         # active pfx count
         cmlib.time_series_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
 
-        # plot interested levels
-        self.plot_level(10, 80)
-
         cmlib.time_series_plot(self.hthres, self.granu, self.actas_c, self.describe_add+'originAS(act_pfx)count')
         #cmlib.time_series_plot(self.hthres, self.granu, self.actnation_c, self.describe_add+'State(active_pfx)count')
 
-        # top 10 AS and State
-        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10,\
-        #        self.describe_add+'pfx_ratio_of_top10_originAS(active)')
-        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10,\
-        #        self.describe_add+'pfx_ratio_of_top10_originState(active)')
+        ## different levels of origin AS ranks
+        #sign = 'rank_level_'
+        #for item in self.as_rank_thres:
+            #sign = sign + str(item) + '_'
+        #sign += '_'
+        #for i in xrange(0, len(self.as_rank_thres)+1):
+            #cmlib.time_series_plot(self.hthres, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
 
-        # top 10% AS and State
-        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_as_top10pctg,\
-        #        self.describe_add+'pfx_ratio_of_top10%_originAS(active)')
-        #cmlib.time_series_plot(self.hthres, self.granu, self.pfx_nation_top10pctg,\
-        #        self.describe_add+'pfx_ratio_of_top10%_originState(active)')
-
-        '''
-        # different levels of origin AS ranks
-        sign = 'rank_level_'
-        for item in self.as_rank_thres:
-            sign = sign + str(item) + '_'
-        sign += '_'
-        for i in xrange(0, len(self.as_rank_thres)+1):
-            cmlib.time_series_plot(self.hthres, self.granu, self.rank_count[i], self.describe_add+sign+str(i+1))
-        '''
         # announcement withdrawal update prefix count
         cmlib.time_series_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
@@ -484,25 +431,30 @@ class Alarm():
         cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.ratio_count),\
                 self.describe_add+'CDF')
 
+        # the prefix-length CDFs
+        for rl in self.dv_level:
+            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_len_pfx[rl]),\
+                    self.describe_add+'len-pfx-'+str(rl))
+            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_hdvp[rl]),\
+                    self.describe_add+'AS-HDVP-'+str(rl))
+
+        # plot HDVP count for different DV levels
+        for key in self.dv_dt_hdvp.keys():
+            for dt in self.dt_list:
+                try:
+                    test = self.dv_dt_hdvp[key][dt]
+                except:
+                    # fill the empty values with 0
+                    self.dv_dt_hdvp[key][dt] = 0
+        
+        for key in self.dv_dt_hdvp.keys():
+            cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[key], self.describe_add+'='+str(key))
+
         # plot 2 CDFs: before event and after event
         #cmlib.cdf_plot(self.hthres, self.granu, self.cdfbfr,\
         #        self.describe_add+'CDFbfr')
         #cmlib.cdf_plot(self.hthres, self.granu, self.cdfaft,\
         #        self.describe_add+'CDFaft')
-
-    def plot_level(self, low, high):
-        # fill the empty values with 0
-        for key in self.level.keys():
-            for dt in self.dt_list:
-                try:
-                    test = self.level[key][dt]
-                except:
-                    self.level[key][dt] = 0
-        
-        for key in self.level.keys():
-            if key < low or key > high:
-                continue
-            cmlib.time_series_plot(self.hthres, self.granu, self.level[key], self.describe_add+'='+str(key))
 
     def value_count2cdf(self, vc_dict):
         cdf = dict()
@@ -518,8 +470,30 @@ class Alarm():
 
         # change y into percentage
         giant = ylist[-1] # the largest y value
+        if giant == 0:
+            return {1:1}
         for i in xrange(0, len(ylist)):
-            ylist[i] = float(ylist[i])/float(giant) * 100 # get %
+            #ylist[i] = float(ylist[i])/float(giant) * 100 # get %
+            cdf[xlist[i]] = ylist[i]
+
+        return cdf
+
+    def symbol_count2cdf(self, sc_dict):
+        cdf = dict()
+        xlist = [0]
+        ylist = [0]
+        
+        tmp = sc_dict.values()
+        sorted(tmp, reverse=True)
+
+        for i in xrange(0, len(tmp)):
+            xlist.append(i+1)
+            ylist.append(tmp[i])
+
+        for i in xrange(1, len(ylist)):
+            ylist[i] += ylist[i-1]
+
+        for i in xrange(0, len(ylist)):
             cdf[xlist[i]] = ylist[i]
 
         return cdf
