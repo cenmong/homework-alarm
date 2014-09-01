@@ -332,8 +332,7 @@ class Alarm():
                 self.dvi[4][dt] += 1
 
              
-            #if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
-            if float(hdvp_count)/float(self.all_pcount) >= 0.000002:
+            if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
                 if self.dv_asn_hdvp != {}: # has been filled
                     self.dv_asn_hdvp = dv_asn_hdvp_tmp 
 
@@ -445,9 +444,9 @@ class Alarm():
         # the prefix-length CDFs
         for rl in self.dv_level:
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_len_pfx[rl]),\
-                    self.describe_add+'len-pfx-'+str(rl))
+                    self.describe_add+'CDF-len-pfx-'+str(rl))
             cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_hdvp[rl]),\
-                    self.describe_add+'AS-HDVP-'+str(rl))
+                    self.describe_add+'CDF-AS-HDVP-'+str(rl))
 
         # plot HDVP count for different DV levels
         for key in self.dv_dt_hdvp.keys():
@@ -468,6 +467,7 @@ class Alarm():
         #        self.describe_add+'CDFaft')
 
     def value_count2cdf(self, vc_dict):
+        print vc_dict
         cdf = dict()
         xlist = [0]
         ylist = [0]

@@ -1,8 +1,8 @@
 from analyzer import *
 from env import *
 
-# TEST = False
-TEST = True
+TEST = False
+#TEST = True
 
 
 #cmlib.combine_slot_dvi()
