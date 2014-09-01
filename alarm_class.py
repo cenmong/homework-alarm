@@ -232,7 +232,7 @@ class Alarm():
         print 'aggregating...'
         for dt in rel_dt:
             trie = self.pfx_trie[dt]
-            pcount = 0
+            hdvp_count = 0
             as_list = [] # list of origin ASes in this dt
             nation_list = [] # list of origin nations in this dt
             for i in xrange(0, len(self.dvi)):
@@ -240,6 +240,11 @@ class Alarm():
 
             pfx_as_distri = {} # ASN: pfx list
             pfx_nation_distri = {} # nation: pfx list
+
+            dv_asn_hdvp_tmp = dict()
+            for rl in self.dv_level:
+                dv_asn_hdvp_tmp[rl] = dict() # only useful at first detection
+
             for p in trie:
                 if p == '': # the root node (the source of a potential bug)
                     continue
@@ -258,9 +263,9 @@ class Alarm():
                             
                         if asn != -1:
                             try:
-                                self.dv_asn_hdvp[rl][asn] += 1
+                                dv_asn_hdvp_tmp[rl][asn] += 1
                             except:
-                                self.dv_asn_hdvp[rl][asn] = 1
+                                dv_asn_hdvp_tmp[rl][asn] = 1
 
                         try:
                             self.dv_dt_hdvp[rl][dt] += 1 
@@ -290,7 +295,7 @@ class Alarm():
                 # only count active prefixes from now on
                 if ratio <= self.hthres: # not active pfx
                     continue
-                pcount += 1
+                hdvp_count += 1
 
                 if asn != -1: #really found
                     if asn not in as_list:
@@ -326,7 +331,13 @@ class Alarm():
                 self.dvi[3][dt] += ratio
                 self.dvi[4][dt] += 1
 
-            self.hdvp_count[dt] = pcount
+             
+            #if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
+            if float(hdvp_count)/float(self.all_pcount) >= 0.000002:
+                if self.dv_asn_hdvp != {}: # has been filled
+                    self.dv_asn_hdvp = dv_asn_hdvp_tmp 
+
+            self.hdvp_count[dt] = hdvp_count
             self.pfxcount[dt] = len(trie)
 
             self.actas_c[dt] = len(as_list)
