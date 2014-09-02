@@ -173,6 +173,12 @@ class Alarm():
     def add(self, update):
         attr = update.split('|')[0:6]  # no need for other attributes now
 
+        if ':' in attr[5]: # IPv6 # TODO: should put in analyzer
+            return -1
+
+        if len(attr[5]) == 1: # I don't know why they exist
+            return -1
+
         intdt = int(attr[1])
         objdt = datetime.datetime.fromtimestamp(intdt).\
                 replace(second = 0, microsecond = 0) +\
