@@ -338,8 +338,7 @@ class Alarm():
                 self.dvi[4][dt] += 1
 
              
-            #if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
-            if float(hdvp_count)/float(self.all_pcount) > 0:
+            if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
                 if self.dv_asn_hdvp[0] == {}: # hasn't been filled
                     self.dv_asn_hdvp = dv_asn_hdvp_tmp 
 
