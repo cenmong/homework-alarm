@@ -151,7 +151,7 @@ class Alarm():
 
     # aggregate everything before ceiling and remove garbage
     def release_memo(self):
-        print 'deciding the dt list to  get info and release memory'
+        print 'Releasing memory...'
         rel_dt = []  # target dt list
         for dt in self.pfx_trie.keys():
             if self.floor <= dt <= self.ceiling:
@@ -164,7 +164,6 @@ class Alarm():
 
     # delete the tires that have already been used
     def del_garbage(self):
-        print 'Deleting garbage...'
         for dt in self.pfx_trie.keys():  # all dt that exists
             if dt <= self.ceiling:
                 del self.pfx_trie[dt]
@@ -229,8 +228,9 @@ class Alarm():
 
     # get/calculate the infomation we need from the designated tries
     def aggregate(self, rel_dt):
-        print 'aggregating...'
+
         for dt in rel_dt:
+
             trie = self.pfx_trie[dt]
             hdvp_count = 0
             as_list = [] # list of origin ASes in this dt
@@ -243,7 +243,7 @@ class Alarm():
 
             dv_asn_hdvp_tmp = dict()
             for rl in self.dv_level:
-                dv_asn_hdvp_tmp[rl] = dict() # only useful at first detection
+                dv_asn_hdvp_tmp[rl] = {} # used only at first detection point
 
             for p in trie:
                 if p == '': # the root node (the source of a potential bug)
@@ -332,8 +332,9 @@ class Alarm():
                 self.dvi[4][dt] += 1
 
              
-            if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
-                if self.dv_asn_hdvp != {}: # has been filled
+            #if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
+            if float(hdvp_count)/float(self.all_pcount) > 0:
+                if self.dv_asn_hdvp[0] == {}: # hasn't been filled
                     self.dv_asn_hdvp = dv_asn_hdvp_tmp 
 
             self.hdvp_count[dt] = hdvp_count
@@ -397,7 +398,7 @@ class Alarm():
             for key_dt in self.dvi[i].keys():
                 value = self.dvi[i][key_dt]
                 # get the percentage
-                self.dvi[i][key_dt] = float(value)/float(self.all_pcount) * 100
+                self.dvi[i][key_dt] = float(value)/float(self.all_pcount)
 
         # plot all DVIs
         for i in xrange(0, len(self.dvi)):
@@ -447,6 +448,8 @@ class Alarm():
                     self.describe_add+'CDF-len-pfx-'+str(rl))
             cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_hdvp[rl]),\
                     self.describe_add+'CDF-AS-HDVP-'+str(rl))
+            cmlib.store_symbol_count(self.hthres, self.granu, self.dv_asn_hdvp[rl],\
+                    self.describe_add+'CDF-AS-HDVP-'+str(rl))
 
         # plot HDVP count for different DV levels
         for key in self.dv_dt_hdvp.keys():
@@ -467,10 +470,10 @@ class Alarm():
         #        self.describe_add+'CDFaft')
 
     def value_count2cdf(self, vc_dict):
-        print vc_dict
         cdf = dict()
         xlist = [0]
         ylist = [0]
+
         for key in sorted(vc_dict): # sort by key
             xlist.append(key)
             ylist.append(vc_dict[key])
@@ -484,22 +487,21 @@ class Alarm():
         if giant == 0:
             return {1:1}
         for i in xrange(0, len(ylist)):
-            #ylist[i] = float(ylist[i])/float(giant) * 100 # get %
             cdf[xlist[i]] = ylist[i]
 
         return cdf
 
     def symbol_count2cdf(self, sc_dict):
         cdf = dict()
+        # Initialization seems necessary
         xlist = [0]
         ylist = [0]
-        
-        tmp = sc_dict.values()
-        sorted(tmp, reverse=True)
 
-        for i in xrange(0, len(tmp)):
-            xlist.append(i+1)
-            ylist.append(tmp[i])
+        j = 0
+        for key in sorted(sc_dict, key=sc_dict.get, reverse=True): # reverse sort by value
+            j += 1
+            xlist.append(j)
+            ylist.append(sc_dict[key])
 
         for i in xrange(1, len(ylist)):
             ylist[i] += ylist[i-1]

@@ -161,6 +161,22 @@ def cdf_plot(hthres, granu, my_dict, describe):
 
     return 0
 
+def store_symbol_count(hthres, granu, my_dict, describe):
+    xlist = [0]
+    ylist = [0]
+    for key in sorted(my_dict, key=my_dict.get, reverse=True): # must sort by value
+        xlist.append(key)
+        ylist.append(my_dict[key])
+
+    sdate = describe.split('_')[0]
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+\
+            describe+'-raw.txt', 'w')
+    for i in xrange(0, len(xlist)):
+        f.write(str(xlist[i])+'|ASN,'+str(ylist[i])+'|count\n')
+    f.close()
+
+    return 0
+
 def combine_ts_diffgranu(fdict, xlabel, ylabel):
     #fdict = {fname:[legend, cut]}
     flist = []
