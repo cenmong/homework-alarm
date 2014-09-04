@@ -127,6 +127,56 @@ def time_series_plot(hthres, granu, my_dict, describe):
 
     return 0
 
+# TODO: not used yet
+def box_plot_grouped(hthres, granu, my_dict, describe):
+    data_lists = []
+    for k in my_dict.keys(): # dv ranges
+        tmp_list = []
+        for k2 in my_dict[k].keys():
+            for i in xrange(0, len(my_dict[k][k2])):        
+                tmp_list.append(k2)
+        data_lists.append(tmp_list)
+
+    #plot_lists = []
+    #large = 0 # the number of sub lists
+    #for list in data_lists:
+        #if len(list) > large:
+            #large = len(list)
+    #for i in xrange(0, large):
+        #for j in xrange(0, len(data_lists)):
+            #tmp_list = []
+            #try:
+                #tmp_list.append(data_lists[j][i])
+            #except:
+                #tmp_list.append(0)
+            #plot_lists.append(tmp_list)
+
+    #my_labels = my_dict.keys() 
+    #fig = plt.figure(figsize=(16, 10))
+    #ax = fig.add_subplot(111)
+    #ax.boxplot(data_lists)
+
+    # make a dir according to datetime, granularity and h threshold
+    sdate = describe.split('_')[0]
+    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/')
+    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+describe+'.pdf',\
+            bbox_inches='tight')
+    plt.close()
+
+    # Record plot data in a separate file for future use
+    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+\
+            describe+'.txt', 'w')
+    for k in my_dict.keys():
+        f.write(str(k)+':')
+        for k2 in my_dict[k].keys():
+            f.write(str(k2)+'|')
+            f.write(str(my_dict[k][k2]))
+            f.write(',')
+        f.write('\n')
+    f.close()
+
+    return 0
+
 def cdf_plot(hthres, granu, my_dict, describe):
     # my_dict DV value: exist time
     xlist = [0]

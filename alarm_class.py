@@ -51,8 +51,8 @@ class Alarm():
             if dr[0] == self.sdate:
                 self.mcount = dr[2]
                 break
-        # no record exists in env.py
-        if self.mcount == -1:
+        
+        if self.mcount == -1: # no record exists in env.py
             self.mcount = cmlib.get_monitor_c(self.sdate) # monitor count
 
         # Get the quantity of all prefixes in the Internet.
@@ -98,18 +98,24 @@ class Alarm():
         self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
         self.dvi_desc[4] = 'dvi(1)' # div No.: describe
 
-        # For the CDF figure in introduction
-        self.ratio_count = dict() # ratio value: existence count
-
-        self.dv_level = [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+        # -1 means >= 0 cause DV cannot be < 0 
+        self.dv_level = [-1, 0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
         # depicts prefix-length for different ratio levels (>0, >5, >10~50)
-        self.dv_len_pfx = dict() # DV value: prefix length: existence
-        self.dv_asn_hdvp = dict() # DV value (threshold_h): AS: hdvp count #TODO:detect point
-        self.dv_dt_hdvp = dict() # DV value: dt: hdvp count
-        for rl in self.dv_level:
-            self.dv_len_pfx[rl] = dict()
-            self.dv_asn_hdvp[rl] = dict()
-            self.dv_dt_hdvp[rl] = dict()
+        self.dv_pfx = dict() # DV levels: DV: prefix count
+        self.dv_len_pfx = dict() # DV levels: prefix length: existence
+        self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
+        self.dv_asn_hdvp = dict() # DV levels (threshold_h): AS: hdvp count
+        self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
+        self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
+        self.dup_as = dict() # DV levels: AS: prefix existence times
+        for dl in self.dv_level:
+            self.dv_pfx[dl] = dict()
+            self.dv_len_pfx[dl] = dict()
+            self.dvrange_len_pfx[dl] = dict()
+            self.dv_asn_hdvp[dl] = dict()
+            self.dv_dt_hdvp[dl] = dict()
+            self.dup_trie[dl] = patricia.trie(None)
+            self.dup_as[dl] = dict()
 
         ''' 
         # CDFs for 15 hours before and after the event
@@ -248,8 +254,8 @@ class Alarm():
             pfx_nation_distri = {} # nation: pfx list
 
             dv_asn_hdvp_tmp = dict()
-            for rl in self.dv_level:
-                dv_asn_hdvp_tmp[rl] = {} # used only at first detection point
+            for dl in self.dv_level:
+                dv_asn_hdvp_tmp[dl] = {} # used only at first detection point
 
             for p in trie:
                 if p == '': # the root node (the source of a potential bug)
@@ -260,29 +266,47 @@ class Alarm():
                 plen = len(p) # get prefix length
                 asn = self.pfx_to_as(p) # get origin AS number
 
-                for rl in self.dv_level:
-                    if ratio > rl:
+                for i in xrange(0, len(self.dv_level)):
+                    dv_now = self.dv_level[i]
+                    if ratio > dv_now:
                         try:
-                            self.dv_len_pfx[rl][plen] += 1
+                            self.dv_pfx[dv_now][ratio] += 1
                         except:
-                            self.dv_len_pfx[rl][plen] = 1
+                            self.dv_pfx[dv_now][ratio] = 1
+
+                        try:
+                            self.dv_len_pfx[dv_now][plen] += 1
+                        except:
+                            self.dv_len_pfx[dv_now][plen] = 1
                             
                         if asn != -1:
                             try:
-                                dv_asn_hdvp_tmp[rl][asn] += 1
+                                dv_asn_hdvp_tmp[dv_now][asn] += 1
                             except:
-                                dv_asn_hdvp_tmp[rl][asn] = 1
+                                dv_asn_hdvp_tmp[dv_now][asn] = 1
 
                         try:
-                            self.dv_dt_hdvp[rl][dt] += 1 
+                            self.dv_dt_hdvp[dv_now][dt] += 1 
                         except:
-                            self.dv_dt_hdvp[rl][dt] = 1
+                            self.dv_dt_hdvp[dv_now][dt] = 1
 
-                # For CDF plot only
-                try:
-                    self.ratio_count[ratio] += 1
-                except:
-                    self.ratio_count[ratio] = 1
+                        try:
+                            self.dup_trie[dv_now][p] += 1
+                        except:  # Node does not exist, then we create a new node
+                            self.dup_trie[dv_now][p] = 1
+
+                        if i != len(self.dv_level)-1: # not the last one
+                            if ratio <= self.dv_level[i+1]:
+                                try:
+                                    self.dvrange_len_pfx[dv_now][plen] += 1
+                                except:
+                                    self.dvrange_len_pfx[dv_now][plen] = 1
+                        else: # the last one
+                            try:
+                                self.dvrange_len_pfx[dv_now][plen] += 1
+                            except:
+                                self.dvrange_len_pfx[dv_now][plen] = 1
+
                 '''
                 # for CDF (in introduction) comparison only
                 if dt >= self.bfr_start and dt < self.occur_dt:
@@ -337,7 +361,6 @@ class Alarm():
                 self.dvi[3][dt] += ratio
                 self.dvi[4][dt] += 1
 
-             
             if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
                 if self.dv_asn_hdvp[0] == {}: # hasn't been filled
                     self.dv_asn_hdvp = dv_asn_hdvp_tmp 
@@ -442,19 +465,20 @@ class Alarm():
         # total update and prefix count
         cmlib.time_series_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount, self.describe_add+'prefix_count')
-        
-        # CDF in introduction
-        cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.ratio_count),\
-                self.describe_add+'CDF')
 
         # the prefix-length CDFs
-        for rl in self.dv_level:
-            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_len_pfx[rl]),\
-                    self.describe_add+'CDF-len-pfx-'+str(rl))
-            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_hdvp[rl]),\
-                    self.describe_add+'CDF-AS-HDVP-'+str(rl))
-            cmlib.store_symbol_count(self.hthres, self.granu, self.dv_asn_hdvp[rl],\
-                    self.describe_add+'CDF-AS-HDVP-'+str(rl))
+        for dl in self.dv_level:
+            
+            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_pfx[dl]),\
+                    self.describe_add+'CDF-DV-pfx-'+str(dl))
+            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_len_pfx[dl]),\
+                    self.describe_add+'CDF-len-pfx-'+str(dl))
+            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_hdvp[dl]),\
+                    self.describe_add+'CDF-AS-HDVP-'+str(dl))
+            cmlib.store_symbol_count(self.hthres, self.granu, self.dv_asn_hdvp[dl],\
+                    self.describe_add+'CDF-AS-HDVP-'+str(dl))
+        #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
+                #self.describe_add+'box-dv-len-'+str(dl))
 
         # plot HDVP count for different DV levels
         for key in self.dv_dt_hdvp.keys():
@@ -473,6 +497,41 @@ class Alarm():
         #        self.describe_add+'CDFbfr')
         #cmlib.cdf_plot(self.hthres, self.granu, self.cdfaft,\
         #        self.describe_add+'CDFaft')
+
+        # the ASs that generate many prefixes who exist for multiple times
+        for dl in self.dv_level:
+            for pfx in self.dup_trie[dl]:
+                if self.dup_trie[dl][pfx] > 1:
+                    asn = self.pfx_to_as(pfx)
+                    try:
+                        self.dup_as[dl][asn] += 1
+                    except:
+                        self.dup_as[dl][asn] = 1
+                else: # not interested in existnce == 1
+                    del self.dup_trie[dl][pfx]
+
+        f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
+                 '/'+self.describe_add+'_dup_AS.txt', 'w')
+        for dl in self.dup_as.keys():  # all dt that exists
+            f.write(str(dl)+':')
+            for asn in self.dup_as[dl]:
+                if self.dup_as[dl][asn] > 1:
+                    f.write(str(asn)+'|'+str(self.dup_as[dl][asn])+',')
+            f.write('\n')
+        f.close()
+
+        # show multiple existence of prefixes whose DV > x, y, ...
+        f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
+                 '/'+self.describe_add+'_dup_pfx.txt', 'w')
+        for dl in self.dup_trie.keys():  # all dt that exists
+            f.write(str(dl)+':')
+            for pfx in self.dup_trie[dl]:
+                if self.dup_trie[dl][pfx] > 1:
+                    f.write(pfx+'|'+str(self.dup_trie[dl][pfx])+',')
+            f.write('\n')
+        f.close()
+
+        return 0
 
     def value_count2cdf(self, vc_dict):
         cdf = dict()
