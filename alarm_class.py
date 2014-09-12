@@ -71,17 +71,17 @@ class Alarm():
         self.dv_level = [-1, 0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
         # depicts prefix-length for different ratio levels (>0, >5, >10~50)
         self.dv_len_pfx = dict() # DV levels: prefix length: existence
+        self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         self.dv_pfx = dict() # DV levels: DV: prefix count
-        self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
         self.dv_asn_hdvp = dict() # DV levels (threshold_h): AS: hdvp count
         self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
         self.dup_as = dict() # DV levels: AS: prefix existence times
         for dl in self.dv_level:
             self.dv_len_pfx[dl] = dict()
+            self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_hdvp[dl] = dict()
             self.dv_pfx[dl] = dict()
-            self.dvrange_len_pfx[dl] = dict()
             self.dv_asn_hdvp[dl] = dict()
             self.dup_trie[dl] = patricia.trie(None)
             self.dup_as[dl] = dict()
@@ -219,29 +219,46 @@ class Alarm():
                 plen = len(p) # get prefix length
                 asn = self.pfx_to_as(p) # get origin AS number
 
-                for dl in self.dv_level:
-                    if ratio > dl:
+                for i in xrange(0, len(self.dv_level)):
+                    dv_now = self.dv_level[i]
+                    if ratio > dv_now:
                         try:
-                            self.dv_len_pfx[dl][plen] += 1
+                            self.dv_pfx[dv_now][ratio] += 1
                         except:
-                            self.dv_len_pfx[dl][plen] = 1
+                            self.dv_pfx[dv_now][ratio] = 1
+
+                        try:
+                            self.dv_len_pfx[dv_now][plen] += 1
+                        except:
+                            self.dv_len_pfx[dv_now][plen] = 1
                             
                         if asn != -1:
                             try:
-                                dv_asn_hdvp_tmp[dl][asn] += 1
+                                dv_asn_hdvp_tmp[dv_now][asn] += 1
                             except:
-                                dv_asn_hdvp_tmp[dl][asn] = 1
+                                dv_asn_hdvp_tmp[dv_now][asn] = 1
 
                         try:
-                            self.dv_dt_hdvp[dl][dt] += 1 
+                            self.dv_dt_hdvp[dv_now][dt] += 1 
                         except:
-                            self.dv_dt_hdvp[dl][dt] = 1
+                            self.dv_dt_hdvp[dv_now][dt] = 1
 
-                # For CDF plot only
-                try:
-                    self.ratio_count[ratio] += 1
-                except:
-                    self.ratio_count[ratio] = 1
+                        try:
+                            self.dup_trie[dv_now][p] += 1
+                        except:  # Node does not exist, then we create a new node
+                            self.dup_trie[dv_now][p] = 1
+
+                        if i != len(self.dv_level)-1: # not the last one
+                            if ratio <= self.dv_level[i+1]:
+                                try:
+                                    self.dvrange_len_pfx[dv_now][plen] += 1
+                                except:
+                                    self.dvrange_len_pfx[dv_now][plen] = 1
+                        else: # the last one
+                            try:
+                                self.dvrange_len_pfx[dv_now][plen] += 1
+                            except:
+                                self.dvrange_len_pfx[dv_now][plen] = 1
                 '''
                 # for CDF (in introduction) comparison only
                 if dt >= self.bfr_start and dt < self.occur_dt:
@@ -340,11 +357,11 @@ class Alarm():
 
             for dt in self.dt_list:
                 try:
-                    test = self.dv_dt_hdvp[key][dt]
+                    test = self.dv_dt_hdvp[dl][dt]
                 except:
-                    self.dv_dt_hdvp[key][dt] = 0
+                    self.dv_dt_hdvp[dl][dt] = 0
 
-            cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[key], self.describe_add+'='+str(key))
+            cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[dl], self.describe_add+'='+str(key))
 
         #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
                 #self.describe_add+'box-dv-len-'+str(dl))
