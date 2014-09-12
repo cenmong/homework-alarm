@@ -8,11 +8,10 @@ TEST = True
 #cmlib.combine_slot_dvi()
 #cmlib.combine_ht()
 #cmlib.combine_cdf()
-thres = 0.005785
+dthres = 0.005785
 #for i in xrange(0,len(daterange)):
 for i in [0]: # change this list according to needs
 
-    # TODO: download supporting files using a supporter object
     if TEST:
         filelist = hdname+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
     else:
@@ -22,12 +21,9 @@ for i in [0]: # change this list according to needs
     eoccur = daterange[i][7] # event occur end
     des = daterange[i][8] # event description
 
-    # 2nd parameter: length of time slot
-    # 4th parameter: HDVP threshold
-    # 6th parameter: detection threshold
-    ana = Analyzer(filelist, 10, daterange[i][0], 0.3, 1, thres, soccur, eoccur, des)
+    ana = Analyzer(filelist, 10, daterange[i][0], 0.3, dthres)
 
     # plot directly from existent data
-    #if ana.direct():
+    #if ana.direct(thres, soccur, eoccur, des):
     #    continue
     ana.parse_updates()

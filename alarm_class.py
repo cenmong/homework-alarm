@@ -10,7 +10,7 @@ from supporter_class import *
 
 class Alarm():
 
-    def __init__(self, granu, sdate, hthres, cl_list, dthres, soccur, eoccur, desc, cdfbound):
+    def __init__(self, granu, sdate, hthres, cl_list, dthres, cdfbound):
         ##############################################
         # For coordinating different collectors
         #################################################
@@ -29,11 +29,9 @@ class Alarm():
         self.granu = granu  # Time granularity in minutes
         self.hthres = hthres # active threshold, also known as \theta_h
         self.dthres = dthres # detection threshold, also known as \theta_d
-        self.soccur = soccur # Event occurrence start
-        self.eoccur = eoccur # Event occurrence end
-        self.desc = desc # Event description
         
         self.dt_list = list() # the list of datetime
+        self.peerlist = dict() # dt: monitor list
         self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
         self.hdvp_count = dict() # dt: active prefix count
         self.ucount = dict() # dt: update count
@@ -75,7 +73,10 @@ class Alarm():
                 self.m_nation_as[nation] = 1
 
         self.m_ascount = len(self.m_as_m.keys())
-        self.m_nationcount = len(m_nation_as.keys())
+        print 'monitor AS count:', self.m_ascount
+        self.m_nationcount = len(self.m_nation_as.keys())
+        print 'monitor nation count:', self.m_nationcount
+        print 'nations:', self.m_nation_as.keys()
 
 
         ############################################
@@ -205,6 +206,7 @@ class Alarm():
         # meet a brand new dt for sure!
         if dt not in self.dt_list:
             self.dt_list.append(dt)
+            self.peerlist[dt] = []
             self.ucount[dt] = 0
             self.pfx_trie[dt] = patricia.trie(None)
             self.acount[dt] = 0
@@ -218,6 +220,9 @@ class Alarm():
             self.wcount[dt] += 1
         self.ucount[dt] += 1
 
+        peer = attr[3]
+        if peer not in self.peerlist[dt]:
+            self.peerlist[dt].append(peer)
 
         # deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
@@ -339,8 +344,7 @@ class Alarm():
 
         return 0
 
-    # TODO: make it scalable
-    def direct_plot(self): # this is called before everybody!
+    def direct_plot(self, dthres, soccur, eoccur, desc): # this is called before everybody!
         # polt from intial data directly
         # get name of the interested data and divide into categories according
         # to diffrent polting needs
@@ -355,12 +359,12 @@ class Alarm():
         # Now, let's rock and roll
         for name in array1:
             cmlib.direct_ts_plot(self.hthres, self.granu,\
-                    self.describe_add+name, self.dthres,\
-                    self.soccur, self.eoccur, self.desc)
+                    self.describe_add+name, dthres,\
+                    soccur, eoccur, desc)
         for name in array2:
             cmlib.direct_ts_plot(self.hthres, self.granu,\
-                    self.describe_add+name, self.dthres,\
-                    self.soccur, self.eoccur, self.desc)
+                    self.describe_add+name, dthres,\
+                    soccur, eoccur, desc)
         for name in array3:
             cmlib.direct_cdf_plot(self.hthres, self.granu,\
                     self.describe_add+name)

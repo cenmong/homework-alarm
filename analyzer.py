@@ -9,11 +9,10 @@ from env import *
 
 class Analyzer():
 
-    def __init__(self, filelist, granu, sdate, act_threshold, atype, thres,\
-                soccur, eoccur, des):
+    def __init__(self, filelist, granu, sdate, hthres, dthres):
         self.filelist = filelist  # filelist file name 
-        self.allowed = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+'\
-                '+'{'+'}'+','+'-')
+        self.allowed = set(string.ascii_letters+string.digits+\
+                '.'+':'+'|'+'/'+''+'{'+'}'+','+'-')
 
         try:
             self.cl_list = cmlib.get_collector(sdate)  # the collectors this event has
@@ -24,16 +23,11 @@ class Analyzer():
         for cl in collectors:
             self.cl_first[cl[0]] = True
                 
-        if atype == 1:
-            self.alarm = Alarm(granu, sdate, act_threshold, self.cl_list,\
-                    thres, soccur, eoccur, des, None)
-        #if atype == 2:  # longitudinal study TODO: useless right now
-        #    self.alarm = Alarm_c(granu, self.cl_list)
-        #self.atype = atype
+        self.alarm = Alarm(granu, sdate, hthres, self.cl_list, dthres, None)
 
-    def direct(self):
+    def direct(self, dthres, soccur, eoccur, desc):
         try:
-            self.alarm.direct_plot()
+            self.alarm.direct_plot(dthres, soccur, eoccur, desc)
         except Exception, e:
             print str(e) # print the exact information of the exception
             return False

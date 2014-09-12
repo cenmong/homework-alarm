@@ -678,10 +678,11 @@ def get_monitors(sdate):
     for c in clist:
         if c.startswith('rrc'):
             rib_location = hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/'
-            dir_list = os.listdir(hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/')
-            for f in dir_list:
-                if not f.startswith('bview'):
-                    dir_list.remove(f)
+            dir_list_tmp = os.listdir(hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/')
+            dir_list = []
+            for f in dir_list_tmp:
+                if f.startswith('bview'):
+                    dir_list.append(f)
         else:
             if c == '':
                 rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
@@ -696,7 +697,7 @@ def get_monitors(sdate):
             if not f.startswith('.'):
                 rib_location = rib_location + f # if RIB is of the same month. That's OK.
                 break
-        print 'Getting the quantity of monitors from RIB: ', rib_location
+        print 'Getting monitors/AS:', rib_location
 
         if rib_location.endswith('txt.gz'):
             subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        

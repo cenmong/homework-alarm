@@ -13,6 +13,7 @@ class Supporter():
         cmlib.make_dir(hdname+'support/')
 
     def get_as2nation_file(self):
+        print 'Calculating AS to nation file...'
         if os.path.exists(hdname+'support/as2nation.txt'):
             return 0
 
@@ -39,7 +40,7 @@ class Supporter():
             if 'ppdc' in line:
                 return 0 # we already have a prefix2as file
 
-        print 'Getting AS to customer cone file ...'
+        print 'Downloading AS to customer cone file ...'
         webloc = 'http://data.caida.org/datasets/2013-asrank-data-supplement/data/'
         webraw = cmlib.get_weblist(webloc)
         target_line = ''
@@ -75,7 +76,7 @@ class Supporter():
             if 'pfx2as' in line:
                 return 0 # we already have a prefix2as file
 
-        print 'Getting prefix to AS file ...'
+        print 'Downloading prefix to AS file ...'
         year, month = self.sdate[:4], self.sdate[4:6] # YYYY, MM
         webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
                 '/' + year + '/' + month + '/'
@@ -100,6 +101,7 @@ class Supporter():
         return 0
 
     def get_pfx2as_trie(self):
+        print 'Calculating prefix to AS number trie...'
         pfx2as = patricia.trie(None)
 
         if int(self.sdate) >= 20050509:
@@ -167,6 +169,7 @@ class Supporter():
         return pfx2as
 
     def get_as2nation_dict(self):
+        print 'Calculating AS to nation dict...'
         as2nation = {}
 
         f = open(hdname+'support/as2nation.txt')
