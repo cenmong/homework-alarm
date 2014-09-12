@@ -674,7 +674,7 @@ def get_monitors(sdate):
     mydate = sdate[0:4] + '.' + sdate[4:6]
     clist = get_collector(sdate)
     rib_location = ''
-    peers = set()
+    monitors = dict() # monitor ip: AS
     for c in clist:
         if c.startswith('rrc'):
             rib_location = hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/'
@@ -696,7 +696,7 @@ def get_monitors(sdate):
             if not f.startswith('.'):
                 rib_location = rib_location + f # if RIB is of the same month. That's OK.
                 break
-        print 'Getting the quantity of peers from RIB: ', rib_location
+        print 'Getting the quantity of monitors from RIB: ', rib_location
 
         if rib_location.endswith('txt.gz'):
             subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        
@@ -706,25 +706,26 @@ def get_monitors(sdate):
             os.remove(rib_location)  # then remove .bz2/.gz
             rib_location = rib_location + '.txt'
         # now rib file definitely ends with .txt  
-        with open(rib_location, 'r') as f:  # get peers from RIB
+        with open(rib_location, 'r') as f:  # get monitors from RIB
             for line in f:
-                try:
-                    addr = line.split('|')[3]
-                    peers.add(addr)
+                addr = line.split('|')[3]
+                asn = int(line.split('|')[4])
+                try: 
+                    test = monitors[addr] # whether already exists
                 except:
-                    pass
+                    monitors[addr] = asn
         f.close()
-        # compress RIB into .gz
+        # compress the RIB back into .gz
         if not os.path.exists(rib_location+'.gz'):
             pack_gz(rib_location)
 
-        print 'The quantity is: ', str(len(peers))
+        print 'The quantity is: ', len(monitors.keys())
 
     f = open(hdname+'metadata/sdate&peercount', 'a')
-    f.write(sdate+' '+str(len(peers))+'\n')
+    f.write(sdate+' '+str(len(monitors.keys()))+'\n')
     f.close()
 
-    return peers
+    return monitors
 
 # get the number of all prefixes at certain date time
 def get_all_pcount(sdate):

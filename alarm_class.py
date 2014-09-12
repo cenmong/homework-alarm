@@ -47,14 +47,13 @@ class Alarm():
         self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix count
 
 
-        # TODO: get monitor to peer AS mapping directly from AS path latest hop
-        self.monitors = cmlib.get_monitors(self.sdate) # monitors set
-        self.mcount = len(self.monitors)
-        
-        self.monitors = # monitor: ASN
+        self.monitors = cmlib.get_monitors(self.sdate) # monitors ip: AS number
         self.mcount = len(self.monitors.keys())
-        self.m_ascount = 
-        self.m_nationcount = 
+        m_as_m = dict() # AS number: monitor count
+        m_nation_as = dict() # nation: AS (of monitors) count
+        # TODO
+        self.m_ascount = len(m_as_m.keys())
+        self.m_nationcount = len(m_nation_as.keys())
 
         # TODO: hard-code is bad manner
         self.dvi = []  # DVI No.: dt: value
