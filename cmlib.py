@@ -642,7 +642,7 @@ def ip_to_binary(content, peer):  # can deal with ip addr and pfx
             addr = addr[:length]
         return addr
     else:
-        print 'protocol false!'
+        print 'Protocol false!'
         return 0
 
 def get_collector(sdate):
@@ -670,7 +670,7 @@ def size_u2v(unit):
     if unit in ['g', 'G']:
         return 1073741824
 
-def get_monitor_c(sdate):
+def get_monitors(sdate):
     mydate = sdate[0:4] + '.' + sdate[4:6]
     clist = get_collector(sdate)
     rib_location = ''
@@ -696,7 +696,7 @@ def get_monitor_c(sdate):
             if not f.startswith('.'):
                 rib_location = rib_location + f # if RIB is of the same month. That's OK.
                 break
-        print 'getting peer count from RIB file: ', rib_location
+        print 'Getting the quantity of peers from RIB: ', rib_location
 
         if rib_location.endswith('txt.gz'):
             subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        
@@ -718,13 +718,13 @@ def get_monitor_c(sdate):
         if not os.path.exists(rib_location+'.gz'):
             pack_gz(rib_location)
 
-        print str(len(peers))
+        print 'The quantity is: ', str(len(peers))
 
     f = open(hdname+'metadata/sdate&peercount', 'a')
     f.write(sdate+' '+str(len(peers))+'\n')
     f.close()
 
-    return len(peers)
+    return peers
 
 # get the number of all prefixes at certain date time
 def get_all_pcount(sdate):

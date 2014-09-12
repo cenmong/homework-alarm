@@ -30,52 +30,41 @@ class Supporter():
 
         return 0
 
-    def get_as2rank_file(self):
-        # TODO: get data from all 3 date
-        # only 3 date available
-        date = '20121102'
-        n = '42697'
+    def get_as2cc_file(self): # AS to customer cone
+        location = hdname + 'support/' + self.sdate + '/'
+        cmlib.make_dir(location)
 
-        # TODO: if target file already exists
-        # download from CAIDA
-        rows = cmlib.get_weblist('http://as-rank.caida.org/?data-selected=\
-                    2012-11-02&n=42697&ranksort=1&mode0=as-ranking')
-        f = open(hdname+'support/asrank_'+date+'.txt', 'w')
-        for line in rows.split('\n'):
-            if line.isspace() or line == '\n' or line == '': 
-                continue
-            line = line.strip()
-            f.write(line.replace(' ', '')+'\n')
-        f.close()
+        tmp = os.listdir(hdname+'support/'+self.sdate+'/')
+        for line in tmp:
+            if 'ppdc' in line:
+                return 0 # we already have a prefix2as file
 
-        # extract useful information
-        fr = open(hdname+'support/asrank_'+date+'.txt', 'r')
-        fw = open(hdname+'support/asrank_'+date+'tmp.txt', 'w')
-        trigger = 0
-        count = 0
-        for line in fr:
-            line = line.strip('\n')
-            if line == 'datasources':
+        print 'Getting AS to customer cone file ...'
+        webloc = 'http://data.caida.org/datasets/2013-asrank-data-supplement/data/'
+        webraw = cmlib.get_weblist(webloc)
+        target_line = ''
+        yearmonth = self.sdate[:6] # YYYY, MM
+        for line in webraw.split('\n'):
+            if yearmonth in line and 'ppdc' in line:
+                target_line = line
                 break
-            if trigger < 2:
-                if line == 'IPv4Addresses':
-                    trigger += 1
-                    continue
-                else:
-                    continue
-            # now we begin to count info
-            count += 1
-            if count == 1:
-                fw.write(line+' ')
-            elif count == 2:
-                fw.write(line+'\n')
-            elif count == 11:
-                count = 0
-            else:
-                pass
 
-        fr.close()
-        fw.close()
+        if target_line == '':
+            print 'Downloading AS to customer cone file fails: no such month!'
+            return -1
+
+        fname = target_line.split()[0]
+        urllib.urlretrieve(webloc+fname, location+fname)
+        if int(yearmonth) <= 20131101:
+            # unpack .gz (only before 20131101 (include))
+            subprocess.call('gunzip '+location+fname, shell=True)
+        else:
+            # unpack .bz2 (only after 20140601 (include))
+            subprocess.call('bunzip2 -d '+location+fname, shell=True)
+
+        # Now we have file xxxxyyzz.ppdc-ases.txt
+
+        return 0
 
     def get_pfx2as_file(self):
         location = hdname + 'support/' + self.sdate + '/'
@@ -86,7 +75,7 @@ class Supporter():
             if 'pfx2as' in line:
                 return 0 # we already have a prefix2as file
 
-        print 'get pfx2as file ...'
+        print 'Getting prefix to AS file ...'
         year, month = self.sdate[:4], self.sdate[4:6] # YYYY, MM
         webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
                 '/' + year + '/' + month + '/'
@@ -99,7 +88,7 @@ class Supporter():
                 break
 
         if target_line == '':
-            print 'downloading prefix2as file fails: no such date'
+            print 'Downloading prefix to AS file fails: no such date!'
             return 0
 
         fname = target_line.split()[0]
@@ -177,7 +166,7 @@ class Supporter():
 
         return pfx2as
 
-    def get_as2nation_dict(self):  # TODO: should consider datetime
+    def get_as2nation_dict(self):
         as2nation = {}
 
         f = open(hdname+'support/as2nation.txt')
@@ -188,7 +177,7 @@ class Supporter():
         return as2nation
 
     def get_as2type_dict(self):
-        as2type == {}
+        as2type = {}
 
         # TODO: consider datetime
         f = open(hdname+'support/as2attr.txt')
@@ -199,17 +188,31 @@ class Supporter():
 
         return as2type
 
-    def get_as2rank_dict(self):
-        as2rank == {}
+    def get_as2cc_dict(self): # AS to customer cone
+        self.get_as2cc_file()
+        print 'Calculating AS to customer cone dict...'
 
-        # TODO: consider datetime
-        f = open(hdname+'support/asrank_20121102.txt')
+        as2cc_file = ''
+        tmp = os.listdir(hdname+'support/'+self.sdate+'/')
+        for line in tmp:
+            if 'ppdc' in line:
+                as2cc_file = line
+                break
+
+        as2cc = {}
+        f = open(hdname+'support/'+self.sdate+'/'+as2cc_file)
         for line in f:
-            line = line.strip('\n')
-            as2rank[int(line.split()[1])] = int(line.split()[0])
+            if line == '' or line == '\n':
+                continue
+            line = line.rstrip('\n')
+            attr = line.split()
+            if attr[0] == '#':
+                continue
+            as2cc[int(attr[0])] = len(attr) - 1 
+
         f.close()
 
-        return as2rank
+        return as2cc
 
     def get_nation2cont_dict(self):
         nation2cont == {}
