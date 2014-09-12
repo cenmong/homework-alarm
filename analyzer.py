@@ -26,7 +26,7 @@ class Analyzer():
                 
         if atype == 1:
             self.alarm = Alarm(granu, sdate, act_threshold, self.cl_list,\
-                    thres, soccur, eoccur, des)
+                    thres, soccur, eoccur, des, None)
         #if atype == 2:  # longitudinal study TODO: useless right now
         #    self.alarm = Alarm_c(granu, self.cl_list)
         #self.atype = atype

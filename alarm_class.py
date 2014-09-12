@@ -10,9 +10,10 @@ from supporter_class import *
 
 class Alarm():
 
-    def __init__(self, granu, sdate, hthres, cl_list, dthres, soccur, eoccur, desc):
-
-        ## for scheduling date time order
+    def __init__(self, granu, sdate, hthres, cl_list, dthres, soccur, eoccur, desc, cdfbound):
+        ##############################################
+        # For coordinating different collectors
+        #################################################
         self.cl_list = cl_list
         self.cl_dt = {}  # collector: [from_dt, now_dt] 
         for cl in self.cl_list:
@@ -21,6 +22,9 @@ class Alarm():
         self.floor = 0  # for not recording the lowest dt
 
 
+        ###########################
+        # Basic values assignment
+        ############################
         self.sdate = sdate # Starting date
         self.granu = granu  # Time granularity in minutes
         self.hthres = hthres # active threshold, also known as \theta_h
@@ -28,7 +32,6 @@ class Alarm():
         self.soccur = soccur # Event occurrence start
         self.eoccur = eoccur # Event occurrence end
         self.desc = desc # Event description
-
         
         self.dt_list = list() # the list of datetime
         self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
@@ -39,7 +42,6 @@ class Alarm():
         self.wcount = dict() # dt: withdrawal count
         self.wpctg = dict() # dt: withdrawal percentage 
 
-
         spt = Supporter(sdate)
         self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
         self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
@@ -47,15 +49,38 @@ class Alarm():
         self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix count
 
 
+        ###########################################
+        # Get data about monitors
+        ######################################
         self.monitors = cmlib.get_monitors(self.sdate) # monitors ip: AS number
         self.mcount = len(self.monitors.keys())
-        m_as_m = dict() # AS number: monitor count
-        m_nation_as = dict() # nation: AS (of monitors) count
-        # TODO
-        self.m_ascount = len(m_as_m.keys())
+
+        self.m_as_m = dict() # AS number: monitor count
+        self.m_nation_as = dict() # nation: AS (of monitors) count
+
+        for m in self.monitors.keys():
+            asn = self.monitors[m]
+            try:
+                self.m_as_m[asn] += 1
+            except:
+                self.m_as_m[asn] = 1
+
+        for asn in self.m_as_m.keys():
+            nation = self.as_to_nation(asn)
+            if nation == -1:
+                continue
+            try:
+                self.m_nation_as[nation] += 1
+            except:
+                self.m_nation_as[nation] = 1
+
+        self.m_ascount = len(self.m_as_m.keys())
         self.m_nationcount = len(m_nation_as.keys())
 
-        # TODO: hard-code is bad manner
+
+        ############################################
+        # Dynamic Visibillity Index
+        #######################################
         self.dvi = []  # DVI No.: dt: value
         self.dvi_desc = {} # DVI No.: describe
         for i in xrange(0, 5): # control total number of DVIs here
@@ -66,8 +91,11 @@ class Alarm():
         self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
         self.dvi_desc[4] = 'dvi(1)' # div No.: describe
 
-        # -1 means >= 0 because DV cannot be < 0 
-        self.dv_level = [-1, 0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+
+        ####################################################
+        # Values according to diffrent Dynamic Visibilities
+        ################################################
+        self.dv_level = [-1, 0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6] # -1 means >= 0
         # depicts prefix-length for different ratio levels (>0, >5, >10~50)
         self.dv_len_pfx = dict() # DV levels: prefix length: existence
         self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
@@ -85,19 +113,30 @@ class Alarm():
             self.dup_trie[dl] = patricia.trie(None)
             self.dup_as[dl] = dict()
 
-        ''' 
-        # CDFs for 15 hours before and after the event
-        self.cdfbfr = dict()
-        self.cdfaft = dict()
-        self.occur_dt = datetime.datetime.strptime(soccur, '%Y-%m-%d %H:%M:%S')
-        self.bfr_start = time_lib.mktime((self.occur_dt +\
-                datetime.timedelta(hours=-15)).timetuple())
-        self.aft_end = time_lib.mktime((self.occur_dt +\
-                datetime.timedelta(hours=15)).timetuple())
-        self.occur_dt = time_lib.mktime(self.occur_dt.timetuple())
-        '''
 
-        # For naming all the figures.
+        ###################################################
+        # CDFs for the slot before and after the cdfbound (HDVP peak)
+        ##################################################
+        self.compare = False
+        if cdfbound != None:
+            self.compare = True
+
+            self.cdfbfr = dict()
+            self.cdfaft = dict()
+            ## cdfbound must be like xy:z0 (multiply of self.granu minutes)
+            ## cdfbound should be the start time of the HDVP peak
+            ## 2003 Slammer Worm: 2003-01-25 05:30:00
+            ## 2008 second cable cut: 2008-12-19 07:30:00
+            ## 2013 spamhaus DDoS attack: 2013-03-20 09:00:00
+            self.cdfbound = datetime.datetime.strptime(cdfbound, '%Y-%m-%d %H:%M:%S')
+            self.bfr_start = time_lib.mktime((self.cdfbound +\
+                    datetime.timedelta(minutes=-self.granu)).timetuple())
+            self.aft_end = time_lib.mktime((self.cdfbound +\
+                    datetime.timedelta(minutes=self.granu)).timetuple())
+            self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
+
+
+        ##### For naming all the figures.
         self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'_'
 
     def check_memo(self, is_end):
@@ -258,21 +297,23 @@ class Alarm():
                                 self.dvrange_len_pfx[dv_now][plen] += 1
                             except:
                                 self.dvrange_len_pfx[dv_now][plen] = 1
-                '''
-                # for CDF (in introduction) comparison only
-                if dt >= self.bfr_start and dt < self.occur_dt:
-                    try:
-                        self.cdfbfr[ratio] += 1
-                    except:
-                        self.cdfbfr[ratio] = 1
-                elif dt >= self.occur_dt and dt < self.aft_end:
-                    try:
-                        self.cdfaft[ratio] += 1
-                    except:
-                        self.cdfaft[ratio] = 1
-                else:
-                    pass
-                '''
+
+                if self.compare == True:
+                    ### Only for CDF comparison
+                    if dt >= self.bfr_start and dt < self.cdfbound:
+                        try:
+                            self.cdfbfr[ratio] += 1
+                        except:
+                            self.cdfbfr[ratio] = 1
+                    elif dt >= self.cdfbound and dt < self.aft_end:
+                        try:
+                            self.cdfaft[ratio] += 1
+                        except:
+                            self.cdfaft[ratio] = 1
+                    else:
+                        pass
+
+
                 # only count active prefixes from now on
                 if ratio <= self.hthres: # not active pfx
                     continue
@@ -365,11 +406,12 @@ class Alarm():
         #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
                 #self.describe_add+'box-dv-len-'+str(dl))
 
-        # plot 2 CDFs: before event and after event
-        #cmlib.cdf_plot(self.hthres, self.granu, self.cdfbfr,\
-        #        self.describe_add+'CDFbfr')
-        #cmlib.cdf_plot(self.hthres, self.granu, self.cdfaft,\
-        #        self.describe_add+'CDFaft')
+        if self.compare:
+            # plot 2 CDFs: before event and after event
+            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfbfr),\
+                   self.describe_add+'CDFbfr')
+            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfaft),\
+                   self.describe_add+'CDFaft')
 
 
         # NOTE: no plotting from now on
