@@ -8,7 +8,8 @@ TEST = True
 #cmlib.combine_slot_dvi()
 #cmlib.combine_ht()
 #cmlib.combine_cdf()
-dthres = 0.005785
+#dthres = 0.005785
+dthres = 0.002
 #for i in xrange(0,len(daterange)):
 for i in [0]: # change this list according to needs
 
@@ -21,7 +22,7 @@ for i in [0]: # change this list according to needs
     eoccur = daterange[i][7] # event occur end
     des = daterange[i][8] # event description
 
-    ana = Analyzer(filelist, 10, daterange[i][0], 0.3, dthres)
+    ana = Analyzer(filelist, 10, daterange[i][0], 0.1, dthres)
 
     # plot directly from existent data
     #if ana.direct(thres, soccur, eoccur, des):

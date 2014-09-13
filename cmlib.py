@@ -13,6 +13,7 @@ import datetime
 import patricia
 import gzip
 import time as time_lib
+import operator
 
 from matplotlib.dates import HourLocator
 from matplotlib.dates import DayLocator
@@ -214,9 +215,9 @@ def cdf_plot(hthres, granu, my_dict, describe):
 def store_symbol_count(hthres, granu, my_dict, describe):
     xlist = [0]
     ylist = [0]
-    for key in sorted(my_dict, key=my_dict.get, reverse=True): # must sort by value
-        xlist.append(key)
-        ylist.append(my_dict[key])
+    for item in sorted(my_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
+        xlist.append(item[0])
+        ylist.append(item[1])
 
     sdate = describe.split('_')[0]
     f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+str(hthres)+'/'+\
@@ -720,7 +721,7 @@ def get_monitors(sdate):
         if not os.path.exists(rib_location+'.gz'):
             pack_gz(rib_location)
 
-        print 'The quantity is: ', len(monitors.keys())
+        print 'Monitor quantity by now: ', len(monitors.keys())
 
     f = open(hdname+'metadata/sdate&peercount', 'a')
     f.write(sdate+' '+str(len(monitors.keys()))+'\n')

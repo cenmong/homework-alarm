@@ -3,6 +3,7 @@ import datetime
 import time as time_lib
 import numpy as np
 import cmlib
+import operator
 
 from netaddr import *
 from env import *
@@ -42,9 +43,19 @@ class Alarm():
 
         spt = Supporter(sdate)
         self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
-        self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
         self.as2nation = spt.get_as2nation_dict() # all ASes to origin nation (latest)
         self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix count
+        self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
+
+        self.as2rank = dict() # AS:rank by customer cone
+        pre_value = 999999
+        rank = 0
+        for item in sorted(self.as2cc.iteritems(), key=operator.itemgetter(1), reverse=True):
+            if item[1] < pre_value:
+                rank += 1
+                pre_value = item[1]
+            self.as2rank[item[0]] = rank
+        print self.as2rank
 
 
         ###########################################
@@ -87,16 +98,16 @@ class Alarm():
         for i in xrange(0, 5): # control total number of DVIs here
             self.dvi.append({})
         self.dvi_desc[0] = 'dvi(ratio-threshold)' # div No.: describe
-        self.dvi_desc[1] = 'dvi(2^(ratio-0.9)_10)' # div No.: describe
-        self.dvi_desc[2] = 'dvi(5^(ratio-0.9)_10)' # div No.: describe
-        self.dvi_desc[3] = 'dvi(ratio)' # div No.: describe
-        self.dvi_desc[4] = 'dvi(1)' # div No.: describe
+        self.dvi_desc[1] = 'dvi(2^(ratio-0.9)_10)'
+        self.dvi_desc[2] = 'dvi(5^(ratio-0.9)_10)'
+        self.dvi_desc[3] = 'dvi(ratio)'
+        self.dvi_desc[4] = 'dvi(1)'
 
 
         ####################################################
         # Values according to diffrent Dynamic Visibilities
         ################################################
-        self.dv_level = [-1, 0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6] # -1 means >= 0
+        self.dv_level = [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3]
         # depicts prefix-length for different ratio levels (>0, >5, >10~50)
         self.dv_len_pfx = dict() # DV levels: prefix length: existence
         self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
@@ -207,8 +218,8 @@ class Alarm():
         if dt not in self.dt_list:
             self.dt_list.append(dt)
             self.peerlist[dt] = []
-            self.ucount[dt] = 0
             self.pfx_trie[dt] = patricia.trie(None)
+            self.ucount[dt] = 0
             self.acount[dt] = 0
             self.wcount[dt] = 0
 
@@ -319,7 +330,7 @@ class Alarm():
                         pass
 
 
-                # only count active prefixes from now on
+                # only count HDVPs from now on
                 if ratio <= self.hthres: # not active pfx
                     continue
                 hdvp_count += 1
@@ -405,7 +416,7 @@ class Alarm():
                 except:
                     self.dv_dt_hdvp[dl][dt] = 0
 
-            cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[dl], self.describe_add+'='+str(key))
+            cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[dl], self.describe_add+'='+str(dl))
 
         #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
                 #self.describe_add+'box-dv-len-'+str(dl))
@@ -482,10 +493,11 @@ class Alarm():
         ylist = [0]
 
         j = 0
-        for key in sorted(sc_dict, key=sc_dict.get, reverse=True): # reverse sort by value
+        # large to small
+        for item in sorted(sc_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
             j += 1
             xlist.append(j)
-            ylist.append(sc_dict[key])
+            ylist.append(item[1])
 
         for i in xrange(1, len(ylist)):
             ylist[i] += ylist[i-1]
