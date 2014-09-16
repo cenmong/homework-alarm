@@ -44,18 +44,24 @@ class Alarm():
         spt = Supporter(sdate)
         self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
         self.as2nation = spt.get_as2nation_dict() # all ASes to origin nation (latest)
+        # TODO: write basic info into a seperate output file
         self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix count
+        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total prefix count
         self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
 
         self.as2rank = dict() # AS:rank by customer cone
         pre_value = 999999
-        rank = 0
+        rank = 0 # number (of ASes whose CC is larger) + 1
+        buffer = 0 # number (of ASes having the same CC size) - 1
         for item in sorted(self.as2cc.iteritems(), key=operator.itemgetter(1), reverse=True):
             if item[1] < pre_value:
-                rank += 1
+                rank = rank + buffer + 1
                 pre_value = item[1]
-            self.as2rank[item[0]] = rank
-        print self.as2rank
+                self.as2rank[item[0]] = rank
+                buffer = 0
+            else: # item[1] == pre_value
+                buffer += 1
+                self.as2rank[item[0]] = rank
 
 
         ###########################################
