@@ -2,6 +2,7 @@
 *.pyc
 *warts
 *.swp
+*.swo
 *.pdf
 *.psd
 tmpfile

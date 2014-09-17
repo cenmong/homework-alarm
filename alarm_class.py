@@ -119,25 +119,23 @@ class Alarm():
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         self.dv_pfx = dict() # DV levels: DV: prefix count
         self.dv_asn_hdvp = dict() # DV levels (threshold_h): AS: hdvp count
-        self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
-        self.dup_as = dict() # DV levels: AS: prefix existence times
         for dl in self.dv_level:
             self.dv_len_pfx[dl] = dict()
             self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_hdvp[dl] = dict()
             self.dv_pfx[dl] = dict()
             self.dv_asn_hdvp[dl] = dict()
-            self.dup_trie[dl] = patricia.trie(None)
-            self.dup_as[dl] = dict()
 
 
+        self.dv_level2 = [0, 0.05, 0.1, 0.15, 0.2]
         ###################################################
         # Coarser DV values
         ######################################################
-        self.dv_level2 = [0, 0.05, 0.1, 0.15, 0.2]
         self.dv_dt_pfx = dict() # DV range: dt: pfx count
-        for dl2 in self.dv_level2:
-            self.dv_dt_pfx[dl2] = dict()
+        self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
+        for dl in self.dv_level2:
+            self.dv_dt_pfx[dl] = dict()
+            self.dup_trie[dl] = patricia.trie(None) # Enough memory?
 
 
         ###################################################
@@ -278,18 +276,18 @@ class Alarm():
             for dl in self.dv_level:
                 dv_asn_hdvp_tmp[dl] = {} # used only at first detection point
 
-            for p in trie:
-                if p == '': # the root node (the source of a potential bug)
+            for pfx in trie:
+                if pfx == '': # the root node (the source of a potential bug)
                     continue
 
-                ratio = float(len(trie[p]))/float(self.mcount)
+                ratio = float(len(trie[pfx]))/float(self.mcount)
                 try:
                     self.dv_distribution[dt][ratio] += 1
                 except:
                     self.dv_distribution[dt][ratio] = 1
 
-                plen = len(p) # get prefix length
-                asn = self.pfx_to_as(p) # get origin AS number
+                plen = len(pfx) # get prefix length
+                asn = self.pfx_to_as(pfx) # get origin AS number
 
                 for i in xrange(0, len(self.dv_level)):
                     dv_now = self.dv_level[i]
@@ -315,11 +313,6 @@ class Alarm():
                         except:
                             self.dv_dt_hdvp[dv_now][dt] = 1
 
-                        try:
-                            self.dup_trie[dv_now][p] += 1
-                        except:  # Node does not exist, then we create a new node
-                            self.dup_trie[dv_now][p] = 1
-
                         if i != len(self.dv_level)-1: # not the last one
                             if ratio <= self.dv_level[i+1]:
                                 try:
@@ -335,17 +328,23 @@ class Alarm():
 
                 for j in xrange(0, len(self.dv_level2)):
                     dv_now = self.dv_level2[j]
-                    if j != len(self.dv_level2)-1: # not the last one
-                        if ratio <= self.dv_level2[j+1]:
+                    if ratio > dv_now:
+                        if j != len(self.dv_level2)-1: # not the last one
+                            if ratio <= self.dv_level2[j+1]:
+                                try:
+                                    self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
+                                except:
+                                    self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                        else: # the last one
                             try:
                                 self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
                             except:
                                 self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
-                    else: # the last one
+
                         try:
-                            self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
-                        except:
-                            self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                            self.dup_trie[dv_now][pfx] += 1
+                        except:  # Node does not exist, then we create a new node
+                            self.dup_trie[dv_now][pfx] = 1
 
 
                 if self.compare == True:
@@ -378,7 +377,7 @@ class Alarm():
                     self.dv_asn_hdvp = dv_asn_hdvp_tmp 
 
             self.hdvp_count[dt] = hdvp_count
-            self.pfxcount[dt] = len(trie)
+            self.pfxcount[dt] = len(trie) - 1
 
             # get withdrawal/(W+A) value
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
@@ -416,6 +415,9 @@ class Alarm():
         # Plot DV distribution: mean and standard deviation
         #####################################################
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
+            for dv in self.dv_distribution[dt].keys():
+                self.dv_distribution[dt][dv] = \
+                        float(self.dv_distribution[dt][dv]) / float(self.pfxcount[dt])
             # convert count to cumulative count
             self.dv_cdf[dt] = self.value_count2cdf(self.dv_distribution[dt])
 
@@ -441,13 +443,12 @@ class Alarm():
             dev = np.std(values)
             dv_mean_dev[dv] = [mean, dev]
 
-        #print dv_mean_dev
+        #TODO plot dv_mean_dev
 
         #################################################
         # Box ploting prefixes of high DV ranges TODO
         #######################################################
-        #self.dv_dt_pfx
-        #cmlib.box_plot...
+        #cmlib.box_plot...self.dv_dt_pfx # ignore 0<x<0.05
 
 
         ###################################
@@ -495,38 +496,30 @@ class Alarm():
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfaft),\
                    self.describe_add+'CDFaft')
 
-
-        # NOTE: no plotting from now on
-        # the ASs that generate many prefixes who exist for multiple times
-        for dl in self.dv_level:
-            for pfx in self.dup_trie[dl]:
-                if self.dup_trie[dl][pfx] > 1:
-                    asn = self.pfx_to_as(pfx)
-                    try:
-                        self.dup_as[dl][asn] += 1
-                    except:
-                        self.dup_as[dl][asn] = 1
-                else: # not interested in existnce == 1
-                    del self.dup_trie[dl][pfx]
-
-        f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
-                 '/'+self.describe_add+'_dup_AS.txt', 'w')
-        for dl in self.dup_as.keys():  # all dt that exists
-            f.write(str(dl)+':')
-            for asn in self.dup_as[dl]:
-                if self.dup_as[dl][asn] > 1:
-                    f.write(str(asn)+'|'+str(self.dup_as[dl][asn])+',')
-            f.write('\n')
-        f.close()
-
-        # show multiple existence of prefixes whose DV > x, y, ...
+        ###########################################
+        # Record active prefixes
+        #############################################
         f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
                  '/'+self.describe_add+'_dup_pfx.txt', 'w')
         for dl in self.dup_trie.keys():  # all dt that exists
             f.write(str(dl)+':')
-            for pfx in self.dup_trie[dl]:
-                if self.dup_trie[dl][pfx] > 1:
-                    f.write(pfx+'|'+str(self.dup_trie[dl][pfx])+',')
+            my_trie = self.dup_trie[dl]
+            my_dict = {}
+            for key in sorted(my_trie.iter('')):
+                if key != '':
+                    my_dict[key] = my_trie[key]
+            del my_trie
+
+            stop = 0
+            for item in sorted(my_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
+                stop += 1
+                if stop > 10:
+                    break
+                pfx = item[0]
+                asn = self.pfx_to_as(pfx)
+                asrank = self.as_to_rank(asn)
+                value = item[1]
+                f.write(pfx+'|'+str(value)+'|'+str(asn)+'|'+str(asrank)+',')
             f.write('\n')
         f.close()
 
