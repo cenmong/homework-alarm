@@ -23,6 +23,13 @@ class Alarm():
         self.floor = 0  # for not recording the lowest dt
 
 
+        #####################################
+        # DV distribution in every time slot
+        ####################################
+        self.dv_distribution = dict() # dt: DV: count
+        self.dv_cdf = dict() # dt: DV: cumulative count
+
+
         ###########################
         # Basic values assignment
         ############################
@@ -99,22 +106,14 @@ class Alarm():
         ############################################
         # Dynamic Visibillity Index
         #######################################
-        self.dvi = []  # DVI No.: dt: value
-        self.dvi_desc = {} # DVI No.: describe
-        for i in xrange(0, 5): # control total number of DVIs here
-            self.dvi.append({})
-        self.dvi_desc[0] = 'dvi(ratio-threshold)' # div No.: describe
-        self.dvi_desc[1] = 'dvi(2^(ratio-0.9)_10)'
-        self.dvi_desc[2] = 'dvi(5^(ratio-0.9)_10)'
-        self.dvi_desc[3] = 'dvi(ratio)'
-        self.dvi_desc[4] = 'dvi(1)'
+        self.dvi = {}  # dt: value
+        self.dvi_desc = 'DVI'
 
 
+        self.dv_level = [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25]
         ####################################################
         # Values according to diffrent Dynamic Visibilities
         ################################################
-        self.dv_level = [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3]
-        # depicts prefix-length for different ratio levels (>0, >5, >10~50)
         self.dv_len_pfx = dict() # DV levels: prefix length: existence
         self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
@@ -130,6 +129,15 @@ class Alarm():
             self.dv_asn_hdvp[dl] = dict()
             self.dup_trie[dl] = patricia.trie(None)
             self.dup_as[dl] = dict()
+
+
+        ###################################################
+        # Coarser DV values
+        ######################################################
+        self.dv_level2 = [0, 0.05, 0.1, 0.15, 0.2]
+        self.dv_dt_pfx = dict() # DV range: dt: pfx count
+        for dl2 in self.dv_level2:
+            self.dv_dt_pfx[dl2] = dict()
 
 
         ###################################################
@@ -263,8 +271,8 @@ class Alarm():
         for dt in rel_dt:
             trie = self.pfx_trie[dt]
             hdvp_count = 0
-            for i in xrange(0, len(self.dvi)):
-                self.dvi[i][dt] = 0
+            self.dvi[dt] = 0
+            self.dv_distribution[dt] = dict() # DV: count
 
             dv_asn_hdvp_tmp = dict()
             for dl in self.dv_level:
@@ -275,6 +283,10 @@ class Alarm():
                     continue
 
                 ratio = float(len(trie[p]))/float(self.mcount)
+                try:
+                    self.dv_distribution[dt][ratio] += 1
+                except:
+                    self.dv_distribution[dt][ratio] = 1
 
                 plen = len(p) # get prefix length
                 asn = self.pfx_to_as(p) # get origin AS number
@@ -320,6 +332,22 @@ class Alarm():
                             except:
                                 self.dvrange_len_pfx[dv_now][plen] = 1
 
+
+                for j in xrange(0, len(self.dv_level2)):
+                    dv_now = self.dv_level2[j]
+                    if j != len(self.dv_level2)-1: # not the last one
+                        if ratio <= self.dv_level2[j+1]:
+                            try:
+                                self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
+                            except:
+                                self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                    else: # the last one
+                        try:
+                            self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
+                        except:
+                            self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+
+
                 if self.compare == True:
                     ### Only for CDF comparison
                     if dt >= self.bfr_start and dt < self.cdfbound:
@@ -341,12 +369,8 @@ class Alarm():
                     continue
                 hdvp_count += 1
 
-                # a bunch of DVIs
-                self.dvi[0][dt] += ratio - self.hthres
-                self.dvi[1][dt] += np.power(2, (ratio-0.9)*10)
-                self.dvi[2][dt] += np.power(5, (ratio-0.9)*10)
-                self.dvi[3][dt] += ratio
-                self.dvi[4][dt] += 1
+                # DVI
+                self.dvi[dt] += ratio
 
              
             if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
@@ -368,7 +392,7 @@ class Alarm():
         array1 = []
         array2 = []
         array3 = []
-        array1.append(self.dvi_desc[4]) # the DVI we've decided
+        array1.append(self.dvi_desc) # the DVI we've decided
         array2.append('update_count')
         array2.append('prefix_count')
         array3.append('CDF')
@@ -388,16 +412,53 @@ class Alarm():
 
     def plot(self): # plot everything here!
         print 'Plotting everything...'
+        ###################################################
+        # Plot DV distribution: mean and standard deviation
+        #####################################################
+        for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
+            # convert count to cumulative count
+            self.dv_cdf[dt] = self.value_count2cdf(self.dv_distribution[dt])
 
-        # devide DVIs by total prefix count
-        for i in xrange(0, len(self.dvi)):
-            for key_dt in self.dvi[i].keys():
-                value = self.dvi[i][key_dt]
-                self.dvi[i][key_dt] = float(value)/float(self.all_pcount)
+        all_dv_list = [0] # all possible DVs: from 1/mcount to 1
+        for i in xrange(1, self.mcount):
+            all_dv_list.append(float(i)/float(self.mcount))
 
-            cmlib.time_series_plot(self.hthres, self.granu, self.dvi[i], self.describe_add+self.dvi_desc[i])
+        dv_mean_dev = dict() # dv: [mean, deviation] for all dt's
+        for dv in all_dv_list:
+            values = [] # values of all dt's
+            for dt in self.dv_cdf.keys():
+                try:
+                    my_value = self.dv_cdf[dt][dv]
+                except: # no such DV as key
+                    latest_dv = 0 
+                    for key in self.dv_cdf[dt].keys():
+                        if key > latest_dv and key < dv:
+                            latest_dv = key
+                    my_value = self.dv_cdf[dt][latest_dv]
+                values.append(my_value)
+
+            mean = sum(values)/len(values)
+            dev = np.std(values)
+            dv_mean_dev[dv] = [mean, dev]
+
+        #print dv_mean_dev
+
+        #################################################
+        # Box ploting prefixes of high DV ranges TODO
+        #######################################################
+        #self.dv_dt_pfx
+        #cmlib.box_plot...
 
 
+        ###################################
+        # Plot DVI
+        ######################################
+        for key_dt in self.dvi.keys():
+            value = self.dvi[key_dt]
+            self.dvi[key_dt] = float(value)/float(self.all_pcount)
+        cmlib.time_series_plot(self.hthres, self.granu, self.dvi, self.describe_add+self.dvi_desc)
+
+        
         cmlib.time_series_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
@@ -471,6 +532,7 @@ class Alarm():
 
         return 0
 
+
     def value_count2cdf(self, vc_dict): # dict keys are contable values
         cdf = dict()
         xlist = [0]
@@ -491,7 +553,8 @@ class Alarm():
         for i in xrange(0, len(ylist)):
             cdf[xlist[i]] = ylist[i]
 
-        return cdf
+        return cdf # NOTE: dict are not ordered. Order by key when plotting
+
 
     def symbol_count2cdf(self, sc_dict): # dict keys are just symbols
         cdf = dict()
@@ -511,7 +574,8 @@ class Alarm():
         for i in xrange(0, len(ylist)):
             cdf[xlist[i]] = ylist[i]
 
-        return cdf
+        return cdf # NOTE: dict are not ordered. Order by key when plotting
+
 
     def pfx_to_as(self, mypfx):
         try:
@@ -520,11 +584,13 @@ class Alarm():
         except:
             return -1
 
+
     def as_to_nation(self, myasn):
         try:
             return self.as2nation[myasn]
         except:
             return -1
+
 
     def as_to_rank(self, myasn):
         try:

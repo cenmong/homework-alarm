@@ -710,8 +710,11 @@ def get_monitors(sdate):
         # now rib file definitely ends with .txt  
         with open(rib_location, 'r') as f:  # get monitors from RIB
             for line in f:
-                addr = line.split('|')[3]
-                asn = int(line.split('|')[4])
+                try:
+                    addr = line.split('|')[3]
+                    asn = int(line.split('|')[4])
+                except: # incomplete entry may exsits
+                    continue
                 try: 
                     test = monitors[addr] # whether already exists
                 except:
