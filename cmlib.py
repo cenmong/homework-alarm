@@ -671,6 +671,54 @@ def size_u2v(unit):
     if unit in ['g', 'G']:
         return 1073741824
 
+def get_all_length(sdate):
+    print 'Getting all prefix lengthes...'
+
+    len_count = dict() # length:count
+    trie = patricia.trie(None)
+
+    mydate = sdate[0:4] + '.' + sdate[4:6]
+    dir_list = os.listdir(hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
+    rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
+    for f in dir_list:
+        if not f.startswith('.'):
+            rib_location = rib_location + f # if RIB is of the same month. That's OK.
+            break
+
+    if rib_location.endswith('txt.gz'):
+        subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        
+        rib_location = rib_location.replace('.txt.gz', '.txt')
+    elif not rib_location.endswith('txt'):  # .bz2/.gz file exists
+        parse_mrt(rib_location, rib_location+'.txt')
+        os.remove(rib_location)  # then remove .bz2/.gz
+        rib_location = rib_location + '.txt'
+    # now rib file definitely ends with .txt  
+    with open(rib_location, 'r') as f:  # get monitors from RIB
+        for line in f:
+            try:
+                pfx = line.split('|')[5]
+                pfx = ip_to_binary(pfx, '0.0.0.0')
+            except: # incomplete entry may exsits
+                continue
+            try: 
+                test = trie[pfx] # whether already exists
+            except:
+                trie[pfx] = True
+    f.close()
+    # compress the RIB back into .gz
+    if not os.path.exists(rib_location+'.gz'):
+        pack_gz(rib_location)
+
+    for pfx in trie.iter(''):
+        if pfx != '':
+            try:
+                len_count[len(pfx)] += 1
+            except:
+                len_count[len(pfx)] = 1
+    del trie 
+
+    return len_count
+
 def get_monitors(sdate):
     mydate = sdate[0:4] + '.' + sdate[4:6]
     clist = get_collector(sdate)

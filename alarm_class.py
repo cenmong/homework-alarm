@@ -114,17 +114,11 @@ class Alarm():
         ####################################################
         # Values according to diffrent Dynamic Visibilities
         ################################################
-        self.dv_len_pfx = dict() # DV levels: prefix length: existence
-        self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         self.dv_pfx = dict() # DV levels: DV: prefix count
-        self.dv_asn_hdvp = dict() # DV levels (threshold_h): AS: hdvp count
         for dl in self.dv_level:
-            self.dv_len_pfx[dl] = dict()
-            self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_hdvp[dl] = dict()
             self.dv_pfx[dl] = dict()
-            self.dv_asn_hdvp[dl] = dict()
 
 
         self.dv_level2 = [0, 0.05, 0.1, 0.15, 0.2]
@@ -133,9 +127,13 @@ class Alarm():
         ######################################################
         self.dv_dt_pfx = dict() # DV range: dt: pfx count
         self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
+        self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
+        self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
         for dl in self.dv_level2:
             self.dv_dt_pfx[dl] = dict()
             self.dup_trie[dl] = patricia.trie(None) # Enough memory?
+            self.dvrange_len_pfx[dl] = dict()
+            self.dv_dt_asn_pfx[dl] = dict()
 
 
         ###################################################
@@ -272,9 +270,8 @@ class Alarm():
             self.dvi[dt] = 0
             self.dv_distribution[dt] = dict() # DV: count
 
-            dv_asn_hdvp_tmp = dict()
-            for dl in self.dv_level:
-                dv_asn_hdvp_tmp[dl] = {} # used only at first detection point
+            for dl in self.dv_level2:
+                self.dv_dt_asn_pfx[dl][dt] = dict()
 
             for pfx in trie:
                 if pfx == '': # the root node (the source of a potential bug)
@@ -297,34 +294,16 @@ class Alarm():
                         except:
                             self.dv_pfx[dv_now][ratio] = 1
 
-                        try:
-                            self.dv_len_pfx[dv_now][plen] += 1
-                        except:
-                            self.dv_len_pfx[dv_now][plen] = 1
-                            
                         if asn != -1:
                             try:
-                                dv_asn_hdvp_tmp[dv_now][asn] += 1
+                                self.dv_dt_asn_pfx[dv_now][dt][asn] += 1
                             except:
-                                dv_asn_hdvp_tmp[dv_now][asn] = 1
+                                self.dv_dt_asn_pfx[dv_now][dt][asn] += 1
 
                         try:
                             self.dv_dt_hdvp[dv_now][dt] += 1 
                         except:
                             self.dv_dt_hdvp[dv_now][dt] = 1
-
-                        if i != len(self.dv_level)-1: # not the last one
-                            if ratio <= self.dv_level[i+1]:
-                                try:
-                                    self.dvrange_len_pfx[dv_now][plen] += 1
-                                except:
-                                    self.dvrange_len_pfx[dv_now][plen] = 1
-                        else: # the last one
-                            try:
-                                self.dvrange_len_pfx[dv_now][plen] += 1
-                            except:
-                                self.dvrange_len_pfx[dv_now][plen] = 1
-
 
                 for j in xrange(0, len(self.dv_level2)):
                     dv_now = self.dv_level2[j]
@@ -335,11 +314,19 @@ class Alarm():
                                     self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
                                 except:
                                     self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                                try:
+                                    self.dvrange_len_pfx[dv_now][plen] += 1
+                                except:
+                                    self.dvrange_len_pfx[dv_now][plen] = 1
                         else: # the last one
                             try:
                                 self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
                             except:
                                 self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                            try:
+                                self.dvrange_len_pfx[dv_now][plen] += 1
+                            except:
+                                self.dvrange_len_pfx[dv_now][plen] = 1
 
                         try:
                             self.dup_trie[dv_now][pfx] += 1
@@ -371,13 +358,21 @@ class Alarm():
                 # DVI
                 self.dvi[dt] += ratio
 
-             
-            if float(hdvp_count)/float(self.all_pcount) >= self.dthres:
-                if self.dv_asn_hdvp[0] == {}: # hasn't been filled
-                    self.dv_asn_hdvp = dv_asn_hdvp_tmp 
-
             self.hdvp_count[dt] = hdvp_count
             self.pfxcount[dt] = len(trie) - 1
+
+            # Only get top 1000 AS from AS distribution in this dt 
+            for dl in self.dv_level2:
+                tmp_dict = self.dv_dt_asn_pfx[dl][dt]
+                tmp_list = sorted(tmp_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+                try:
+                    tmp_list = tmp_list[0:1000]
+                except: # item number < 1000
+                    pass
+                self.dv_dt_asn_pfx = {}
+                for item in tmp_list:
+                    # value is the ratio of prefixes in updates
+                    self.dv_dt_asn_pfx[item[0]] = float(item[1])/float(self.pfxcount[dt])
 
             # get withdrawal/(W+A) value
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
@@ -445,11 +440,44 @@ class Alarm():
 
         #TODO plot dv_mean_dev
 
+        ###################################################
+        # Plot AS distribution: mean and standard deviation
+        #####################################################
+        as_mean_dev = dict() # dv: as: [mean, dev]
+        for dl in self.dv_level2:
+            as_mean_dev[dl] = dict()
+            as_cdf = dict() # dt: as: prefix count
+            for dt in self.dv_dt_asn_pfx[dl].keys():
+                as_cdf[dt] = self.symbol_count2cdf(self.dv_dt_asn_pfx[dv][dt])
+                
+
         #################################################
         # Box ploting prefixes of high DV ranges TODO
         #######################################################
         #cmlib.box_plot...self.dv_dt_pfx # ignore 0<x<0.05
 
+        #################################################
+        # CDF ploting prefix lengthes
+        #######################################################
+        #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
+                #self.describe_add+'box-dv-len-'+str(dl))
+        for dl in self.dv_level2:
+            for i in xrange(1, 33):
+                try:
+                    test = self.dvrange_len_pfx[dl][i]
+                except:
+                    self.dvrange_len_pfx[dl][i] = 0
+            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dvrange_len_pfx[dl]),\
+                    self.describe_add+'CDF-length-pfx-'+str(dl))
+
+        all_length = cmlib.get_all_length(self.sdate) # length: prefix count (all)
+        for i in xrange(1, 33):
+            try:
+                test = all_length[i]
+            except:
+                all_length[i] = 0
+        cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(all_length),\
+                self.describe_add+'CDF-length-all')
 
         ###################################
         # Plot DVI
@@ -471,11 +499,9 @@ class Alarm():
         for dl in self.dv_level:
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_pfx[dl]),\
                     self.describe_add+'CDF-DV-pfx-'+str(dl))
-            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_len_pfx[dl]),\
-                    self.describe_add+'CDF-len-pfx-'+str(dl))
-            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_hdvp[dl]),\
+            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_pfx[dl]),\
                     self.describe_add+'CDF-AS-HDVP-'+str(dl))
-            cmlib.store_symbol_count(self.hthres, self.granu, self.dv_asn_hdvp[dl],\
+            cmlib.store_symbol_count(self.hthres, self.granu, self.dv_asn_pfx[dl],\
                     self.describe_add+'CDF-AS-HDVP-'+str(dl))
 
             for dt in self.dt_list:
@@ -485,9 +511,6 @@ class Alarm():
                     self.dv_dt_hdvp[dl][dt] = 0
 
             cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[dl], self.describe_add+'='+str(dl))
-
-        #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
-                #self.describe_add+'box-dv-len-'+str(dl))
 
         if self.compare:
             # plot 2 CDFs: before event and after event

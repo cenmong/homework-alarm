@@ -3,6 +3,7 @@
 *warts
 *.swp
 *.swo
+*.swn
 *.pdf
 *.psd
 tmpfile
