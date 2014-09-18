@@ -43,7 +43,6 @@ class Alarm():
         self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
         self.hdvp_count = dict() # dt: active prefix count
         self.ucount = dict() # dt: update count
-        self.pfxcount = dict() # dt: prefix (in updates) count
         self.acount = dict() # dt: announcement count
         self.wcount = dict() # dt: withdrawal count
         self.wpctg = dict() # dt: withdrawal percentage 
@@ -129,11 +128,13 @@ class Alarm():
         self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
         self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
         self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
+        self.pfxcount = dict() # dv: dt: prefix (in updates) count
         for dl in self.dv_level2:
             self.dv_dt_pfx[dl] = dict()
-            self.dup_trie[dl] = patricia.trie(None) # Enough memory?
+            self.dup_trie[dl] = patricia.trie(None) # Enough memory for this?
             self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_asn_pfx[dl] = dict()
+            self.pfxcount[dl] = dict()
 
 
         ###################################################
@@ -294,12 +295,6 @@ class Alarm():
                         except:
                             self.dv_pfx[dv_now][ratio] = 1
 
-                        if asn != -1:
-                            try:
-                                self.dv_dt_asn_pfx[dv_now][dt][asn] += 1
-                            except:
-                                self.dv_dt_asn_pfx[dv_now][dt][asn] += 1
-
                         try:
                             self.dv_dt_hdvp[dv_now][dt] += 1 
                         except:
@@ -308,6 +303,11 @@ class Alarm():
                 for j in xrange(0, len(self.dv_level2)):
                     dv_now = self.dv_level2[j]
                     if ratio > dv_now:
+                        try:
+                            self.pfxcount[dv_now][dt] += 1
+                        except:
+                            self.pfxcount[dv_now][dt] = 1
+
                         if j != len(self.dv_level2)-1: # not the last one
                             if ratio <= self.dv_level2[j+1]:
                                 try:
@@ -332,6 +332,12 @@ class Alarm():
                             self.dup_trie[dv_now][pfx] += 1
                         except:  # Node does not exist, then we create a new node
                             self.dup_trie[dv_now][pfx] = 1
+
+                        if asn != -1:
+                            try:
+                                self.dv_dt_asn_pfx[dv_now][dt][asn] += 1
+                            except:
+                                self.dv_dt_asn_pfx[dv_now][dt][asn] = 1
 
 
                 if self.compare == True:
@@ -359,7 +365,6 @@ class Alarm():
                 self.dvi[dt] += ratio
 
             self.hdvp_count[dt] = hdvp_count
-            self.pfxcount[dt] = len(trie) - 1
 
             # Only get top 1000 AS from AS distribution in this dt 
             for dl in self.dv_level2:
@@ -367,12 +372,13 @@ class Alarm():
                 tmp_list = sorted(tmp_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
                 try:
                     tmp_list = tmp_list[0:1000]
-                except: # item number < 1000
+                except: # item number < 1000 or empty
                     pass
-                self.dv_dt_asn_pfx = {}
+                self.dv_dt_asn_pfx[dl][dt] = {}
                 for item in tmp_list:
-                    # value is the ratio of prefixes in updates
-                    self.dv_dt_asn_pfx[item[0]] = float(item[1])/float(self.pfxcount[dt])
+                    # value is the ratio of "prefixes in updates"
+                    self.dv_dt_asn_pfx[dl][dt][item[0]] =\
+                            float(item[1])/float(self.pfxcount[dl][dt])
 
             # get withdrawal/(W+A) value
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
@@ -407,12 +413,12 @@ class Alarm():
     def plot(self): # plot everything here!
         print 'Plotting everything...'
         ###################################################
-        # Plot DV distribution: mean and standard deviation
+        # Plot DV distribution: mean and standard deviation TODO: plot 1 fig
         #####################################################
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
             for dv in self.dv_distribution[dt].keys():
                 self.dv_distribution[dt][dv] = \
-                        float(self.dv_distribution[dt][dv]) / float(self.pfxcount[dt])
+                        float(self.dv_distribution[dt][dv]) / float(self.pfxcount[0][dt])
             # convert count to cumulative count
             self.dv_cdf[dt] = self.value_count2cdf(self.dv_distribution[dt])
 
@@ -438,18 +444,30 @@ class Alarm():
             dev = np.std(values)
             dv_mean_dev[dv] = [mean, dev]
 
-        #TODO plot dv_mean_dev
-
         ###################################################
-        # Plot AS distribution: mean and standard deviation
+        # Plot AS distribution: mean and standard deviation TODO: plot many fig
         #####################################################
-        as_mean_dev = dict() # dv: as: [mean, dev]
+        as_mean_dev = dict() # dv: as count: [mean, dev]
         for dl in self.dv_level2:
             as_mean_dev[dl] = dict()
-            as_cdf = dict() # dt: as: prefix count
+            as_cdf = dict() # dt: as count: prefix count
             for dt in self.dv_dt_asn_pfx[dl].keys():
-                as_cdf[dt] = self.symbol_count2cdf(self.dv_dt_asn_pfx[dv][dt])
+                # dv_dt_asn_pfx[dl][dt] should have 1000 keys
+                for a in xrange(1, 1001):
+                    try:
+                        test = self.dv_dt_asn_pfx[dl][dt][a]
+                    except:
+                        self.dv_dt_asn_pfx[dl][dt][a] = 0
+                as_cdf[dt] = self.symbol_count2cdf(self.dv_dt_asn_pfx[dl][dt])
+            for j in xrange(1, 1001): # AS count from 1 to 1000
+                values = [] # values of all dt's
+                for dt in as_cdf.keys():
+                    values.append(as_cdf[dt][j])
+                mean = sum(values)/len(values)
+                dev = np.std(values)
+                as_mean_dev[dl][j] = [mean, dev]
                 
+        print as_mean_dev
 
         #################################################
         # Box ploting prefixes of high DV ranges TODO
@@ -493,16 +511,12 @@ class Alarm():
         cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
         cmlib.time_series_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
-        cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount, self.describe_add+'prefix_count')
+        cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount[0], self.describe_add+'prefix_count')
 
         # different DV levels
         for dl in self.dv_level:
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_pfx[dl]),\
                     self.describe_add+'CDF-DV-pfx-'+str(dl))
-            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.dv_asn_pfx[dl]),\
-                    self.describe_add+'CDF-AS-HDVP-'+str(dl))
-            cmlib.store_symbol_count(self.hthres, self.granu, self.dv_asn_pfx[dl],\
-                    self.describe_add+'CDF-AS-HDVP-'+str(dl))
 
             for dt in self.dt_list:
                 try:
