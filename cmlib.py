@@ -672,7 +672,7 @@ def size_u2v(unit):
         return 1073741824
 
 def get_all_length(sdate):
-    print 'Getting all prefix lengthes...'
+    print 'Getting all prefix lengthes from RIB...'
 
     len_count = dict() # length:count
     trie = patricia.trie(None)

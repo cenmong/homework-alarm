@@ -366,7 +366,7 @@ class Alarm():
 
             self.hdvp_count[dt] = hdvp_count
 
-            # Only get top 1000 AS from AS distribution in this dt 
+            # Only get top 1000 ASes
             for dl in self.dv_level2:
                 tmp_dict = self.dv_dt_asn_pfx[dl][dt]
                 tmp_list = sorted(tmp_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
@@ -411,10 +411,12 @@ class Alarm():
                     self.describe_add+name)
 
     def plot(self): # plot everything here!
-        print 'Plotting everything...'
         ###################################################
-        # Plot DV distribution: mean and standard deviation TODO: plot 1 fig
+        # Plot DV distribution: mean and standard deviation
+        # NOTE: it's possible that y cannot reach 100% (we only use top 1000 ASes)
+        # Or because of the failure of mapping prefix to ASN
         #####################################################
+        print 'Plotting DV distribution...'
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
             for dv in self.dv_distribution[dt].keys():
                 self.dv_distribution[dt][dv] = \
@@ -444,31 +446,66 @@ class Alarm():
             dev = np.std(values)
             dv_mean_dev[dv] = [mean, dev]
 
+        # Note where the curves ends
+        #TODO cmlib.mean_cdf_plot(dv_mean_dev)
+
         ###################################################
-        # Plot AS distribution: mean and standard deviation TODO: plot many fig
+        # Plot AS distribution: mean and standard deviation
         #####################################################
-        as_mean_dev = dict() # dv: as count: [mean, dev]
+        print 'Plotting AS distribution...'
+        f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
+                 '/'+self.describe_add+'_active_AS.txt', 'w')
+
         for dl in self.dv_level2:
-            as_mean_dev[dl] = dict()
+            active_as = dict() # dt: [[as1,count1],[as2,count2]]
+            as_mean_dev = dict()
             as_cdf = dict() # dt: as count: prefix count
             for dt in self.dv_dt_asn_pfx[dl].keys():
-                # dv_dt_asn_pfx[dl][dt] should have 1000 keys
+                # dv_dt_asn_pfx[dl][dt] should have 1000 keys TODO
                 for a in xrange(1, 1001):
                     try:
                         test = self.dv_dt_asn_pfx[dl][dt][a]
                     except:
                         self.dv_dt_asn_pfx[dl][dt][a] = 0
                 as_cdf[dt] = self.symbol_count2cdf(self.dv_dt_asn_pfx[dl][dt])
+                # get top 5 ASes of each time slot
+                tmp_list = sorted(self.dv_dt_asn_pfx[dl][dt].iteritems(),\
+                        key=operator.itemgetter(1), reverse=True)
+                print dl
+                print tmp_list
+                active_as[dt] = tmp_list[0:5] # [[ASN, pfx count ratio],...]
             for j in xrange(1, 1001): # AS count from 1 to 1000
                 values = [] # values of all dt's
                 for dt in as_cdf.keys():
                     values.append(as_cdf[dt][j])
                 mean = sum(values)/len(values)
                 dev = np.std(values)
-                as_mean_dev[dl][j] = [mean, dev]
-                
-        print as_mean_dev
+                as_mean_dev[j] = [mean, dev]
 
+            #TODO cmlib.mean_cdf_plot(as_mean_dev)
+
+            # Record top 10 ASes of this DV level (all time slots)
+            as_count = dict() # AS: count
+            for dt in active_as.keys():
+                for item in active_as[dt]:
+                    try:
+                        as_count[item[0]] += 1
+                    except:
+                        as_count[item[0]] = 1
+
+            tmp_list = sorted(as_count.iteritems(),\
+                    key=operator.itemgetter(1), reverse=True)
+            tmp_list = tmp_list[0:10]
+            f.write(str(dl)+':\n')
+            for item in tmp_list:
+                asn = item[0]
+                count = item[1]
+                asrank = self.as_to_rank(asn)
+                f.write(str(asn)+'|'+str(count)+'|'+str(asrank)+'\n')
+            f.write('\n')
+    
+        f.close()
+                
         #################################################
         # Box ploting prefixes of high DV ranges TODO
         #######################################################
@@ -477,6 +514,7 @@ class Alarm():
         #################################################
         # CDF ploting prefix lengthes
         #######################################################
+        print 'Plotting length distribution'
         #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
                 #self.describe_add+'box-dv-len-'+str(dl))
         for dl in self.dv_level2:
@@ -538,8 +576,8 @@ class Alarm():
         #############################################
         f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
                  '/'+self.describe_add+'_dup_pfx.txt', 'w')
-        for dl in self.dup_trie.keys():  # all dt that exists
-            f.write(str(dl)+':')
+        for dl in self.dup_trie.keys():
+            f.write(str(dl)+':\n')
             my_trie = self.dup_trie[dl]
             my_dict = {}
             for key in sorted(my_trie.iter('')):
@@ -547,7 +585,7 @@ class Alarm():
                     my_dict[key] = my_trie[key]
             del my_trie
 
-            stop = 0
+            stop = 0 # only get top 10
             for item in sorted(my_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
                 stop += 1
                 if stop > 10:
@@ -556,7 +594,7 @@ class Alarm():
                 asn = self.pfx_to_as(pfx)
                 asrank = self.as_to_rank(asn)
                 value = item[1]
-                f.write(pfx+'|'+str(value)+'|'+str(asn)+'|'+str(asrank)+',')
+                f.write(pfx+'|'+str(value)+'|'+str(asn)+'|'+str(asrank)+'\n')
             f.write('\n')
         f.close()
 
