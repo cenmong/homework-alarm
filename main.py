@@ -22,7 +22,12 @@ for i in [0]: # change this list according to needs
     eoccur = daterange[i][7] # event occur end
     des = daterange[i][8] # event description
 
-    ana = Analyzer(filelist, 10, daterange[i][0], 0.1, dthres)
+    try:
+        peak = daterange[i][9] # the occurrence of HDVP peak
+    except:
+        peak = None
+
+    ana = Analyzer(filelist, 10, daterange[i][0], 0.1, dthres, peak)
 
     # plot directly from existent data
     #if ana.direct(thres, soccur, eoccur, des):

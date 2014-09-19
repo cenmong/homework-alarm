@@ -113,10 +113,8 @@ class Alarm():
         ####################################################
         # Values according to diffrent Dynamic Visibilities
         ################################################
-        self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         self.dv_pfx = dict() # DV levels: DV: prefix count
         for dl in self.dv_level:
-            self.dv_dt_hdvp[dl] = dict()
             self.dv_pfx[dl] = dict()
 
 
@@ -129,12 +127,14 @@ class Alarm():
         self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
         self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
         self.pfxcount = dict() # dv: dt: prefix (in updates) count
+        self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         for dl in self.dv_level2:
             self.dv_dt_pfx[dl] = dict()
             self.dup_trie[dl] = patricia.trie(None) # Enough memory for this?
             self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_asn_pfx[dl] = dict()
             self.pfxcount[dl] = dict()
+            self.dv_dt_hdvp[dl] = dict()
 
 
         ###################################################
@@ -146,7 +146,7 @@ class Alarm():
 
             self.cdfbfr = dict()
             self.cdfaft = dict()
-            ## cdfbound must be like xy:z0 (multiply of self.granu minutes)
+            ## cdfbound must be like xy:z0:00 (multiply of self.granu minutes)
             ## cdfbound should be the start time of the HDVP peak
             ## 2003 Slammer Worm: 2003-01-25 05:30:00
             ## 2008 second cable cut: 2008-12-19 07:30:00
@@ -154,9 +154,11 @@ class Alarm():
             self.cdfbound = datetime.datetime.strptime(cdfbound, '%Y-%m-%d %H:%M:%S')
             self.bfr_start = time_lib.mktime((self.cdfbound +\
                     datetime.timedelta(minutes=-self.granu)).timetuple())
-            self.aft_end = time_lib.mktime((self.cdfbound +\
-                    datetime.timedelta(minutes=self.granu)).timetuple())
             self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
+
+            for dl in self.dv_level2:
+                self.as_bfr = dict() # dv: ASN: count
+                self.as_aft = dict()
 
 
         ##### For naming all the figures.
@@ -295,11 +297,6 @@ class Alarm():
                         except:
                             self.dv_pfx[dv_now][ratio] = 1
 
-                        try:
-                            self.dv_dt_hdvp[dv_now][dt] += 1 
-                        except:
-                            self.dv_dt_hdvp[dv_now][dt] = 1
-
                 for j in xrange(0, len(self.dv_level2)):
                     dv_now = self.dv_level2[j]
                     if ratio > dv_now:
@@ -329,6 +326,11 @@ class Alarm():
                                 self.dvrange_len_pfx[dv_now][plen] = 1
 
                         try:
+                            self.dv_dt_hdvp[dv_now][dt] += 1 
+                        except:
+                            self.dv_dt_hdvp[dv_now][dt] = 1
+
+                        try:
                             self.dup_trie[dv_now][pfx] += 1
                         except:  # Node does not exist, then we create a new node
                             self.dup_trie[dv_now][pfx] = 1
@@ -339,21 +341,31 @@ class Alarm():
                             except:
                                 self.dv_dt_asn_pfx[dv_now][dt][asn] = 1
 
+                            if self.compare == True and dt == self.bfr_start:
+                                try:
+                                    self.as_bfr[dv_now][asn] += 1
+                                except:
+                                    self.as_bfr[dv_now][asn] = 1
+
+                            if self.compare == True and dt == self.cdfbound:
+                                try:
+                                    self.as_aft[dv_now][asn] += 1
+                                except:
+                                    self.as_aft[dv_now][asn] = 1
+
 
                 if self.compare == True:
-                    ### Only for CDF comparison
-                    if dt >= self.bfr_start and dt < self.cdfbound:
+                    ### CDF comparison before and after event
+                    if dt == self.bfr_start:
                         try:
                             self.cdfbfr[ratio] += 1
                         except:
                             self.cdfbfr[ratio] = 1
-                    elif dt >= self.cdfbound and dt < self.aft_end:
+                    if dt == self.cdfbound:
                         try:
                             self.cdfaft[ratio] += 1
                         except:
                             self.cdfaft[ratio] = 1
-                    else:
-                        pass
 
 
                 # only count HDVPs from now on
@@ -461,7 +473,7 @@ class Alarm():
             as_mean_dev = dict()
             as_cdf = dict() # dt: as count: prefix count
             for dt in self.dv_dt_asn_pfx[dl].keys():
-                # dv_dt_asn_pfx[dl][dt] should have 1000 keys TODO
+                # dv_dt_asn_pfx[dl][dt] should have 1000 keys
                 for a in xrange(1, 1001):
                     try:
                         test = self.dv_dt_asn_pfx[dl][dt][a]
@@ -471,8 +483,6 @@ class Alarm():
                 # get top 5 ASes of each time slot
                 tmp_list = sorted(self.dv_dt_asn_pfx[dl][dt].iteritems(),\
                         key=operator.itemgetter(1), reverse=True)
-                print dl
-                print tmp_list
                 active_as[dt] = tmp_list[0:5] # [[ASN, pfx count ratio],...]
             for j in xrange(1, 1001): # AS count from 1 to 1000
                 values = [] # values of all dt's
@@ -544,6 +554,9 @@ class Alarm():
         cmlib.time_series_plot(self.hthres, self.granu, self.dvi, self.describe_add+self.dvi_desc)
 
         
+        ###################################
+        # Plot everything about update quantity
+        ######################################
         cmlib.time_series_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
@@ -552,7 +565,7 @@ class Alarm():
         cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount[0], self.describe_add+'prefix_count')
 
         # different DV levels
-        for dl in self.dv_level:
+        for dl in self.dv_level2:
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_pfx[dl]),\
                     self.describe_add+'CDF-DV-pfx-'+str(dl))
 
@@ -564,12 +577,40 @@ class Alarm():
 
             cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[dl], self.describe_add+'='+str(dl))
 
+        ###################################
+        # Plot before and after event
+        ######################################
         if self.compare:
             # plot 2 CDFs: before event and after event
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfbfr),\
                    self.describe_add+'CDFbfr')
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfaft),\
                    self.describe_add+'CDFaft')
+
+            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_bfr),\
+                   self.describe_add+'ASCDFbfr')
+            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_aft),\
+                   self.describe_add+'ASCDFaft')
+
+            fb = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
+                        '/'+self.describe_add+'_ASCDFbfr_raw.txt', 'w')
+            fa = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
+                        '/'+self.describe_add+'_ASCDFaft_raw.txt', 'w')
+            for dl in self.dv_level2:
+                fb.write(str(dl)+':\n')
+                for item in sorted(self.as_bfr[dl].iteritems(),\
+                        key=operator.itemgetter(1), reverse=True):
+                    asrank = self.as_to_rank(item[0])
+                    fb.write(str(item[0])+'|'+str(item[1])+'|'+str(asrank)+'\n')
+                fb.write('\n')
+                fa.write(str(dl)+':\n')
+                for item in sorted(self.as_aft[dl].iteritems(),\
+                        key=operator.itemgetter(1), reverse=True):
+                    asrank = self.as_to_rank(item[0])
+                    fa.write(str(item[0])+'|'+str(item[1])+'|'+str(asrank)+'\n')
+                fa.write('\n')
+            fb.close()
+            fa.close()
 
         ###########################################
         # Record active prefixes
