@@ -566,11 +566,11 @@ class Alarm():
                    self.describe_add+'CDFbfr')
             cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfaft),\
                    self.describe_add+'CDFaft')
-
-            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_bfr),\
-                   self.describe_add+'ASCDFbfr')
-            cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_aft),\
-                   self.describe_add+'ASCDFaft')
+            for dl in self.dv_level:
+                cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_bfr[dl]),\
+                       self.describe_add+'ASCDFbfr-'+str(dl))
+                cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_aft[dl]),\
+                       self.describe_add+'ASCDFaft-'+str(dl))
 
             fb = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
                         '/'+self.describe_add+'_ASCDFbfr_raw.txt', 'w')
