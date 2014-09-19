@@ -12,7 +12,7 @@ class Analyzer():
     def __init__(self, filelist, granu, sdate, hthres, dthres, peak):
         self.filelist = filelist  # filelist file name 
         self.allowed = set(string.ascii_letters+string.digits+\
-                '.'+':'+'|'+'/'+''+'{'+'}'+','+'-')
+                '.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
 
         try:
             self.cl_list = cmlib.get_collector(sdate)  # the collectors this event has

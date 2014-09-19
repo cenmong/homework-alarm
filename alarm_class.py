@@ -109,33 +109,25 @@ class Alarm():
         self.dvi_desc = 'DVI'
 
 
-        self.dv_level = [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25]
-        ####################################################
-        # Values according to diffrent Dynamic Visibilities
-        ################################################
-        self.dv_pfx = dict() # DV levels: DV: prefix count
-        for dl in self.dv_level:
-            self.dv_pfx[dl] = dict()
-
-
-        self.dv_level2 = [0, 0.05, 0.1, 0.15, 0.2]
+        self.dv_level = [0, 0.05, 0.1, 0.15, 0.2]
         ###################################################
         # Coarser DV values
         ######################################################
-        self.dv_dt_pfx = dict() # DV range: dt: pfx count
-        self.dup_trie = dict() # DV levels: trie (node store pfx existence times)
-        self.dvrange_len_pfx = dict() # DV levels range: prefix length: existence
+        self.dv_dt_pfx = dict() # DV level range: dt: pfx count
+        self.dvrange_len_pfx = dict() # DV level range: prefix length: existence
         self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
         self.pfxcount = dict() # dv: dt: prefix (in updates) count
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
-        for dl in self.dv_level2:
+        for dl in self.dv_level:
             self.dv_dt_pfx[dl] = dict()
-            self.dup_trie[dl] = patricia.trie(None) # Enough memory for this?
             self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_asn_pfx[dl] = dict()
             self.pfxcount[dl] = dict()
             self.dv_dt_hdvp[dl] = dict()
 
+        
+        # only record DV > 0.15
+        self.dup_trie = patricia.trie(None) # Enough memory for this?
 
         ###################################################
         # CDFs for the slot before and after the cdfbound (HDVP peak)
@@ -146,19 +138,16 @@ class Alarm():
 
             self.cdfbfr = dict()
             self.cdfaft = dict()
-            ## cdfbound must be like xy:z0:00 (multiply of self.granu minutes)
-            ## cdfbound should be the start time of the HDVP peak
-            ## 2003 Slammer Worm: 2003-01-25 05:30:00
-            ## 2008 second cable cut: 2008-12-19 07:30:00
-            ## 2013 spamhaus DDoS attack: 2013-03-20 09:00:00
+            self.as_bfr = dict()
+            self.as_aft = dict()
             self.cdfbound = datetime.datetime.strptime(cdfbound, '%Y-%m-%d %H:%M:%S')
             self.bfr_start = time_lib.mktime((self.cdfbound +\
                     datetime.timedelta(minutes=-self.granu)).timetuple())
             self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
 
-            for dl in self.dv_level2:
-                self.as_bfr = dict() # dv: ASN: count
-                self.as_aft = dict()
+            for dl in self.dv_level:
+                self.as_bfr[dl] = dict() # dv: ASN: count
+                self.as_aft[dl] = dict()
 
 
         ##### For naming all the figures.
@@ -209,7 +198,7 @@ class Alarm():
 
     # add a new line of update to our monitoring system
     def add(self, update):
-        attr = update.split('|')[0:6]  # no need for other attributes now
+        attr = update.split('|')[0:6]  # Get 0~5
 
         if ':' in attr[5]: # IPv6 # TODO: should put in analyzer
             return -1
@@ -273,40 +262,38 @@ class Alarm():
             self.dvi[dt] = 0
             self.dv_distribution[dt] = dict() # DV: count
 
-            for dl in self.dv_level2:
+            for dl in self.dv_level:
                 self.dv_dt_asn_pfx[dl][dt] = dict()
 
             for pfx in trie:
                 if pfx == '': # the root node (the source of a potential bug)
                     continue
 
+                plen = len(pfx) # get prefix length
+                asn = self.pfx_to_as(pfx) # get origin AS number
                 ratio = float(len(trie[pfx]))/float(self.mcount)
+
                 try:
                     self.dv_distribution[dt][ratio] += 1
                 except:
                     self.dv_distribution[dt][ratio] = 1
 
-                plen = len(pfx) # get prefix length
-                asn = self.pfx_to_as(pfx) # get origin AS number
+                if ratio > 0.15:
+                    try:
+                        self.dup_trie[pfx] += 1
+                    except:  # Node does not exist, then we create a new node
+                        self.dup_trie[pfx] = 1
 
-                for i in xrange(0, len(self.dv_level)):
-                    dv_now = self.dv_level[i]
-                    if ratio > dv_now:
-                        try:
-                            self.dv_pfx[dv_now][ratio] += 1
-                        except:
-                            self.dv_pfx[dv_now][ratio] = 1
-
-                for j in xrange(0, len(self.dv_level2)):
-                    dv_now = self.dv_level2[j]
+                for j in xrange(0, len(self.dv_level)):
+                    dv_now = self.dv_level[j]
                     if ratio > dv_now:
                         try:
                             self.pfxcount[dv_now][dt] += 1
                         except:
                             self.pfxcount[dv_now][dt] = 1
 
-                        if j != len(self.dv_level2)-1: # not the last one
-                            if ratio <= self.dv_level2[j+1]:
+                        if j != len(self.dv_level)-1: # not the last one
+                            if ratio <= self.dv_level[j+1]:
                                 try:
                                     self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
                                 except:
@@ -329,11 +316,6 @@ class Alarm():
                             self.dv_dt_hdvp[dv_now][dt] += 1 
                         except:
                             self.dv_dt_hdvp[dv_now][dt] = 1
-
-                        try:
-                            self.dup_trie[dv_now][pfx] += 1
-                        except:  # Node does not exist, then we create a new node
-                            self.dup_trie[dv_now][pfx] = 1
 
                         if asn != -1:
                             try:
@@ -372,19 +354,17 @@ class Alarm():
                 if ratio <= self.hthres: # not active pfx
                     continue
                 hdvp_count += 1
-
-                # DVI
                 self.dvi[dt] += ratio
 
             self.hdvp_count[dt] = hdvp_count
 
-            # Only get top 1000 ASes
-            for dl in self.dv_level2:
+            # Only get top 500 ASes
+            for dl in self.dv_level:
                 tmp_dict = self.dv_dt_asn_pfx[dl][dt]
                 tmp_list = sorted(tmp_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
                 try:
-                    tmp_list = tmp_list[0:1000]
-                except: # item number < 1000 or empty
+                    tmp_list = tmp_list[0:500]
+                except: # item number < 500 or empty
                     pass
                 self.dv_dt_asn_pfx[dl][dt] = {}
                 for item in tmp_list:
@@ -393,7 +373,7 @@ class Alarm():
                             float(item[1])/float(self.pfxcount[dl][dt])
 
             # get withdrawal/(W+A) value
-            self.wpctg[dt] = float(self.wcount[dt]) / float(self.acount[dt] + self.wcount[dt])
+            self.wpctg[dt] = float(self.wcount[dt]) / float(self.ucount[dt])
 
         return 0
 
@@ -425,7 +405,7 @@ class Alarm():
     def plot(self): # plot everything here!
         ###################################################
         # Plot DV distribution: mean and standard deviation
-        # NOTE: it's possible that y cannot reach 100% (we only use top 1000 ASes)
+        # NOTE: it's possible that y cannot reach 100% (we only use top 500 ASes)
         # Or because of the failure of mapping prefix to ASN
         #####################################################
         print 'Plotting DV distribution...'
@@ -465,16 +445,17 @@ class Alarm():
         # Plot AS distribution: mean and standard deviation
         #####################################################
         print 'Plotting AS distribution...'
+        cmlib.make_dir(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'/')
         f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
-                 '/'+self.describe_add+'_active_AS.txt', 'w')
+                 '/'+self.describe_add+'active_AS.txt', 'w')
 
-        for dl in self.dv_level2:
+        for dl in self.dv_level:
             active_as = dict() # dt: [[as1,count1],[as2,count2]]
             as_mean_dev = dict()
             as_cdf = dict() # dt: as count: prefix count
             for dt in self.dv_dt_asn_pfx[dl].keys():
-                # dv_dt_asn_pfx[dl][dt] should have 1000 keys
-                for a in xrange(1, 1001):
+                # dv_dt_asn_pfx[dl][dt] should have 500 keys
+                for a in xrange(1, 501):
                     try:
                         test = self.dv_dt_asn_pfx[dl][dt][a]
                     except:
@@ -484,7 +465,7 @@ class Alarm():
                 tmp_list = sorted(self.dv_dt_asn_pfx[dl][dt].iteritems(),\
                         key=operator.itemgetter(1), reverse=True)
                 active_as[dt] = tmp_list[0:5] # [[ASN, pfx count ratio],...]
-            for j in xrange(1, 1001): # AS count from 1 to 1000
+            for j in xrange(1, 501): # AS count from 1 to 500
                 values = [] # values of all dt's
                 for dt in as_cdf.keys():
                     values.append(as_cdf[dt][j])
@@ -527,7 +508,7 @@ class Alarm():
         print 'Plotting length distribution'
         #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
                 #self.describe_add+'box-dv-len-'+str(dl))
-        for dl in self.dv_level2:
+        for dl in self.dv_level:
             for i in xrange(1, 33):
                 try:
                     test = self.dvrange_len_pfx[dl][i]
@@ -564,11 +545,10 @@ class Alarm():
         cmlib.time_series_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
         cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount[0], self.describe_add+'prefix_count')
 
-        # different DV levels
-        for dl in self.dv_level2:
-            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dv_pfx[dl]),\
-                    self.describe_add+'CDF-DV-pfx-'+str(dl))
-
+        ###################################
+        # Plot prefix count of different DV level ranges
+        ######################################
+        for dl in self.dv_level:
             for dt in self.dt_list:
                 try:
                     test = self.dv_dt_hdvp[dl][dt]
@@ -596,7 +576,7 @@ class Alarm():
                         '/'+self.describe_add+'_ASCDFbfr_raw.txt', 'w')
             fa = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
                         '/'+self.describe_add+'_ASCDFaft_raw.txt', 'w')
-            for dl in self.dv_level2:
+            for dl in self.dv_level:
                 fb.write(str(dl)+':\n')
                 for item in sorted(self.as_bfr[dl].iteritems(),\
                         key=operator.itemgetter(1), reverse=True):
@@ -617,26 +597,25 @@ class Alarm():
         #############################################
         f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
                  '/'+self.describe_add+'_dup_pfx.txt', 'w')
-        for dl in self.dup_trie.keys():
-            f.write(str(dl)+':\n')
-            my_trie = self.dup_trie[dl]
-            my_dict = {}
-            for key in sorted(my_trie.iter('')):
-                if key != '':
-                    my_dict[key] = my_trie[key]
-            del my_trie
+        f.write('0.15:\n')
+        my_trie = self.dup_trie
+        my_dict = {}
+        for key in sorted(my_trie.iter('')):
+            if key != '':
+                my_dict[key] = my_trie[key]
+        del my_trie
 
-            stop = 0 # only get top 10
-            for item in sorted(my_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
-                stop += 1
-                if stop > 10:
-                    break
-                pfx = item[0]
-                asn = self.pfx_to_as(pfx)
-                asrank = self.as_to_rank(asn)
-                value = item[1]
-                f.write(pfx+'|'+str(value)+'|'+str(asn)+'|'+str(asrank)+'\n')
-            f.write('\n')
+        stop = 0 # only get top 10
+        for item in sorted(my_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
+            stop += 1
+            if stop > 10:
+                break
+            pfx = item[0]
+            asn = self.pfx_to_as(pfx)
+            asrank = self.as_to_rank(asn)
+            value = item[1]
+            f.write(pfx+'|'+str(value)+'|'+str(asn)+'|'+str(asrank)+'\n')
+        f.write('\n')
         f.close()
 
         return 0

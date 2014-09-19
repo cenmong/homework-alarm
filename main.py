@@ -27,7 +27,10 @@ for i in [0]: # change this list according to needs
     except:
         peak = None
 
-    ana = Analyzer(filelist, 10, daterange[i][0], 0.1, dthres, peak)
+    if TEST:
+        ana = Analyzer(filelist, 10, daterange[i][0], 0.1, dthres, '2006-12-25 00:30:00')
+    else:
+        ana = Analyzer(filelist, 10, daterange[i][0], 0.1, dthres, peak)
 
     # plot directly from existent data
     #if ana.direct(thres, soccur, eoccur, des):
