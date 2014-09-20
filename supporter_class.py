@@ -129,9 +129,9 @@ class Supporter():
             f.close()
         else:
             # Extract info from RIB of the monitor route-views2
-            mydate = sdate[0:4] + '.' + sdate[4:6]
+            mydate = self.sdate[0:4] + '.' + self.sdate[4:6]
             rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
-            dir_list = os.listdir(hdname+'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/')
+            dir_list = os.listdir(hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
 
 
             for f in dir_list:
