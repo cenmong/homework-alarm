@@ -749,7 +749,7 @@ def get_monitors(sdate):
         print 'Getting monitors/AS:', rib_location
 
         if rib_location.endswith('txt.gz'):
-            subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        
+            subprocess.call('yes n | gunzip '+rib_location, shell=True)  # unpack                        
             rib_location = rib_location.replace('.txt.gz', '.txt')
         elif not rib_location.endswith('txt'):  # .bz2/.gz file exists
             parse_mrt(rib_location, rib_location+'.txt')

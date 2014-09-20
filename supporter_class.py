@@ -44,7 +44,7 @@ class Supporter():
         webloc = 'http://data.caida.org/datasets/2013-asrank-data-supplement/data/'
         webraw = cmlib.get_weblist(webloc)
         target_line = ''
-        yearmonth = self.sdate[:6] # YYYY, MM
+        yearmonth = self.sdate[:6] # YYYYMM
         for line in webraw.split('\n'):
             if yearmonth in line and 'ppdc' in line:
                 target_line = line
@@ -56,11 +56,11 @@ class Supporter():
 
         fname = target_line.split()[0]
         urllib.urlretrieve(webloc+fname, location+fname)
-        if int(yearmonth) <= 20131101:
-            # unpack .gz (only before 20131101 (include))
+        if int(yearmonth) <= 201311:
+            # unpack .gz (only before 201311 (include))
             subprocess.call('gunzip '+location+fname, shell=True)
         else:
-            # unpack .bz2 (only after 20140601 (include))
+            # unpack .bz2 (only after 201406 (include))
             subprocess.call('bunzip2 -d '+location+fname, shell=True)
 
         # Now we have file xxxxyyzz.ppdc-ases.txt

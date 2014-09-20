@@ -1,8 +1,8 @@
 from analyzer import *
 from env import *
 
-#TEST = False
-TEST = True
+TEST = False
+#TEST = True
 
 
 #cmlib.combine_slot_dvi()
@@ -11,7 +11,7 @@ TEST = True
 #dthres = 0.005785
 dthres = 0.002
 #for i in xrange(0,len(daterange)):
-for i in [0]: # change this list according to needs
+for i in [10]: # change this list according to needs
 
     if TEST:
         filelist = hdname+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
