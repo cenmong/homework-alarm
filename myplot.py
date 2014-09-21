@@ -1,5 +1,3 @@
-import os
-import urllib
 import subprocess
 import re
 import nltk
@@ -10,10 +8,10 @@ matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mpldates
 import datetime
-import patricia
 import gzip
 import time as time_lib
 import operator
+import cmlib
 
 from matplotlib.dates import HourLocator
 from matplotlib.dates import DayLocator
@@ -53,7 +51,7 @@ def cdf_plot(granu, my_dict, describe):
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
+    cmlib.make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf')
     plt.close()
 
@@ -86,7 +84,7 @@ def time_series_plot(granu, my_dict, describe):
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
+    cmlib.make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf')
     plt.close()
 
@@ -130,7 +128,7 @@ def box_plot_grouped(granu, my_dict, describe):
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
+    cmlib.make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
     plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf',\
             bbox_inches='tight')
     plt.close()

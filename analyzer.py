@@ -90,10 +90,12 @@ class Analyzer():
         self.alarm.check_memo(True) # the ending check
         filelist.close()
         
-        try: # directly plot according to existent output files
-            self.alarm.plot()
-        except:
-            self.alarm.output()
-            self.alarm.plot()
+        #try: # directly plot according to existent output files
+            #self.alarm.plot()
+        #except:
+            #self.alarm.output()
+            #self.alarm.plot()
+        self.alarm.output()
+        self.alarm.plot()
 
         return 0

@@ -12,7 +12,7 @@ from supporter_class import *
 
 class Alarm():
 
-    def __init__(self, granu, sdate, hthres, cl_list, dthres, cdfbound):
+    def __init__(self, granu, sdate, cl_list, dthres, cdfbound):
         ##############################################
         # For coordinating different collectors
         #################################################
@@ -49,8 +49,8 @@ class Alarm():
         spt = Supporter(sdate)
         self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
         self.as2nation = spt.get_as2nation_dict() # all ASes to origin nation (latest)
-        # TODO: write basic info into a seperate output file
-        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total prefix count
+        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS count
+        self.all_pcount = cmlib.get_all_pcount(self.sdate)
         self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
 
         self.as2rank = dict() # AS:rank by customer cone
@@ -387,8 +387,20 @@ class Alarm():
                     name)
 
     def output(self):
+        ##################################################
+        # Record the most basic information
+        #####################################################
+        f = open(self.output_dir+'basic.txt', 'w')
+        f.write('Monitor #: '+str(self.mcount))
+        f.write('Monitor AS: '+str(self.m_as_m))
+        f.write('Monitor nation: '+str(self.m_nation_as))
+        f.write('# of AS: '+str(self.all_ascount))
+        f.write('# of prefix: '+str(self.all_pcount))
+        f.close()
+
         ###################################################
         # DV distribution: mean and standard deviation
+        # dv,mean,deviation|dv ...
         #####################################################
         print 'Recording DV distribution...'
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
@@ -420,17 +432,18 @@ class Alarm():
             dev = np.std(values)
             dv_mean_dev[dv] = [mean, dev]
 
-        f.open(self.output_dir+'dv_distribution.txt', 'w')
+        f = open(self.output_dir+'dv_distribution.txt', 'w')
         for dv in all_dv_list:
             mean = dv_mean_dev[dv][0]
             dev = dv_mean_dev[dv][1]
-            f.write(str(dv)+':'+str(mean)+'|'+str(dev)+'\n')
+            f.write(str(dv)+','+str(mean)+','+str(dev)+'|')
         f.close()
 
         ###################################################
         # AS distribution: mean and standard deviation
         # NOTE: it's possible that y cannot reach 100% (we only use top 500 ASes)
         # Or because of the failure of mapping prefix to ASN
+        # dv level:AS count,mean,deviation|AS count...\n dv level:...
         #####################################################
         print 'Recording AS distribution...'
         f = open(self.output_dir+'as_distribution.txt', 'w')
@@ -462,6 +475,7 @@ class Alarm():
                 dev = np.std(values)
                 f.write(str(j)+','+str(mean)+','+str(dev)+'|')
 
+            f.write('\n')
             # Record top 10 ASes of this DV level (all time slots)
             as_count = dict() # AS: count
             for dt in active_as.keys():
@@ -474,20 +488,19 @@ class Alarm():
             tmp_list = sorted(as_count.iteritems(),\
                     key=operator.itemgetter(1), reverse=True)
             tmp_list = tmp_list[0:20]
-            fa.write(str(dl)+':\n')
             for item in tmp_list:
                 asn = item[0]
                 count = item[1]
                 asrank = self.as_to_rank(asn)
                 nation = self.as_to_nation(asn)
-                fa.write(str(asn)+'|'+str(count)+'|'+str(asrank)+nation+'\n')
-            fa.write('\n')
-            f.write('\n')
-    
+                fa.write(str(asn)+','+str(count)+','+str(asrank)+','+str(nation)+'|')
+            fa.write('\n') 
+        f.close()
         fa.close()
                 
         #################################################
         # quantity of prefixes of high DV ranges in different dt
+        # dv level:dt,count|dt,count|...\n dv level...
         #######################################################
         print 'Recording quantity of HDVPs'
         f = open(self.output_dir+'high_dv.txt', 'w')
@@ -501,9 +514,10 @@ class Alarm():
 
         #################################################
         # prefix lengthes
+        # dv range:length,count|length...\n dv range...
         #######################################################
         print 'Recording length distribution'
-        f = open('prefix_length_cdf.txt', 'w')
+        f = open(self.output_dir+'prefix_length_cdf.txt', 'w')
         for dl in self.dv_level:
             f.write(str(dl)+':')
             for i in xrange(1, 33):
@@ -535,23 +549,24 @@ class Alarm():
 
         ###################################
         # Plot everything about update quantity
+        # dt,value|dt,value...
         ######################################
-        f.open(self.output_dir+'announce_count.txt', 'w')
+        f = open(self.output_dir+'announce_count.txt', 'w')
         for dt in self.acount.keys():
             f.write(str(dt)+','+str(self.acount[dt])+'|')
         f.close()
 
-        f.open(self.output_dir+'withdraw_count.txt', 'w')
+        f = open(self.output_dir+'withdraw_count.txt', 'w')
         for dt in self.wcount.keys():
             f.write(str(dt)+','+str(self.wcount[dt])+'|')
         f.close()
 
-        f.open(self.output_dir+'update_count.txt', 'w')
+        f = open(self.output_dir+'update_count.txt', 'w')
         for dt in self.ucount.keys():
             f.write(str(dt)+','+str(self.ucount[dt])+'|')
         f.close()
 
-        f.open(self.output_dir+'prefix_count.txt', 'w')
+        f = open(self.output_dir+'prefix_count.txt', 'w')
         for dt in self.pfxcount[0].keys():
             f.write(str(dt)+','+str(self.pfxcount[0][dt])+'|')
         f.close()
@@ -560,8 +575,9 @@ class Alarm():
 
         ###################################
         # Plot prefix count of different DV level ranges
+        # dv level:dt,value|dt,value|...\n dv level...
         ######################################
-        f.open(self.output_dir+'HDVP', 'w')
+        f = open(self.output_dir+'HDVP', 'w')
         for dl in self.dv_level:
             f.write(str(dl)+':')
             for dt in self.dt_list:
@@ -575,54 +591,60 @@ class Alarm():
                 
         ###################################
         # Plot before and after event
+        # before:dv,count|dv...\n after:dv,count|dv...
+        # before:AS count,value|AS count...\n after:AS count,value|...
         ######################################
         if self.compare:
-            # plot 2 CDFs: before event and after event
-            f.open(self.output_dir+'dv_cdf_bfr_aft.txt', 'w')
+            #DV distribution
+            f = open(self.output_dir+'dv_cdf_bfr_aft.txt', 'w')
             mydict_b = self.value_count2cdf(self.cdfbfr)
             f.write('before:')
             for k in mydict_b.keys():
-                f.write(str(k)+','+mydict_b[k]+'|')
+                f.write(str(k)+','+str(mydict_b[k])+'|')
             f.write('\n')
 
             mydict_a = self.value_count2cdf(self.cdfaft)
             f.write('after:')
             for k in mydict_a.keys():
-                f.write(str(k)+','+mydict_b[k]+'|')
-            f.write('\n')
+                f.write(str(k)+','+str(mydict_a[k])+'|')
             f.close()
 
+            #AS distribution: top AS record
             for dl in self.dv_level:
-                myplot.cdf_plot(self.granu, self.symbol_count2cdf(self.as_bfr[dl]),\
-                       'ASCDFbfr-'+str(dl))
-                myplot.cdf_plot(self.granu, self.symbol_count2cdf(self.as_aft[dl]),\
-                       'ASCDFaft-'+str(dl))
-
-            fb = open(self.output_dir+'as_cdf_bfr.txt', 'w')
-            fa = open(self.output_dir+'as_cdf_aft.txt', 'w')
-            for dl in self.dv_level:
-                fb.write(str(dl)+':')
+                f = open(self.output_dir+'event_top_as_'+str(dl)+'.txt', 'w')
+                f.write('before:')
                 for item in sorted(self.as_bfr[dl].iteritems(),\
                         key=operator.itemgetter(1), reverse=True):
                     asrank = self.as_to_rank(item[0])
                     nation = self.as_to_nation(item[0])
-                    fb.write(str(item[0])+','+str(item[1])+','+str(asrank)+\
-                             ','+nation+'|')
-                fb.write('\n')
+                    f.write(str(item[0])+','+str(item[1])+','+str(asrank)+','+str(nation)+'\n')
+                f.write('\n')
 
-                fa.write(str(dl)+':')
+                f.write('after:')
                 for item in sorted(self.as_aft[dl].iteritems(),\
                         key=operator.itemgetter(1), reverse=True):
                     asrank = self.as_to_rank(item[0])
                     nation = self.as_to_nation(item[0])
-                    fa.write(str(item[0])+','+str(item[1])+','+str(asrank)+\
-                             ','+nation+'|')
-                fa.write('\n')
-            fb.close()
-            fa.close()
+                    f.write(str(item[0])+','+str(item[1])+','+str(asrank)+','+str(nation)+'\n')
+                f.close()
+
+            #AS distribution: CDF record
+            for dl in self.dv_level:
+                dict_bfr = self.symbol_count2cdf(self.as_bfr[dl])
+                dict_aft = self.symbol_count2cdf(self.as_aft[dl])
+                f = open(self.output_dir+'event_as_cdfs_'+str(dl)+'.txt', 'w')
+                f.write('before:')
+                for k in dict_bfr.keys():
+                    f.write(str(k)+','+str(dict_bfr[k])+'|')
+                f.write('\n')
+                f.write('after:')
+                for k in dict_aft.keys():
+                    f.write(str(k)+','+str(dict_aft[k])+'|')
+
+                f.close()
 
         ###########################################
-        # Record active prefixes
+        # prefix DV > xxx for miltiple times ranking
         #############################################
         f = open(self.output_dir + 'dup_pfx.txt', 'w')
         f.write('0.15:\n')
@@ -643,15 +665,27 @@ class Alarm():
             asrank = self.as_to_rank(asn)
             nation = self.as_to_nation(asn)
             value = item[1]
-            f.write(pfx+','+str(value)+','+str(asn)+','+str(asrank)+','+nation+'\n')
+            f.write(pfx+','+str(value)+','+str(asn)+','+str(asrank)+','+str(nation)+'\n')
         f.write('\n')
         f.close()
 
         return 0
 
     def plot(self):
-        return 0
+        myplot.mean_cdf(self.output_dir+'dv_distribution.txt')
+        myplot.mean_cdfs_multi(self.output_dir+'as_distribution.txt') # in multiple figures
+        myplot.boxes(self.output_dir+'high_dv.txt') # boxes in one figure
+        myplot.cdfs_one(self.output_dir+'prefix_length_cdf.txt') # CDF curves in one figure
+        myplot.time_value(self.output_dir+'announce_count.txt')
+        myplot.time_value(self.output_dir+'withdraw_count.txt')
+        myplot.time_value(self.output_dir+'update_count.txt')
+        myplot.time_value(self.output_dir+'prefix_count.txt')
+        myplot.time_values_one(self.output_dir+'prefix_count.txt')
+        myplot.cdfs_one(self.output_dir+'dv_cdf_bfr_aft.txt')
+        for dl in self.dv_level:
+            myplot.cdfs_one(self.output_dir+'event_as_cdfs_'+str(dl)+'.txt')
 
+        return 0
 
     def value_count2cdf(self, vc_dict): # dict keys are contable values
         cdf = dict()
