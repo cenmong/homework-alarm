@@ -104,13 +104,13 @@ class Alarm():
         ###################################################
         # Coarser DV values
         ######################################################
-        self.dv_dt_pfx = dict() # DV level range: dt: pfx count
+        self.dvrange_dt_pfx = dict() # DV level range: dt: pfx count
         self.dvrange_len_pfx = dict() # DV level range: prefix length: existence
         self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
         self.pfxcount = dict() # dv: dt: prefix (in updates) count
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         for dl in self.dv_level:
-            self.dv_dt_pfx[dl] = dict()
+            self.dvrange_dt_pfx[dl] = dict()
             self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_asn_pfx[dl] = dict()
             self.pfxcount[dl] = dict()
@@ -287,18 +287,18 @@ class Alarm():
                         if j != len(self.dv_level)-1: # not the last one
                             if ratio <= self.dv_level[j+1]:
                                 try:
-                                    self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
+                                    self.dvrange_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
                                 except:
-                                    self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                                    self.dvrange_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
                                 try:
                                     self.dvrange_len_pfx[dv_now][plen] += 1
                                 except:
                                     self.dvrange_len_pfx[dv_now][plen] = 1
                         else: # the last one
                             try:
-                                self.dv_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
+                                self.dvrange_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
                             except:
-                                self.dv_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
+                                self.dvrange_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
                             try:
                                 self.dvrange_len_pfx[dv_now][plen] += 1
                             except:
@@ -489,90 +489,134 @@ class Alarm():
         #################################################
         # quantity of prefixes of high DV ranges in different dt
         #######################################################
+        print 'Recording quantity of HDVPs'
         f = open(self.output_dir+'high_dv.txt', 'w')
-        for dl in self.dv_dt_pfx.keys():
+        for dl in self.dvrange_dt_pfx.keys():
             f.write(str(dl)+':')
-            for dt in self.dv_dt_pfx[dl].keys():
-                f.write(str(dt)+','+str(self.dv_dt_pfx[dl][dt])+'|')
+            for dt in self.dvrange_dt_pfx[dl].keys():
+                f.write(str(dt)+','+str(self.dvrange_dt_pfx[dl][dt])+'|')
             f.write('\n')
 
         f.close()
 
         #################################################
-        # prefix lengthes TODO
+        # prefix lengthes
         #######################################################
         print 'Recording length distribution'
+        f = open('prefix_length_cdf.txt', 'w')
         for dl in self.dv_level:
+            f.write(str(dl)+':')
             for i in xrange(1, 33):
                 try:
                     test = self.dvrange_len_pfx[dl][i]
                 except:
                     self.dvrange_len_pfx[dl][i] = 0
-            myplot.cdf_plot(self.granu, self.value_count2cdf(self.dvrange_len_pfx[dl]),\
-                    'CDF-length-pfx-'+str(dl))
+            #myplot.cdf_plot(self.granu, self.value_count2cdf(self.dvrange_len_pfx[dl]),\
+            #        'CDF-length-pfx-'+str(dl))
+            mydict = self.value_count2cdf(self.dvrange_len_pfx[dl])
+            for k in mydict.keys():
+                f.write(str(k)+','+str(mydict[k])+'|')
+            f.write('\n')
 
         all_length = cmlib.get_all_length(self.sdate) # length: prefix count (all)
+        f.write('all:')
         for i in xrange(1, 33):
             try:
                 test = all_length[i]
             except:
                 all_length[i] = 0
-        myplot.cdf_plot(self.granu, self.value_count2cdf(all_length),\
-                'CDF-length-all')
 
-        return 0
+        mydict = self.value_count2cdf(all_length)
+        for k in mydict.keys():
+            f.write(str(k)+','+str(mydict[k])+'|')
+        f.write('\n')
 
-    def plot(self):
+        f.close()
+
         ###################################
         # Plot everything about update quantity
         ######################################
-        myplot.time_series_plot(self.granu, self.acount, 'announce_count')
-        myplot.time_series_plot(self.granu, self.wcount, 'withdraw_count')
-        myplot.time_series_plot(self.granu, self.wpctg, 'withdraw_percentage')
-        myplot.time_series_plot(self.granu, self.ucount, 'update_count')
-        myplot.time_series_plot(self.granu, self.pfxcount[0], 'prefix_count')
+        f.open(self.output_dir+'announce_count.txt', 'w')
+        for dt in self.acount.keys():
+            f.write(str(dt)+','+str(self.acount[dt])+'|')
+        f.close()
+
+        f.open(self.output_dir+'withdraw_count.txt', 'w')
+        for dt in self.wcount.keys():
+            f.write(str(dt)+','+str(self.wcount[dt])+'|')
+        f.close()
+
+        f.open(self.output_dir+'update_count.txt', 'w')
+        for dt in self.ucount.keys():
+            f.write(str(dt)+','+str(self.ucount[dt])+'|')
+        f.close()
+
+        f.open(self.output_dir+'prefix_count.txt', 'w')
+        for dt in self.pfxcount[0].keys():
+            f.write(str(dt)+','+str(self.pfxcount[0][dt])+'|')
+        f.close()
+
+        #myplot.time_series_plot(self.granu, self.wpctg, 'withdraw_percentage')
 
         ###################################
         # Plot prefix count of different DV level ranges
         ######################################
+        f.open(self.output_dir+'HDVP', 'w')
         for dl in self.dv_level:
+            f.write(str(dl)+':')
             for dt in self.dt_list:
                 try:
-                    test = self.dv_dt_hdvp[dl][dt]
+                    value = self.dv_dt_hdvp[dl][dt]
                 except:
-                    self.dv_dt_hdvp[dl][dt] = 0
-
-            myplot.time_series_plot(self.granu, self.dv_dt_hdvp[dl], '='+str(dl))
-
+                    value = 0
+                f.write(str(dt)+','+str(value)+'|')
+            f.write('\n')
+        f.close()
+                
         ###################################
         # Plot before and after event
         ######################################
         if self.compare:
             # plot 2 CDFs: before event and after event
-            myplot.cdf_plot(self.granu, self.value_count2cdf(self.cdfbfr),\
-                   'CDFbfr')
-            myplot.cdf_plot(self.granu, self.value_count2cdf(self.cdfaft),\
-                   'CDFaft')
+            f.open(self.output_dir+'dv_cdf_bfr_aft.txt', 'w')
+            mydict_b = self.value_count2cdf(self.cdfbfr)
+            f.write('before:')
+            for k in mydict_b.keys():
+                f.write(str(k)+','+mydict_b[k]+'|')
+            f.write('\n')
+
+            mydict_a = self.value_count2cdf(self.cdfaft)
+            f.write('after:')
+            for k in mydict_a.keys():
+                f.write(str(k)+','+mydict_b[k]+'|')
+            f.write('\n')
+            f.close()
+
             for dl in self.dv_level:
                 myplot.cdf_plot(self.granu, self.symbol_count2cdf(self.as_bfr[dl]),\
                        'ASCDFbfr-'+str(dl))
                 myplot.cdf_plot(self.granu, self.symbol_count2cdf(self.as_aft[dl]),\
                        'ASCDFaft-'+str(dl))
 
-            fb = open(self.output_dir+'ASCDFbfr_raw.txt', 'w')
-            fa = open(self.output_dir+'ASCDFaft_raw.txt', 'w')
+            fb = open(self.output_dir+'as_cdf_bfr.txt', 'w')
+            fa = open(self.output_dir+'as_cdf_aft.txt', 'w')
             for dl in self.dv_level:
-                fb.write(str(dl)+':\n')
+                fb.write(str(dl)+':')
                 for item in sorted(self.as_bfr[dl].iteritems(),\
                         key=operator.itemgetter(1), reverse=True):
                     asrank = self.as_to_rank(item[0])
-                    fb.write(str(item[0])+'|'+str(item[1])+'|'+str(asrank)+'\n')
+                    nation = self.as_to_nation(item[0])
+                    fb.write(str(item[0])+','+str(item[1])+','+str(asrank)+\
+                             ','+nation+'|')
                 fb.write('\n')
-                fa.write(str(dl)+':\n')
+
+                fa.write(str(dl)+':')
                 for item in sorted(self.as_aft[dl].iteritems(),\
                         key=operator.itemgetter(1), reverse=True):
                     asrank = self.as_to_rank(item[0])
-                    fa.write(str(item[0])+'|'+str(item[1])+'|'+str(asrank)+'\n')
+                    nation = self.as_to_nation(item[0])
+                    fa.write(str(item[0])+','+str(item[1])+','+str(asrank)+\
+                             ','+nation+'|')
                 fa.write('\n')
             fb.close()
             fa.close()
@@ -589,19 +633,23 @@ class Alarm():
                 my_dict[key] = my_trie[key]
         del my_trie
 
-        stop = 0 # only get top 10
+        stop = 0 # only get top 20
         for item in sorted(my_dict.iteritems(), key=operator.itemgetter(1), reverse=True):
             stop += 1
-            if stop > 10:
+            if stop > 20:
                 break
             pfx = item[0]
             asn = self.pfx_to_as(pfx)
             asrank = self.as_to_rank(asn)
+            nation = self.as_to_nation(asn)
             value = item[1]
-            f.write(pfx+'|'+str(value)+'|'+str(asn)+'|'+str(asrank)+'\n')
+            f.write(pfx+','+str(value)+','+str(asn)+','+str(asrank)+','+nation+'\n')
         f.write('\n')
         f.close()
 
+        return 0
+
+    def plot(self):
         return 0
 
 
