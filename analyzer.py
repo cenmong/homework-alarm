@@ -9,7 +9,7 @@ from env import *
 
 class Analyzer():
 
-    def __init__(self, filelist, granu, sdate, hthres, dthres, peak):
+    def __init__(self, filelist, granu, sdate, dthres, peak):
         self.filelist = filelist  # filelist file name 
         self.allowed = set(string.ascii_letters+string.digits+\
                 '.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
@@ -23,7 +23,7 @@ class Analyzer():
         for cl in collectors:
             self.cl_first[cl[0]] = True
                 
-        self.alarm = Alarm(granu, sdate, hthres, self.cl_list, dthres, peak)
+        self.alarm = Alarm(granu, sdate, self.cl_list, dthres, peak)
 
     def direct(self, dthres, soccur, eoccur, desc):
         try:
@@ -89,7 +89,11 @@ class Analyzer():
 
         self.alarm.check_memo(True) # the ending check
         filelist.close()
-
-        self.alarm.plot()
+        
+        try: # directly plot according to existent output files
+            self.alarm.plot()
+        except:
+            self.alarm.output()
+            self.alarm.plot()
 
         return 0

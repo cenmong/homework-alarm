@@ -3,6 +3,7 @@ import datetime
 import time as time_lib
 import numpy as np
 import cmlib
+import myplot
 import operator
 
 from netaddr import *
@@ -35,13 +36,11 @@ class Alarm():
         ############################
         self.sdate = sdate # Starting date
         self.granu = granu  # Time granularity in minutes
-        self.hthres = hthres # active threshold, also known as \theta_h
         self.dthres = dthres # detection threshold, also known as \theta_d
         
         self.dt_list = list() # the list of datetime
         self.peerlist = dict() # dt: monitor list
         self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
-        self.hdvp_count = dict() # dt: active prefix count
         self.ucount = dict() # dt: update count
         self.acount = dict() # dt: announcement count
         self.wcount = dict() # dt: withdrawal count
@@ -51,7 +50,6 @@ class Alarm():
         self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
         self.as2nation = spt.get_as2nation_dict() # all ASes to origin nation (latest)
         # TODO: write basic info into a seperate output file
-        self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix count
         self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total prefix count
         self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
 
@@ -102,13 +100,6 @@ class Alarm():
         print 'nations:', self.m_nation_as.keys()
 
 
-        ############################################
-        # Dynamic Visibillity Index
-        #######################################
-        self.dvi = {}  # dt: value
-        self.dvi_desc = 'DVI'
-
-
         self.dv_level = [0, 0.05, 0.1, 0.15, 0.2]
         ###################################################
         # Coarser DV values
@@ -142,16 +133,19 @@ class Alarm():
             self.as_aft = dict()
             self.cdfbound = datetime.datetime.strptime(cdfbound, '%Y-%m-%d %H:%M:%S')
             self.bfr_start = time_lib.mktime((self.cdfbound +\
-                    datetime.timedelta(minutes=-self.granu)).timetuple())
+                    datetime.timedelta(minutes=-(self.granu*2))).timetuple())
             self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
 
             for dl in self.dv_level:
                 self.as_bfr[dl] = dict() # dv: ASN: count
                 self.as_aft[dl] = dict()
 
+        ###########################################
+        # Output
+        #############################################
+        self.output_dir = hdname+'output/'+self.sdate+'_'+str(self.granu)+'/'
+        cmlib.make_dir(self.output_dir)
 
-        ##### For naming all the figures.
-        self.describe_add = self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'_'
 
     def check_memo(self, is_end):
         if self.ceiling == 0:  # not everybody is ready
@@ -258,8 +252,6 @@ class Alarm():
 
         for dt in rel_dt:
             trie = self.pfx_trie[dt]
-            hdvp_count = 0
-            self.dvi[dt] = 0
             self.dv_distribution[dt] = dict() # DV: count
 
             for dl in self.dv_level:
@@ -350,14 +342,6 @@ class Alarm():
                             self.cdfaft[ratio] = 1
 
 
-                # only count HDVPs from now on
-                if ratio <= self.hthres: # not active pfx
-                    continue
-                hdvp_count += 1
-                self.dvi[dt] += ratio
-
-            self.hdvp_count[dt] = hdvp_count
-
             # Only get top 500 ASes
             for dl in self.dv_level:
                 tmp_dict = self.dv_dt_asn_pfx[dl][dt]
@@ -391,24 +375,22 @@ class Alarm():
 
         # Now, let's rock and roll
         for name in array1:
-            cmlib.direct_ts_plot(self.hthres, self.granu,\
-                    self.describe_add+name, dthres,\
+            myplot.direct_ts_plot(self.granu,\
+                    name, dthres,\
                     soccur, eoccur, desc)
         for name in array2:
-            cmlib.direct_ts_plot(self.hthres, self.granu,\
-                    self.describe_add+name, dthres,\
+            myplot.direct_ts_plot(self.granu,\
+                    name, dthres,\
                     soccur, eoccur, desc)
         for name in array3:
-            cmlib.direct_cdf_plot(self.hthres, self.granu,\
-                    self.describe_add+name)
+            myplot.direct_cdf_plot(self.granu,\
+                    name)
 
-    def plot(self): # plot everything here!
+    def output(self):
         ###################################################
-        # Plot DV distribution: mean and standard deviation
-        # NOTE: it's possible that y cannot reach 100% (we only use top 500 ASes)
-        # Or because of the failure of mapping prefix to ASN
+        # DV distribution: mean and standard deviation
         #####################################################
-        print 'Plotting DV distribution...'
+        print 'Recording DV distribution...'
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
             for dv in self.dv_distribution[dt].keys():
                 self.dv_distribution[dt][dv] = \
@@ -438,20 +420,27 @@ class Alarm():
             dev = np.std(values)
             dv_mean_dev[dv] = [mean, dev]
 
-        # Note where the curves ends
-        #TODO cmlib.mean_cdf_plot(dv_mean_dev)
+        f.open(self.output_dir+'dv_distribution.txt', 'w')
+        for dv in all_dv_list:
+            mean = dv_mean_dev[dv][0]
+            dev = dv_mean_dev[dv][1]
+            f.write(str(dv)+':'+str(mean)+'|'+str(dev)+'\n')
+        f.close()
 
         ###################################################
-        # Plot AS distribution: mean and standard deviation
+        # AS distribution: mean and standard deviation
+        # NOTE: it's possible that y cannot reach 100% (we only use top 500 ASes)
+        # Or because of the failure of mapping prefix to ASN
         #####################################################
-        print 'Plotting AS distribution...'
-        cmlib.make_dir(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+'/')
-        f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
-                 '/'+self.describe_add+'active_AS.txt', 'w')
+        print 'Recording AS distribution...'
+        f = open(self.output_dir+'as_distribution.txt', 'w')
+        fa = open(self.output_dir+'active_as.txt', 'w')
 
         for dl in self.dv_level:
+            f.write(str(dl)+':')
+            fa.write(str(dl)+':')
+
             active_as = dict() # dt: [[as1,count1],[as2,count2]]
-            as_mean_dev = dict()
             as_cdf = dict() # dt: as count: prefix count
             for dt in self.dv_dt_asn_pfx[dl].keys():
                 # dv_dt_asn_pfx[dl][dt] should have 500 keys
@@ -471,9 +460,7 @@ class Alarm():
                     values.append(as_cdf[dt][j])
                 mean = sum(values)/len(values)
                 dev = np.std(values)
-                as_mean_dev[j] = [mean, dev]
-
-            #TODO cmlib.mean_cdf_plot(as_mean_dev)
+                f.write(str(j)+','+str(mean)+','+str(dev)+'|')
 
             # Record top 10 ASes of this DV level (all time slots)
             as_count = dict() # AS: count
@@ -486,36 +473,43 @@ class Alarm():
 
             tmp_list = sorted(as_count.iteritems(),\
                     key=operator.itemgetter(1), reverse=True)
-            tmp_list = tmp_list[0:10]
-            f.write(str(dl)+':\n')
+            tmp_list = tmp_list[0:20]
+            fa.write(str(dl)+':\n')
             for item in tmp_list:
                 asn = item[0]
                 count = item[1]
                 asrank = self.as_to_rank(asn)
-                f.write(str(asn)+'|'+str(count)+'|'+str(asrank)+'\n')
+                nation = self.as_to_nation(asn)
+                fa.write(str(asn)+'|'+str(count)+'|'+str(asrank)+nation+'\n')
+            fa.write('\n')
             f.write('\n')
     
-        f.close()
+        fa.close()
                 
         #################################################
-        # Box ploting prefixes of high DV ranges TODO
+        # quantity of prefixes of high DV ranges in different dt
         #######################################################
-        #cmlib.box_plot...self.dv_dt_pfx # ignore 0<x<0.05
+        f = open(self.output_dir+'high_dv.txt', 'w')
+        for dl in self.dv_dt_pfx.keys():
+            f.write(str(dl)+':')
+            for dt in self.dv_dt_pfx[dl].keys():
+                f.write(str(dt)+','+str(self.dv_dt_pfx[dl][dt])+'|')
+            f.write('\n')
+
+        f.close()
 
         #################################################
-        # CDF ploting prefix lengthes
+        # prefix lengthes TODO
         #######################################################
-        print 'Plotting length distribution'
-        #cmlib.box_plot_grouped(self.hthres, self.granu, self.dvrange_len_pfx[dl],\
-                #self.describe_add+'box-dv-len-'+str(dl))
+        print 'Recording length distribution'
         for dl in self.dv_level:
             for i in xrange(1, 33):
                 try:
                     test = self.dvrange_len_pfx[dl][i]
                 except:
                     self.dvrange_len_pfx[dl][i] = 0
-            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.dvrange_len_pfx[dl]),\
-                    self.describe_add+'CDF-length-pfx-'+str(dl))
+            myplot.cdf_plot(self.granu, self.value_count2cdf(self.dvrange_len_pfx[dl]),\
+                    'CDF-length-pfx-'+str(dl))
 
         all_length = cmlib.get_all_length(self.sdate) # length: prefix count (all)
         for i in xrange(1, 33):
@@ -523,27 +517,20 @@ class Alarm():
                 test = all_length[i]
             except:
                 all_length[i] = 0
-        cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(all_length),\
-                self.describe_add+'CDF-length-all')
+        myplot.cdf_plot(self.granu, self.value_count2cdf(all_length),\
+                'CDF-length-all')
 
-        ###################################
-        # Plot DVI
-        ######################################
-        for key_dt in self.dvi.keys():
-            value = self.dvi[key_dt]
-            self.dvi[key_dt] = float(value)/float(self.all_pcount)
-        cmlib.time_series_plot(self.hthres, self.granu, self.dvi, self.describe_add+self.dvi_desc)
+        return 0
 
-        
+    def plot(self):
         ###################################
         # Plot everything about update quantity
         ######################################
-        cmlib.time_series_plot(self.hthres, self.granu, self.hdvp_count, self.describe_add+'act_pfx_count')
-        cmlib.time_series_plot(self.hthres, self.granu, self.acount, self.describe_add+'announce_count')
-        cmlib.time_series_plot(self.hthres, self.granu, self.wcount, self.describe_add+'withdraw_count')
-        cmlib.time_series_plot(self.hthres, self.granu, self.wpctg, self.describe_add+'withdraw_percentage')
-        cmlib.time_series_plot(self.hthres, self.granu, self.ucount, self.describe_add+'update_count')
-        cmlib.time_series_plot(self.hthres, self.granu, self.pfxcount[0], self.describe_add+'prefix_count')
+        myplot.time_series_plot(self.granu, self.acount, 'announce_count')
+        myplot.time_series_plot(self.granu, self.wcount, 'withdraw_count')
+        myplot.time_series_plot(self.granu, self.wpctg, 'withdraw_percentage')
+        myplot.time_series_plot(self.granu, self.ucount, 'update_count')
+        myplot.time_series_plot(self.granu, self.pfxcount[0], 'prefix_count')
 
         ###################################
         # Plot prefix count of different DV level ranges
@@ -555,27 +542,25 @@ class Alarm():
                 except:
                     self.dv_dt_hdvp[dl][dt] = 0
 
-            cmlib.time_series_plot(self.hthres, self.granu, self.dv_dt_hdvp[dl], self.describe_add+'='+str(dl))
+            myplot.time_series_plot(self.granu, self.dv_dt_hdvp[dl], '='+str(dl))
 
         ###################################
         # Plot before and after event
         ######################################
         if self.compare:
             # plot 2 CDFs: before event and after event
-            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfbfr),\
-                   self.describe_add+'CDFbfr')
-            cmlib.cdf_plot(self.hthres, self.granu, self.value_count2cdf(self.cdfaft),\
-                   self.describe_add+'CDFaft')
+            myplot.cdf_plot(self.granu, self.value_count2cdf(self.cdfbfr),\
+                   'CDFbfr')
+            myplot.cdf_plot(self.granu, self.value_count2cdf(self.cdfaft),\
+                   'CDFaft')
             for dl in self.dv_level:
-                cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_bfr[dl]),\
-                       self.describe_add+'ASCDFbfr-'+str(dl))
-                cmlib.cdf_plot(self.hthres, self.granu, self.symbol_count2cdf(self.as_aft[dl]),\
-                       self.describe_add+'ASCDFaft-'+str(dl))
+                myplot.cdf_plot(self.granu, self.symbol_count2cdf(self.as_bfr[dl]),\
+                       'ASCDFbfr-'+str(dl))
+                myplot.cdf_plot(self.granu, self.symbol_count2cdf(self.as_aft[dl]),\
+                       'ASCDFaft-'+str(dl))
 
-            fb = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
-                        '/'+self.describe_add+'_ASCDFbfr_raw.txt', 'w')
-            fa = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
-                        '/'+self.describe_add+'_ASCDFaft_raw.txt', 'w')
+            fb = open(self.output_dir+'ASCDFbfr_raw.txt', 'w')
+            fa = open(self.output_dir+'ASCDFaft_raw.txt', 'w')
             for dl in self.dv_level:
                 fb.write(str(dl)+':\n')
                 for item in sorted(self.as_bfr[dl].iteritems(),\
@@ -595,8 +580,7 @@ class Alarm():
         ###########################################
         # Record active prefixes
         #############################################
-        f = open(hdname+'output/'+self.sdate+'_'+str(self.granu)+'_'+str(self.hthres)+\
-                 '/'+self.describe_add+'_dup_pfx.txt', 'w')
+        f = open(self.output_dir + 'dup_pfx.txt', 'w')
         f.write('0.15:\n')
         my_trie = self.dup_trie
         my_dict = {}
