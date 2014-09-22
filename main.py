@@ -1,5 +1,6 @@
 from analyzer import *
 from env import *
+from alarm_class import *
 
 #TEST = False
 TEST = True
@@ -27,12 +28,23 @@ for i in [0]:
     except:
         peak = None
 
+    #alarmplot(daterange[i][0], 10)
     if TEST:
         ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
     else:
         ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
 
-    # plot directly from existent data
-    #if ana.direct(thres, soccur, eoccur, des):
-    #    continue
     ana.parse_updates()
+    '''
+    try:
+        alarmplot(daterange[i][0], 10)
+    except:
+        if TEST:
+            ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
+        else:
+            ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
+
+        ana.parse_updates()
+
+        pass
+    '''

@@ -30,6 +30,170 @@ plt.rc('legend',**{'fontsize':38})
 
 el = Ellipse((2,-1),0.5,0.5)
 
+def mean_cdf(fname, xlab, ylab):
+    mydict = dict()
+    with open(fname, 'r') as f:
+        data = f.read()
+        items = data.split('|')
+        for item in items: 
+            if item == '' or item == '\n': # last one
+                continue
+            item = item.split(',')
+            axis = float(item[0])
+            mean = float(item[1])
+            dev = float(item[2])
+            mydict[axis] = [mean, dev]
+    f.close()
+
+    xlist = []
+    ylist = []
+    ylist_low = []
+    ylist_high = []
+    pre_mean = -1
+    pre_dev = -1
+    same = 0
+    for key in sorted(mydict): # sort by key
+        mean = mydict[key][0]
+        dev = mydict[key][1]
+        if mean == pre_mean and dev == pre_dev:
+            same += 1
+        else:
+            pre_mean = mean
+            pre_dev = dev
+            same = 0
+
+        if same == 10:
+            break
+
+        xlist.append(key)
+        ylist.append(mydict[key][0])
+        ylist_low.append(mydict[key][0]-mydict[key][1])
+        ylist_high.append(mydict[key][0]+mydict[key][1])
+
+    xmax = max(xlist)
+    ymax = max(ylist_high)
+
+    fig = plt.figure(figsize=(16, 12))
+    ax = fig.add_subplot(111)
+    ax.set_ylim([-0.1*ymax, 1.1*ymax])
+    ax.set_xlim([-0.1*xmax, 1.02*xmax])
+    ax.set_ylabel(ylab)
+    ax.set_xlabel(xlab)
+    ax.plot(xlist, ylist, 'k-')
+    ax.plot(xlist, ylist_low, 'k--')
+    ax.plot(xlist, ylist_high, 'k--')
+
+    plotfname = fname.rpartition('/')[0] + '/' +  fname.rpartition('/')[2] + '.pdf'
+    plt.savefig(plotfname, bbox_inches='tight')
+    plt.close()
+
+def mean_cdfs_multi(fname, xlab, ylab):
+    f = open(fname, 'r')
+    for line in f:
+        mydict = dict()
+        new_name = line.split(':')[0]
+        items = line.split(':')[1]
+        for item in items.split('|'): 
+            if item == '' or item == '\n': # last one
+                continue
+            item = item.split(',')
+            axis = float(item[0])
+            mean = float(item[1])
+            dev = float(item[2])
+            mydict[axis] = [mean, dev]
+
+        xlist = []
+        ylist = []
+        ylist_low = []
+        ylist_high = []
+        pre_mean = -1
+        pre_dev = -1
+        same = 0
+        for key in sorted(mydict): # sort by key
+            mean = mydict[key][0]
+            dev = mydict[key][1]
+            if mean == pre_mean and dev == pre_dev:
+                same += 1
+            else:
+                pre_mean = mean
+                pre_dev = dev
+                same = 0
+
+            if same == 10:
+                break
+
+            xlist.append(key)
+            ylist.append(mydict[key][0])
+            ylist_low.append(mydict[key][0]-mydict[key][1])
+            ylist_high.append(mydict[key][0]+mydict[key][1])
+
+        xmax = max(xlist)
+        ymax = max(ylist_high)
+
+        fig = plt.figure(figsize=(16, 12))
+        ax = fig.add_subplot(111)
+        ax.set_ylim([-0.1*ymax, 1.1*ymax])
+        ax.set_xlim([-0.1*xmax, 1.02*xmax])
+        ax.set_ylabel(ylab)
+        ax.set_xlabel(xlab)
+        ax.plot(xlist, ylist, 'k-')
+        ax.plot(xlist, ylist_low, 'k--')
+        ax.plot(xlist, ylist_high, 'k--')
+
+        plotfname = fname.rpartition('/')[0] + '/' +\
+                fname.rpartition('/')[2] + new_name + '.pdf'
+        plt.savefig(plotfname, bbox_inches='tight')
+        plt.close()
+
+    f.close()
+
+def cdfs_one(fname, xlab, ylab):
+    colors = ['k', 'b', 'r', 'g', 'y', 'm']
+
+    mydicts = dict() # type: dict
+    f = open(fname, 'r')
+    for line in f:
+        my_legend = line.split(':')[0]
+        mydicts[my_legend] = dict()
+        items = line.split(':')[1]
+        for item in items.split('|'): 
+            if item == '' or item == '\n': # last one
+                continue
+            item = item.split(',')
+            xvalue = float(item[0])
+            yvalue = float(item[1])
+            mydicts[my_legend][xvalue] = yvalue
+    f.close()
+
+    xlists = dict()
+    ylists = dict()
+    for my_legend in mydicts.keys():
+        xlists[my_legend] = []
+        ylists[my_legend] = []
+        for key in sorted(mydicts[my_legend]):
+            xlists[my_legend].append(key)
+            ylists[my_legend].append(mydicts[my_legend][key])
+
+    tmp_legend = xlists.keys()[0]
+    xmax = max(xlists[tmp_legend])
+    ymax = max(ylists[tmp_legend])
+
+    fig = plt.figure(figsize=(16, 12))
+    ax = fig.add_subplot(111)
+    ax.set_ylim([-0.1*ymax, 1.1*ymax])
+    ax.set_xlim([-0.1*xmax, 1.02*xmax])
+    ax.set_ylabel(ylab)
+    ax.set_xlabel(xlab)
+    color_count = 0
+    for key in xlists.keys():
+        ax.plot(xlists[key], ylists[key], colors[color_count]+'-')
+        color_count += 1
+
+    plotfname = fname.rpartition('/')[0] + '/' +\
+            fname.rpartition('/')[2] + '.pdf'
+    plt.savefig(plotfname, bbox_inches='tight')
+    plt.close()
+
 def cdf_plot(granu, my_dict, describe):
     # my_dict DV value: exist time
     xlist = [0]

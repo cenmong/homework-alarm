@@ -22,7 +22,9 @@ class Analyzer():
         self.cl_first = dict()  # collector first existence, True or False
         for cl in collectors:
             self.cl_first[cl[0]] = True
-                
+
+        self.sdate = sdate
+        self.granu = granu
         self.alarm = Alarm(granu, sdate, self.cl_list, dthres, peak)
 
     def direct(self, dthres, soccur, eoccur, desc):
@@ -43,59 +45,57 @@ class Analyzer():
             return False
 
     def parse_updates(self):
-        filelist = open(self.filelist, 'r')
-        for ff in filelist:
-            ff = ff.replace('\n', '').replace('archive.', '')
-            print ff
+        try:
+            self.alarm.plot()
+        except:
+            filelist = open(self.filelist, 'r')
+            for ff in filelist:
+                ff = ff.replace('\n', '').replace('archive.', '')
+                print ff
 
-            # unpack the update file
-            subprocess.call('gunzip -c '+ff+' > '+ff.replace('txt.gz', 'txt'), shell=True)
+                # unpack the update file
+                subprocess.call('gunzip -c '+ff+' > '+ff.replace('txt.gz', 'txt'), shell=True)
 
-            # get collector
-            cl = ff.split('/')[5]
-            if cl == 'bgpdata':  # route-views2, the special case
-                cl = ''
+                # get collector
+                cl = ff.split('/')[5]
+                if cl == 'bgpdata':  # route-views2, the special case
+                    cl = ''
 
-            lastline = 'Do not delete me!'
-            with open(ff.replace('txt.gz', 'txt'), 'r') as f:
+                lastline = 'Do not delete me!'
+                with open(ff.replace('txt.gz', 'txt'), 'r') as f:
 
-                # this collector appears for the first time
-                if self.cl_first[cl] == True:
-                    for line in f:  # get first (ipv4) line
+                    # this collector appears for the first time
+                    if self.cl_first[cl] == True:
+                        for line in f:  # get first (ipv4) line
+                            line = line.replace('\n', '')
+                            if not self.is_normal(line):
+                                continue
+                            break
+                        self.alarm.set_start(cl, line)  # set colllector's starting dt
+                        self.alarm.add(line)
+                        self.cl_first[cl] = False
+
+                    for line in f:
                         line = line.replace('\n', '')
                         if not self.is_normal(line):
                             continue
-                        break
-                    self.alarm.set_start(cl, line)  # set colllector's starting dt
-                    self.alarm.add(line)
-                    self.cl_first[cl] = False
+                        self.alarm.add(line)
+                        lastline = line
 
-                for line in f:
-                    line = line.replace('\n', '')
-                    if not self.is_normal(line):
-                        continue
-                    self.alarm.add(line)
-                    lastline = line
+                f.close()
+                # remove the unpacked file to save space
+                os.remove(ff.replace('txt.gz', 'txt'))
 
-            f.close()
-            # remove the unpacked file to save space
-            os.remove(ff.replace('txt.gz', 'txt'))
+                try:
+                    self.alarm.set_now(cl, lastline)  # set collector's current/latest dt
+                except:
+                    pass
+                self.alarm.check_memo(False) # not the ending check
 
-            try:
-                self.alarm.set_now(cl, lastline)  # set collector's current/latest dt
-            except:
-                pass
-            self.alarm.check_memo(False) # not the ending check
-
-        self.alarm.check_memo(True) # the ending check
-        filelist.close()
-        
-        #try: # directly plot according to existent output files
-            #self.alarm.plot()
-        #except:
-            #self.alarm.output()
-            #self.alarm.plot()
-        self.alarm.output()
-        self.alarm.plot()
+            self.alarm.check_memo(True) # the ending check
+            filelist.close()
+            
+            self.alarm.output()
+            alarmplot(self.sdate, self.granu)
 
         return 0

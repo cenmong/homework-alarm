@@ -187,15 +187,17 @@ def get_all_length(sdate):
     if not os.path.exists(rib_location+'.gz'):
         pack_gz(rib_location)
 
+    pfx_count = 0
     for pfx in trie.iter(''):
         if pfx != '':
+            pfx_count += 1
             try:
                 len_count[len(pfx)] += 1
             except:
                 len_count[len(pfx)] = 1
     del trie 
 
-    return len_count
+    return [len_count, pfx_count]
 
 def get_monitors(sdate):
     mydate = sdate[0:4] + '.' + sdate[4:6]

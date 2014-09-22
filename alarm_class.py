@@ -10,6 +10,39 @@ from netaddr import *
 from env import *
 from supporter_class import *
 
+def alarmplot(sdate, granu):
+    print 'Plotting...'
+
+    output_dir = hdname+'output/'+sdate+'_'+str(granu)+'/'
+    # Good! DV > 0
+    myplot.mean_cdf(output_dir+'dv_distribution.txt', 'Dynamic Visibility',\
+            'prefix ratio (DV > 1)')
+    # Good! Not range!
+    myplot.mean_cdfs_multi(output_dir+'as_distribution.txt',\
+            'AS count', 'prefix ratio (DV > x)') # in multiple figures
+    # Good! Range!
+    myplot.cdfs_one(output_dir+'prefix_length_cdf.txt', 'prefix length',\
+            'prefix ratio (DV in ranges)') # CDF curves in one figure
+    # Good! DV > 0
+    myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+            'prefix ratio (DV > 1)')
+    '''
+    for dl in self.dv_level:
+        # Number!(?)
+        myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                'AS count', 'prefix ratio')
+    # Number!
+    myplot.boxes(output_dir+'high_dv.txt', 'DV ranges', 'prefix number') # boxes in one figure (range)
+    myplot.time_values_one(output_dir+'high_dv.txt')
+    myplot.time_value(output_dir+'announce_count.txt')
+    myplot.time_value(output_dir+'withdraw_count.txt')
+    myplot.time_value(output_dir+'update_count.txt')
+    myplot.time_value(output_dir+'prefix_count.txt')
+    # Number!
+    myplot.time_values_one(output_dir+'HDVP.txt')
+    '''
+    return 0
+
 class Alarm():
 
     def __init__(self, granu, sdate, cl_list, dthres, cdfbound):
@@ -50,7 +83,8 @@ class Alarm():
         self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
         self.as2nation = spt.get_as2nation_dict() # all ASes to origin nation (latest)
         self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS count
-        self.all_pcount = cmlib.get_all_pcount(self.sdate)
+        self.all_pcount = cmlib.get_all_pcount(self.sdate) # DV >= 0
+        self.all_pcount_lzero = 0 # DV > 0
         self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
 
         self.as2rank = dict() # AS:rank by customer cone
@@ -108,12 +142,14 @@ class Alarm():
         self.dvrange_len_pfx = dict() # DV level range: prefix length: existence
         self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
         self.pfxcount = dict() # dv: dt: prefix (in updates) count
+        self.pfxcount_range = dict() # dv range: dt: prefix (in updates) count
         self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
         for dl in self.dv_level:
             self.dvrange_dt_pfx[dl] = dict()
             self.dvrange_len_pfx[dl] = dict()
             self.dv_dt_asn_pfx[dl] = dict()
             self.pfxcount[dl] = dict()
+            self.pfxcount_range[dl] = dict()
             self.dv_dt_hdvp[dl] = dict()
 
         
@@ -294,6 +330,10 @@ class Alarm():
                                     self.dvrange_len_pfx[dv_now][plen] += 1
                                 except:
                                     self.dvrange_len_pfx[dv_now][plen] = 1
+                                try:
+                                    self.pfxcount_range[dv_now][dt] += 1
+                                except:
+                                    self.pfxcount_range[dv_now][dt] = 1
                         else: # the last one
                             try:
                                 self.dvrange_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
@@ -303,6 +343,10 @@ class Alarm():
                                 self.dvrange_len_pfx[dv_now][plen] += 1
                             except:
                                 self.dvrange_len_pfx[dv_now][plen] = 1
+                            try:
+                                self.pfxcount_range[dv_now][dt] += 1
+                            except:
+                                self.pfxcount_range[dv_now][dt] = 1
 
                         try:
                             self.dv_dt_hdvp[dv_now][dt] += 1 
@@ -387,6 +431,9 @@ class Alarm():
                     name)
 
     def output(self):
+        for dt in self.pfxcount[0].keys():
+            self.all_pcount_lzero += self.pfxcount[0][dt]
+
         ##################################################
         # Record the most basic information
         #####################################################
@@ -525,14 +572,19 @@ class Alarm():
                     test = self.dvrange_len_pfx[dl][i]
                 except:
                     self.dvrange_len_pfx[dl][i] = 0
-            #myplot.cdf_plot(self.granu, self.value_count2cdf(self.dvrange_len_pfx[dl]),\
-            #        'CDF-length-pfx-'+str(dl))
             mydict = self.value_count2cdf(self.dvrange_len_pfx[dl])
             for k in mydict.keys():
-                f.write(str(k)+','+str(mydict[k])+'|')
+                value = mydict[k]
+                total_pfx = 0
+                for dt in self.pfxcount_range[dl].keys():
+                    total_pfx += self.pfxcount_range[dl][dt]
+                value = float(value) / total_pfx
+                f.write(str(k)+','+str(value)+'|')
             f.write('\n')
 
-        all_length = cmlib.get_all_length(self.sdate) # length: prefix count (all)
+        tmp_result = cmlib.get_all_length(self.sdate) # length: prefix count (all)
+        all_length = tmp_result[0] # length: prefix count (all)
+        tmp_pcount = tmp_result[1] # Number of all prefixes from RIB
         f.write('all:')
         for i in xrange(1, 33):
             try:
@@ -542,7 +594,9 @@ class Alarm():
 
         mydict = self.value_count2cdf(all_length)
         for k in mydict.keys():
-            f.write(str(k)+','+str(mydict[k])+'|')
+            value = mydict[k]
+            value = float(value) / float(tmp_pcount)
+            f.write(str(k)+','+str(value)+'|')
         f.write('\n')
 
         f.close()
@@ -577,7 +631,7 @@ class Alarm():
         # Plot prefix count of different DV level ranges
         # dv level:dt,value|dt,value|...\n dv level...
         ######################################
-        f = open(self.output_dir+'HDVP', 'w')
+        f = open(self.output_dir+'HDVP.txt', 'w')
         for dl in self.dv_level:
             f.write(str(dl)+':')
             for dt in self.dt_list:
@@ -600,13 +654,17 @@ class Alarm():
             mydict_b = self.value_count2cdf(self.cdfbfr)
             f.write('before:')
             for k in mydict_b.keys():
-                f.write(str(k)+','+str(mydict_b[k])+'|')
+                value = mydict_b[k]
+                value = float(value) / float(self.pfxcount[0][self.bfr_start])
+                f.write(str(k)+','+str(value)+'|')
             f.write('\n')
 
             mydict_a = self.value_count2cdf(self.cdfaft)
             f.write('after:')
             for k in mydict_a.keys():
-                f.write(str(k)+','+str(mydict_a[k])+'|')
+                value = mydict_a[k]
+                value = float(value) / float(self.pfxcount[0][self.cdfbound])
+                f.write(str(k)+','+str(value)+'|')
             f.close()
 
             #AS distribution: top AS record
@@ -644,7 +702,7 @@ class Alarm():
                 f.close()
 
         ###########################################
-        # prefix DV > xxx for miltiple times ranking
+        # prefix DV > 15% for miltiple times ranking
         #############################################
         f = open(self.output_dir + 'dup_pfx.txt', 'w')
         f.write('0.15:\n')
@@ -668,22 +726,6 @@ class Alarm():
             f.write(pfx+','+str(value)+','+str(asn)+','+str(asrank)+','+str(nation)+'\n')
         f.write('\n')
         f.close()
-
-        return 0
-
-    def plot(self):
-        myplot.mean_cdf(self.output_dir+'dv_distribution.txt')
-        myplot.mean_cdfs_multi(self.output_dir+'as_distribution.txt') # in multiple figures
-        myplot.boxes(self.output_dir+'high_dv.txt') # boxes in one figure
-        myplot.cdfs_one(self.output_dir+'prefix_length_cdf.txt') # CDF curves in one figure
-        myplot.time_value(self.output_dir+'announce_count.txt')
-        myplot.time_value(self.output_dir+'withdraw_count.txt')
-        myplot.time_value(self.output_dir+'update_count.txt')
-        myplot.time_value(self.output_dir+'prefix_count.txt')
-        myplot.time_values_one(self.output_dir+'prefix_count.txt')
-        myplot.cdfs_one(self.output_dir+'dv_cdf_bfr_aft.txt')
-        for dl in self.dv_level:
-            myplot.cdfs_one(self.output_dir+'event_as_cdfs_'+str(dl)+'.txt')
 
         return 0
 
