@@ -81,9 +81,12 @@ def mean_cdf(fname, xlab, ylab):
     ax.set_xlim([-0.1*xmax, 1.02*xmax])
     ax.set_ylabel(ylab)
     ax.set_xlabel(xlab)
-    ax.plot(xlist, ylist, 'k-')
-    ax.plot(xlist, ylist_low, 'k--')
+    ax.plot(xlist, ylist, 'k-', label='$mean$')
+    ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\delta$')
     ax.plot(xlist, ylist_high, 'k--')
+
+    lg = ax.legend(loc='best', shadow=False)
+    lg.draw_frame(False)
 
     plotfname = fname.rpartition('/')[0] + '/' +  fname.rpartition('/')[2] + '.pdf'
     plt.savefig(plotfname, bbox_inches='tight')
@@ -138,10 +141,12 @@ def mean_cdfs_multi(fname, xlab, ylab):
         ax.set_xlim([-0.1*xmax, 1.02*xmax])
         ax.set_ylabel(ylab)
         ax.set_xlabel(xlab)
-        ax.plot(xlist, ylist, 'k-')
-        ax.plot(xlist, ylist_low, 'k--')
+        ax.plot(xlist, ylist, 'k-', label='$mean$')
+        ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\delta$')
         ax.plot(xlist, ylist_high, 'k--')
 
+        lg = ax.legend(loc='best', shadow=False)
+        lg.draw_frame(False)
         plotfname = fname.rpartition('/')[0] + '/' +\
                 fname.rpartition('/')[2] + new_name + '.pdf'
         plt.savefig(plotfname, bbox_inches='tight')
@@ -187,9 +192,11 @@ def cdfs_one(fname, xlab, ylab):
     ax.set_xlabel(xlab)
     color_count = 0
     for key in xlists.keys():
-        ax.plot(xlists[key], ylists[key], colors[color_count]+'-')
+        ax.plot(xlists[key], ylists[key], colors[color_count]+'-', label=key)
         color_count += 1
 
+    lg = ax.legend(loc='best', shadow=False)
+    lg.draw_frame(False)
     plotfname = fname.rpartition('/')[0] + '/' +\
             fname.rpartition('/')[2] + '.pdf'
     plt.savefig(plotfname, bbox_inches='tight')
@@ -262,9 +269,11 @@ def time_values_one(fname, xlab, ylab):
     #hold(True)
 
     count = 0
-    for ylist in ylists:
-        ax.plot(xlist, ylist, colors[count]+'-')
+    for i in xrange(0, len(ylists)):
+        ax.plot(xlist, ylists[i], colors[count]+'-', label=my_labels[i])
         count += 1
+    lg = ax.legend(loc='best', shadow=False)
+    lg.draw_frame(False)
     ax.set_ylabel(ylab)
     ax.set_yscale('log')
     ax.set_xlabel(xlab)
