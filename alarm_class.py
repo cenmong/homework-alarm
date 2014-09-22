@@ -34,14 +34,14 @@ def alarmplot(sdate, granu):
                 'AS count', 'prefix count')
     # Number!
     myplot.boxes(output_dir+'high_dv.txt', 'DV ranges', 'prefix number') # boxes in one figure (range)
+    # Number!
+    myplot.time_values_one(output_dir+'HDVP.txt', 'time', 'prefix quantity')
+    myplot.time_values_one(output_dir+'high_dv.txt', 'time', 'prefix quantity')
     '''
-    myplot.time_values_one(output_dir+'high_dv.txt')
     myplot.time_value(output_dir+'announce_count.txt')
     myplot.time_value(output_dir+'withdraw_count.txt')
     myplot.time_value(output_dir+'update_count.txt')
     myplot.time_value(output_dir+'prefix_count.txt')
-    # Number!
-    myplot.time_values_one(output_dir+'HDVP.txt')
     '''
     return 0
 
@@ -630,7 +630,7 @@ class Alarm():
         #myplot.time_series_plot(self.granu, self.wpctg, 'withdraw_percentage')
 
         ###################################
-        # Plot prefix count of different DV level ranges
+        # Plot prefix count of DV > XX
         # dv level:dt,value|dt,value|...\n dv level...
         ######################################
         f = open(self.output_dir+'HDVP.txt', 'w')

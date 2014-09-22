@@ -30,6 +30,8 @@ plt.rc('legend',**{'fontsize':38})
 
 el = Ellipse((2,-1),0.5,0.5)
 
+colors = ['k', 'b', 'r', 'g', 'y', 'm']
+
 def mean_cdf(fname, xlab, ylab):
     mydict = dict()
     with open(fname, 'r') as f:
@@ -148,7 +150,6 @@ def mean_cdfs_multi(fname, xlab, ylab):
     f.close()
 
 def cdfs_one(fname, xlab, ylab):
-    colors = ['k', 'b', 'r', 'g', 'y', 'm']
 
     mydicts = dict() # type: dict
     f = open(fname, 'r')
@@ -196,13 +197,83 @@ def cdfs_one(fname, xlab, ylab):
 
 # TODO hard code bad
 def boxes(fname, xlab, ylab):
-    test = [[12,2,3,4,5,2,7,6,5,5,5,6],[12,13,11,15,1,25]]
+    my_lists = [] # list of lists
+    my_labels = []
+
+    f = open(fname, 'r')
+    for line in f:
+        my_list = []
+        xtick = line.split(':')[0]
+        my_labels.append(xtick)
+        terms = line.split(':')[1]
+        for term in terms.split('|'):
+            if term == '' or term == '\n':
+                continue
+            value = float(term.split(',')[1]) #TODO
+            my_list.append(value)
+        my_lists.append(my_list)
+    f.close()
     fig = plt.figure(figsize=(16, 12))
     ax = fig.add_subplot(111)
     
-    ax.boxplot(test, showmeans=True)
+    ax.boxplot(my_lists, labels=my_labels, showmeans=True)
+    ax.set_yscale('log')
+    
+    ax.set_ylabel(ylab)
+    ax.set_xlabel(xlab)
 
-    plotfname = fname.rpartition('/')[0] + '/' + 'test.pdf'
+    plotfname = fname.rpartition('/')[0] + '/' +\
+            fname.rpartition('/')[2] + '_boxplot.pdf'
+    plt.savefig(plotfname, bbox_inches='tight')
+    plt.close()
+
+def time_values_one(fname, xlab, ylab):
+    tmp_xlist = [] # list of lists
+    ylists = [] # list of lists
+    my_labels = []
+
+    f = open(fname, 'r')
+    for line in f:
+        tmp_dict = {}
+        xtick = line.split(':')[0]
+        my_labels.append(xtick)
+        terms = line.split(':')[1]
+        for term in terms.split('|'):
+            if term == '' or term == '\n':
+                continue
+            dt = float(term.split(',')[0])
+            value = float(term.split(',')[1])
+            tmp_dict[dt] = value
+
+        tmp_ylist = []
+        for key in sorted(tmp_dict):
+            if key not in tmp_xlist:
+                tmp_xlist.append(key)
+            tmp_ylist.append(tmp_dict[key])
+
+        ylists.append(tmp_ylist)
+            
+    f.close()
+
+    xlist = [datetime.datetime.fromtimestamp(dt) for dt in tmp_xlist]  # number to obj
+
+    fig = plt.figure(figsize=(16, 12))
+    ax = fig.add_subplot(111)
+    #hold(True)
+
+    count = 0
+    for ylist in ylists:
+        ax.plot(xlist, ylist, colors[count]+'-')
+        count += 1
+    ax.set_ylabel(ylab)
+    ax.set_yscale('log')
+    ax.set_xlabel(xlab)
+    myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
+    ax.xaxis.set_major_formatter(myFmt)
+    plt.xticks(rotation=45)
+
+    plotfname = fname.rpartition('/')[0] + '/' +\
+            fname.rpartition('/')[2] + '_timeseries.pdf'
     plt.savefig(plotfname, bbox_inches='tight')
     plt.close()
 
