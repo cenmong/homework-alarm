@@ -194,6 +194,18 @@ def cdfs_one(fname, xlab, ylab):
     plt.savefig(plotfname, bbox_inches='tight')
     plt.close()
 
+# TODO hard code bad
+def boxes(fname, xlab, ylab):
+    test = [[12,2,3,4,5,2,7,6,5,5,5,6],[12,13,11,15,1,25]]
+    fig = plt.figure(figsize=(16, 12))
+    ax = fig.add_subplot(111)
+    
+    ax.boxplot(test, showmeans=True)
+
+    plotfname = fname.rpartition('/')[0] + '/' + 'test.pdf'
+    plt.savefig(plotfname, bbox_inches='tight')
+    plt.close()
+
 def cdf_plot(granu, my_dict, describe):
     # my_dict DV value: exist time
     xlist = [0]

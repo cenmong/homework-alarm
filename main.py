@@ -28,13 +28,13 @@ for i in [0]:
     except:
         peak = None
 
-    #alarmplot(daterange[i][0], 10)
-    if TEST:
-        ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
-    else:
-        ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
+    alarmplot(daterange[i][0], 10)
+    #if TEST:
+        #ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
+    #else:
+        #ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
 
-    ana.parse_updates()
+    #ana.parse_updates()
     '''
     try:
         alarmplot(daterange[i][0], 10)

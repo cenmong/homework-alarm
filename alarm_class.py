@@ -26,13 +26,15 @@ def alarmplot(sdate, granu):
     # Good! DV > 0
     myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
             'prefix ratio (DV > 1)')
-    '''
-    for dl in self.dv_level:
+
+    dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
+    for dl in dv_level:
         # Number!(?)
         myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
-                'AS count', 'prefix ratio')
+                'AS count', 'prefix count')
     # Number!
     myplot.boxes(output_dir+'high_dv.txt', 'DV ranges', 'prefix number') # boxes in one figure (range)
+    '''
     myplot.time_values_one(output_dir+'high_dv.txt')
     myplot.time_value(output_dir+'announce_count.txt')
     myplot.time_value(output_dir+'withdraw_count.txt')
