@@ -16,22 +16,13 @@ def alarmplot(sdate, granu):
     output_dir = hdname+'output/'+sdate+'_'+str(granu)+'/'
     # Good! DV > 0
     myplot.mean_cdf(output_dir+'dv_distribution.txt', 'Dynamic Visibility',\
-            'prefix ratio (DV > 1)')
+            'prefix ratio (DV > 0)')
     # Good! Not range!
     myplot.mean_cdfs_multi(output_dir+'as_distribution.txt',\
             'AS count', 'prefix ratio (DV > x)') # in multiple figures
     # Good! Range!
     myplot.cdfs_one(output_dir+'prefix_length_cdf.txt', 'prefix length',\
             'prefix ratio (DV in ranges)') # CDF curves in one figure
-    # Good! DV > 0
-    myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
-            'prefix ratio (DV > 1)')
-
-    dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
-    for dl in dv_level:
-        # Number!(?)
-        myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
-                'AS count', 'prefix count')
     # Number!
     myplot.boxes(output_dir+'high_dv.txt', 'DV ranges', 'prefix number') # boxes in one figure (range)
     # Number!
@@ -43,6 +34,18 @@ def alarmplot(sdate, granu):
     myplot.time_value(output_dir+'update_count.txt')
     myplot.time_value(output_dir+'prefix_count.txt')
     '''
+    dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
+    try:
+        # Good! DV > 0
+        myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+                'prefix ratio (DV > 0)')
+
+        for dl in dv_level:
+            # Number!(?)
+            myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                    'AS count', 'prefix count')
+    except:
+        print 'Cannot plot comparison!'
     return 0
 
 class Alarm():
@@ -163,8 +166,7 @@ class Alarm():
         ##################################################
         self.compare = False
         if cdfbound != None:
-            self.compare = True
-
+            self.compare == True
             self.cdfbfr = dict()
             self.cdfaft = dict()
             self.as_bfr = dict()
@@ -440,11 +442,20 @@ class Alarm():
         # Record the most basic information
         #####################################################
         f = open(self.output_dir+'basic.txt', 'w')
-        f.write('Monitor #: '+str(self.mcount))
-        f.write('Monitor AS: '+str(self.m_as_m))
-        f.write('Monitor nation: '+str(self.m_nation_as))
-        f.write('# of AS: '+str(self.all_ascount))
-        f.write('# of prefix: '+str(self.all_pcount))
+        f.write('Monitor # '+str(self.mcount)+'\n')
+        f.write('Monitor AS '+str(len(self.m_as_m.keys()))+':'+str(self.m_as_m)+'\n')
+        f.write('Monitor nation '+str(len(self.m_nation_as.keys()))+':'+str(self.m_nation_as)+'\n')
+        f.write('# of AS: '+str(self.all_ascount)+'\n')
+        stub = 0
+        for asn in self.as2cc.keys():
+            if self.as2cc[asn] <= 1:
+                stub += 1
+        f.write('# of stub AS: '+str(stub)+'\n')
+        tmp_list = sorted(self.as2rank.iteritems(),\
+                key=operator.itemgetter(1), reverse=True)
+        rank_count = tmp_list[0][1]
+        f.write('# of ranks: '+str(rank_count)+'\n')
+        f.write('# of prefix: '+str(self.all_pcount)+'\n')
         f.close()
 
         ###################################################
@@ -551,7 +562,7 @@ class Alarm():
         # quantity of prefixes of high DV ranges in different dt
         # dv level:dt,count|dt,count|...\n dv level...
         #######################################################
-        print 'Recording quantity of HDVPs'
+        print 'Recording quantity of prefix of dv ranges'
         f = open(self.output_dir+'high_dv.txt', 'w')
         for dl in self.dvrange_dt_pfx.keys():
             f.write(str(dl)+':')
@@ -559,6 +570,18 @@ class Alarm():
                 f.write(str(dt)+','+str(self.dvrange_dt_pfx[dl][dt])+'|')
             f.write('\n')
 
+        f.close()
+
+        ###################################
+        # Plot prefix count of DV > XX
+        # dv level:dt,value|dt,value|...\n dv level...
+        ######################################
+        f = open(self.output_dir+'HDVP.txt', 'w')
+        for dl in self.dv_dt_hdvp.keys():
+            f.write(str(dl)+':')
+            for dt in self.dv_dt_hdvp[dl].keys():
+                f.write(str(dt)+','+str(self.dv_dt_hdvp[dl][dt])+'|')
+            f.write('\n')
         f.close()
 
         #################################################
@@ -628,22 +651,6 @@ class Alarm():
         f.close()
 
         #myplot.time_series_plot(self.granu, self.wpctg, 'withdraw_percentage')
-
-        ###################################
-        # Plot prefix count of DV > XX
-        # dv level:dt,value|dt,value|...\n dv level...
-        ######################################
-        f = open(self.output_dir+'HDVP.txt', 'w')
-        for dl in self.dv_level:
-            f.write(str(dl)+':')
-            for dt in self.dt_list:
-                try:
-                    value = self.dv_dt_hdvp[dl][dt]
-                except:
-                    value = 0
-                f.write(str(dt)+','+str(value)+'|')
-            f.write('\n')
-        f.close()
                 
         ###################################
         # Plot before and after event
@@ -723,9 +730,11 @@ class Alarm():
             pfx = item[0]
             asn = self.pfx_to_as(pfx)
             asrank = self.as_to_rank(asn)
+            ascc = self.as_to_cc(asn)
             nation = self.as_to_nation(asn)
             value = item[1]
-            f.write(pfx+','+str(value)+','+str(asn)+','+str(asrank)+','+str(nation)+'\n')
+            f.write(pfx+','+str(len(pfx))+','+str(value)+','+str(asn)+\
+                    ','+str(ascc)+','+str(asrank)+','+str(nation)+'\n')
         f.write('\n')
         f.close()
 
@@ -789,6 +798,12 @@ class Alarm():
         except:
             return -1
 
+
+    def as_to_cc(self, myasn):
+        try:
+            return self.as2cc[myasn]
+        except:
+            return -1
 
     def as_to_rank(self, myasn):
         try:

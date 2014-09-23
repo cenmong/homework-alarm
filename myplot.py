@@ -30,7 +30,15 @@ plt.rc('legend',**{'fontsize':38})
 
 el = Ellipse((2,-1),0.5,0.5)
 
-colors = ['k', 'b', 'r', 'g', 'y', 'm']
+colors = ['k', 'r', 'y', 'g', 'b', 'm']
+
+w_size = 12
+h_size = 8
+w_time_size = 16
+h_time_size = 8
+
+w_line = 2
+alpha_line = 0.8
 
 def mean_cdf(fname, xlab, ylab):
     mydict = dict()
@@ -75,10 +83,11 @@ def mean_cdf(fname, xlab, ylab):
     xmax = max(xlist)
     ymax = max(ylist_high)
 
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(w_size, h_size))
     ax = fig.add_subplot(111)
     ax.set_ylim([-0.1*ymax, 1.1*ymax])
     ax.set_xlim([-0.1*xmax, 1.02*xmax])
+    ax.tick_params(axis='y', pad=10)
     ax.set_ylabel(ylab)
     ax.set_xlabel(xlab)
     ax.plot(xlist, ylist, 'k-', label='$mean$')
@@ -135,10 +144,11 @@ def mean_cdfs_multi(fname, xlab, ylab):
         xmax = max(xlist)
         ymax = max(ylist_high)
 
-        fig = plt.figure(figsize=(16, 12))
+        fig = plt.figure(figsize=(w_size, h_size))
         ax = fig.add_subplot(111)
         ax.set_ylim([-0.1*ymax, 1.1*ymax])
         ax.set_xlim([-0.1*xmax, 1.02*xmax])
+        ax.tick_params(axis='y', pad=10)
         ax.set_ylabel(ylab)
         ax.set_xlabel(xlab)
         ax.plot(xlist, ylist, 'k-', label='$mean$')
@@ -180,20 +190,31 @@ def cdfs_one(fname, xlab, ylab):
             xlists[my_legend].append(key)
             ylists[my_legend].append(mydicts[my_legend][key])
 
-    tmp_legend = xlists.keys()[0]
-    xmax = max(xlists[tmp_legend])
-    ymax = max(ylists[tmp_legend])
+    xmax_list = []
+    ymax_list = []
+    for k in xlists.keys():
+        xmax_list.append(max(xlists[k]))
+        ymax_list.append(max(ylists[k]))
 
-    fig = plt.figure(figsize=(16, 12))
+    xmax = max(xmax_list)
+    ymax = max(ymax_list)
+
+    fig = plt.figure(figsize=(w_size, h_size))
     ax = fig.add_subplot(111)
     ax.set_ylim([-0.1*ymax, 1.1*ymax])
     ax.set_xlim([-0.1*xmax, 1.02*xmax])
     ax.set_ylabel(ylab)
+    ax.tick_params(axis='y', pad=10)
     ax.set_xlabel(xlab)
-    color_count = 0
+    count = 0
     for key in xlists.keys():
-        ax.plot(xlists[key], ylists[key], colors[color_count]+'-', label=key)
-        color_count += 1
+        if len(xlists) > 2:
+            ax.plot(xlists[key], ylists[key], colors[count]+'-',\
+                    linewidth=w_line, label=key, alpha=alpha_line)
+        else:
+            ax.plot(xlists[key], ylists[key], line_type[count],\
+                    linewidth=w_line, label=key, alpha=alpha_line)
+        count += 1
 
     lg = ax.legend(loc='best', shadow=False)
     lg.draw_frame(False)
@@ -220,13 +241,14 @@ def boxes(fname, xlab, ylab):
             my_list.append(value)
         my_lists.append(my_list)
     f.close()
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(w_size, h_size))
     ax = fig.add_subplot(111)
     
     ax.boxplot(my_lists, labels=my_labels, showmeans=True)
     ax.set_yscale('log')
     
     ax.set_ylabel(ylab)
+    ax.tick_params(axis='y', pad=10)
     ax.set_xlabel(xlab)
 
     plotfname = fname.rpartition('/')[0] + '/' +\
@@ -264,22 +286,31 @@ def time_values_one(fname, xlab, ylab):
 
     xlist = [datetime.datetime.fromtimestamp(dt) for dt in tmp_xlist]  # number to obj
 
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(w_time_size, h_time_size))
     ax = fig.add_subplot(111)
     #hold(True)
 
     count = 0
     for i in xrange(0, len(ylists)):
-        ax.plot(xlist, ylists[i], colors[count]+'-', label=my_labels[i])
+        ax.plot(xlist, ylists[i], colors[count]+'-',\
+                label=my_labels[i], linewidth=w_line, alpha=alpha_line)
         count += 1
-    lg = ax.legend(loc='best', shadow=False)
+
+    ax.xaxis.set_major_locator(HourLocator(byhour=None, interval=12, tz=None))
+    ax.xaxis.set_minor_locator(HourLocator(byhour=None, interval=2, tz=None))
+    ax.xaxis.set_tick_params(which='major', width=4, size=8)
+    ax.xaxis.set_tick_params(which='minor', width=2, size=4)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
+    myFmt = mpldates.DateFormatter('%H:00\n%b%d')
+    ax.xaxis.set_major_formatter(myFmt)
+
+    lg = ax.legend(loc='best', shadow=False, ncol=(len(my_labels)+1)/2)
     lg.draw_frame(False)
+    ax.tick_params(axis='y', pad=10)
     ax.set_ylabel(ylab)
     ax.set_yscale('log')
     ax.set_xlabel(xlab)
-    myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
-    ax.xaxis.set_major_formatter(myFmt)
-    plt.xticks(rotation=45)
 
     plotfname = fname.rpartition('/')[0] + '/' +\
             fname.rpartition('/')[2] + '_timeseries.pdf'
