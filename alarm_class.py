@@ -35,6 +35,11 @@ def alarmplot(sdate, granu):
     myplot.time_value(output_dir+'prefix_count.txt')
     '''
     dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
+    #myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+            #'prefix ratio (DV > 0)')
+    #for dl in dv_level:
+        #myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                #'AS count', 'prefix count')
     try:
         # Good! DV > 0
         myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
@@ -166,7 +171,7 @@ class Alarm():
         ##################################################
         self.compare = False
         if cdfbound != None:
-            self.compare == True
+            self.compare = True
             self.cdfbfr = dict()
             self.cdfaft = dict()
             self.as_bfr = dict()
@@ -363,20 +368,20 @@ class Alarm():
                             except:
                                 self.dv_dt_asn_pfx[dv_now][dt][asn] = 1
 
-                            if self.compare == True and dt == self.bfr_start:
+                            if self.compare and dt == self.bfr_start:
                                 try:
                                     self.as_bfr[dv_now][asn] += 1
                                 except:
                                     self.as_bfr[dv_now][asn] = 1
 
-                            if self.compare == True and dt == self.cdfbound:
+                            if self.compare and dt == self.cdfbound:
                                 try:
                                     self.as_aft[dv_now][asn] += 1
                                 except:
                                     self.as_aft[dv_now][asn] = 1
 
 
-                if self.compare == True:
+                if self.compare:
                     ### CDF comparison before and after event
                     if dt == self.bfr_start:
                         try:

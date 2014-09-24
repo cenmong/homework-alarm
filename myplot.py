@@ -40,6 +40,15 @@ h_time_size = 8
 w_line = 2
 alpha_line = 0.8
 
+def get_newname(fname, add):
+    dir = fname.rpartition('/')[0]
+    info = dir.rpartition('/')[2]
+    dir = dir + '/'
+    new_name = fname.rpartition('/')[2]
+    new_name = new_name.rpartition('.')[0]
+    new_name = new_name + '_'+add+'_'+info+'.pdf'
+    return dir + new_name
+
 def mean_cdf(fname, xlab, ylab):
     mydict = dict()
     with open(fname, 'r') as f:
@@ -97,8 +106,7 @@ def mean_cdf(fname, xlab, ylab):
     lg = ax.legend(loc='best', shadow=False)
     lg.draw_frame(False)
 
-    plotfname = fname.rpartition('/')[0] + '/' +  fname.rpartition('/')[2] + '.pdf'
-    plt.savefig(plotfname, bbox_inches='tight')
+    plt.savefig(get_newname(fname, 'mean_cdf'), bbox_inches='tight')
     plt.close()
 
 def mean_cdfs_multi(fname, xlab, ylab):
@@ -157,9 +165,7 @@ def mean_cdfs_multi(fname, xlab, ylab):
 
         lg = ax.legend(loc='best', shadow=False)
         lg.draw_frame(False)
-        plotfname = fname.rpartition('/')[0] + '/' +\
-                fname.rpartition('/')[2] + new_name + '.pdf'
-        plt.savefig(plotfname, bbox_inches='tight')
+        plt.savefig(get_newname(fname, new_name+'mean_cdf'), bbox_inches='tight')
         plt.close()
 
     f.close()
@@ -218,9 +224,7 @@ def cdfs_one(fname, xlab, ylab):
 
     lg = ax.legend(loc='best', shadow=False)
     lg.draw_frame(False)
-    plotfname = fname.rpartition('/')[0] + '/' +\
-            fname.rpartition('/')[2] + '.pdf'
-    plt.savefig(plotfname, bbox_inches='tight')
+    plt.savefig(get_newname(fname, 'cdfs'), bbox_inches='tight')
     plt.close()
 
 # TODO hard code bad
@@ -251,9 +255,7 @@ def boxes(fname, xlab, ylab):
     ax.tick_params(axis='y', pad=10)
     ax.set_xlabel(xlab)
 
-    plotfname = fname.rpartition('/')[0] + '/' +\
-            fname.rpartition('/')[2] + '_boxplot.pdf'
-    plt.savefig(plotfname, bbox_inches='tight')
+    plt.savefig(get_newname(fname, 'boxs'), bbox_inches='tight')
     plt.close()
 
 def time_values_one(fname, xlab, ylab):
@@ -312,9 +314,7 @@ def time_values_one(fname, xlab, ylab):
     ax.set_yscale('log')
     ax.set_xlabel(xlab)
 
-    plotfname = fname.rpartition('/')[0] + '/' +\
-            fname.rpartition('/')[2] + '_timeseries.pdf'
-    plt.savefig(plotfname, bbox_inches='tight')
+    plt.savefig(get_newname(fname, 'time_values'), bbox_inches='tight')
     plt.close()
 
 def cdf_plot(granu, my_dict, describe):
