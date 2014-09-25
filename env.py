@@ -3,9 +3,11 @@ from os.path import expanduser
 
 hdname = ''
 if os.path.isdir('/media/cm/'):
-    hdname = '/media/cm/4F4D-9698/'
+    #hdname = '/media/cm/4F4D-9698/'
+    hdname = '/media/cm/MyBook/'
 elif os.path.isdir('/media/sxr/'):
-    hdname = '/media/sxr/MyBook/'
+    #hdname = '/media/sxr/MyBook/'
+    hdname = '/media/sxr/4F4D-9698/'
 else:
     pass
 
@@ -18,7 +20,7 @@ collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
                      '20010901'), ('rrc07', 1, '20020501'),\
              ]
 
-# number of days in total 10:tsj 01:acer
+# number of days in total 10:acer 01:tsj
 daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2006-12-26 12:25:00', '', 'Earthquake\nhappened'),
             ('20081218', 4, 181, '2008 mediterranean cable cut 2', 1, 11,\

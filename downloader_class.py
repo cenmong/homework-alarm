@@ -355,5 +355,5 @@ class Downloader():
         return 0
 
 if __name__ == '__main__':
-    dl = Downloader([28])
+    dl = Downloader([24])
     dl.get_file()

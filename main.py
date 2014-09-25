@@ -2,8 +2,8 @@ from analyzer import *
 from env import *
 from alarm_class import *
 
-#TEST = False
-TEST = True
+TEST = False
+#TEST = True
 
 
 #cmlib.combine_slot_dvi()
@@ -12,7 +12,7 @@ TEST = True
 #dthres = 0.005785
 dthres = 0.002
 #for i in xrange(0,len(daterange)):
-for i in [0]:
+for i in [16,9]:
 
     if TEST:
         filelist = hdname+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
@@ -28,13 +28,13 @@ for i in [0]:
     except:
         peak = None
 
-    alarmplot(daterange[i][0], 10)
-    #if TEST:
-        #ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
-    #else:
-        #ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
+    #alarmplot(daterange[i][0], 10)
+    if TEST:
+        ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
+    else:
+        ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
 
-    #ana.parse_updates()
+    ana.parse_updates()
     '''
     try:
         alarmplot(daterange[i][0], 10)
