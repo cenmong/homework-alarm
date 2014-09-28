@@ -15,16 +15,16 @@ def alarmplot(sdate, granu):
 
     output_dir = hdname+'output/'+sdate+'_'+str(granu)+'/'
     # Good! DV > 0
-    myplot.mean_cdf(output_dir+'dv_distribution.txt', 'Dynamic Visibility',\
-            'prefix ratio (DV > 0)')
+    myplot.mean_cdf(output_dir+'dv_distribution.txt', 'Dynamic Visibility (%)',\
+            '% of prefix (DV > 0)')
     # Good! Not range!
     myplot.mean_cdfs_multi(output_dir+'as_distribution.txt',\
             'AS count', 'prefix ratio (DV > x)') # in multiple figures
     # Good! Range!
     myplot.cdfs_one(output_dir+'prefix_length_cdf.txt', 'prefix length',\
-            'prefix ratio (DV in ranges)') # CDF curves in one figure
+            '% of prefix (DV in range)') # CDF curves in one figure
     # Number!
-    myplot.boxes(output_dir+'high_dv.txt', 'DV ranges', 'prefix number') # boxes in one figure (range)
+    myplot.boxes(output_dir+'high_dv.txt', 'DV range', 'prefix quantity') # boxes in one figure (range)
     # Number!
     myplot.time_values_one(output_dir+'HDVP.txt', 'time', 'prefix quantity')
     myplot.time_values_one(output_dir+'high_dv.txt', 'time', 'prefix quantity')

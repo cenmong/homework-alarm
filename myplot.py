@@ -25,20 +25,21 @@ line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
 font = {
     #'weight': 'bold',
     'size': 38,}
+
 matplotlib.rc('font', **font)
-plt.rc('legend',**{'fontsize':38})
+plt.rc('legend',**{'fontsize':28})
 
 el = Ellipse((2,-1),0.5,0.5)
 
-colors = ['k', 'r', 'y', 'g', 'b', 'm']
+colors = ['r', 'b', 'g', 'y', 'm', 'k']
 
 w_size = 12
 h_size = 8
-w_time_size = 16
-h_time_size = 8
+w_time_size = 24
+h_time_size = 6
 
 w_line = 2
-alpha_line = 0.8
+alpha_line = 0.7
 
 def get_newname(fname, add):
     dir = fname.rpartition('/')[0]
@@ -46,8 +47,16 @@ def get_newname(fname, add):
     dir = dir + '/'
     new_name = fname.rpartition('/')[2]
     new_name = new_name.rpartition('.')[0]
-    new_name = new_name + '_'+add+'_'+info+'.pdf'
+    new_name = new_name + '_'+add+'_'+info
+    new_name = new_name.replace('.', 'dot')
+    new_name = new_name + '.pdf'
     return dir + new_name
+
+def to_percentage(my_list):
+    tmplist = []
+    for item in my_list:
+        tmplist.append(item*100)
+    return tmplist
 
 def mean_cdf(fname, xlab, ylab):
     mydict = dict()
@@ -88,6 +97,13 @@ def mean_cdf(fname, xlab, ylab):
         ylist.append(mydict[key][0])
         ylist_low.append(mydict[key][0]-mydict[key][1])
         ylist_high.append(mydict[key][0]+mydict[key][1])
+
+
+    ylist = to_percentage(ylist)
+    ylist_low = to_percentage(ylist_low)
+    ylist_high = to_percentage(ylist_high)
+
+    xlist = to_percentage(xlist)
 
     xmax = max(xlist)
     ymax = max(ylist_high)
@@ -149,8 +165,21 @@ def mean_cdfs_multi(fname, xlab, ylab):
             ylist_low.append(mydict[key][0]-mydict[key][1])
             ylist_high.append(mydict[key][0]+mydict[key][1])
 
-        xmax = max(xlist)
+        ylist = to_percentage(ylist)
+        ylist_low = to_percentage(ylist_low)
+        ylist_high = to_percentage(ylist_high)
+
         ymax = max(ylist_high)
+
+        for i in xrange(0, len(ylist_high)):
+            if abs(ylist_high[i] - ymax) < 0.1:
+                break
+
+        xlist = xlist[:i]
+        xmax = max(xlist)
+        ylist = ylist[:i]
+        ylist_low = ylist_low[:i]
+        ylist_high = ylist_high[:i]
 
         fig = plt.figure(figsize=(w_size, h_size))
         ax = fig.add_subplot(111)
@@ -158,6 +187,10 @@ def mean_cdfs_multi(fname, xlab, ylab):
         ax.set_xlim([-0.1*xmax, 1.02*xmax])
         ax.tick_params(axis='y', pad=10)
         ax.set_ylabel(ylab)
+        if new_name == '0':
+            ax.set_ylabel('% of prefix (DV > 0)')
+        if new_name == '0.1':
+            ax.set_ylabel('% of prefix (DV > 10%)')
         ax.set_xlabel(xlab)
         ax.plot(xlist, ylist, 'k-', label='$mean$')
         ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\delta$')
@@ -176,6 +209,16 @@ def cdfs_one(fname, xlab, ylab):
     f = open(fname, 'r')
     for line in f:
         my_legend = line.split(':')[0]
+        if my_legend == '0':
+            my_legend = r'$[0,5\%]$'
+        if my_legend == '0.05':
+            my_legend = r'$[5\%,10\%]$'
+        if my_legend == '0.1':
+            my_legend = r'$[10\%,15\%]$'
+        if my_legend == '0.15':
+            my_legend = r'$[15\%,20\%]$'
+        if my_legend == '0.2':
+            my_legend = r'$[20\%,1]$'
         mydicts[my_legend] = dict()
         items = line.split(':')[1]
         for item in items.split('|'): 
@@ -196,6 +239,9 @@ def cdfs_one(fname, xlab, ylab):
             xlists[my_legend].append(key)
             ylists[my_legend].append(mydicts[my_legend][key])
 
+    for key in ylists.keys():
+        ylists[key] = to_percentage(ylists[key])
+
     xmax_list = []
     ymax_list = []
     for k in xlists.keys():
@@ -209,6 +255,8 @@ def cdfs_one(fname, xlab, ylab):
     ax = fig.add_subplot(111)
     ax.set_ylim([-0.1*ymax, 1.1*ymax])
     ax.set_xlim([-0.1*xmax, 1.02*xmax])
+    if 'length' in fname:
+        ax.set_xlim([10, 1.02*xmax])
     ax.set_ylabel(ylab)
     ax.tick_params(axis='y', pad=10)
     ax.set_xlabel(xlab)
@@ -222,6 +270,7 @@ def cdfs_one(fname, xlab, ylab):
                     linewidth=w_line, label=key, alpha=alpha_line)
         count += 1
 
+    #lg = ax.legend(loc='best', shadow=False, ncol=(len(xlists)+2)/3)
     lg = ax.legend(loc='best', shadow=False)
     lg.draw_frame(False)
     plt.savefig(get_newname(fname, 'cdfs'), bbox_inches='tight')
@@ -235,8 +284,18 @@ def boxes(fname, xlab, ylab):
     f = open(fname, 'r')
     for line in f:
         my_list = []
-        xtick = line.split(':')[0]
-        my_labels.append(xtick)
+        my_legend = line.split(':')[0]
+        if my_legend == '0':
+            my_legend = '[0,\n5%]'
+        if my_legend == '0.05':
+            my_legend = '[5%,\n10%]'
+        if my_legend == '0.1':
+            my_legend = '[10%,\n15%]'
+        if my_legend == '0.15':
+            my_legend = '[15%,\n20%]'
+        if my_legend == '0.2':
+            my_legend = '[20%,\n1]'
+        my_labels.append(my_legend)
         terms = line.split(':')[1]
         for term in terms.split('|'):
             if term == '' or term == '\n':
@@ -259,7 +318,7 @@ def boxes(fname, xlab, ylab):
     plt.close()
 
 def time_values_one(fname, xlab, ylab):
-    tmp_xlist = [] # list of lists
+    xlists = [] # list of lists
     ylists = [] # list of lists
     my_labels = []
 
@@ -267,6 +326,17 @@ def time_values_one(fname, xlab, ylab):
     for line in f:
         tmp_dict = {}
         xtick = line.split(':')[0]
+
+        #TODO hard code
+        if xtick == '0' or xtick == '0.05':
+            continue
+        if xtick == '0.1':
+            xtick = r'$DV>10\%$'
+        if xtick == '0.15':
+            xtick = r'$DV>15\%$'
+        if xtick == '0.2':
+            xtick = r'$DV>20\%$'
+
         my_labels.append(xtick)
         terms = line.split(':')[1]
         for term in terms.split('|'):
@@ -276,25 +346,28 @@ def time_values_one(fname, xlab, ylab):
             value = float(term.split(',')[1])
             tmp_dict[dt] = value
 
+        tmp_xlist = []
         tmp_ylist = []
         for key in sorted(tmp_dict):
-            if key not in tmp_xlist:
-                tmp_xlist.append(key)
+            tmp_xlist.append(key)
             tmp_ylist.append(tmp_dict[key])
 
+        xlists.append(tmp_xlist)
         ylists.append(tmp_ylist)
             
     f.close()
 
-    xlist = [datetime.datetime.fromtimestamp(dt) for dt in tmp_xlist]  # number to obj
+    for i in xrange(0, len(xlists)):
+        xlists[i] = [datetime.datetime.fromtimestamp(dt) for dt in xlists[i]]  # number to obj
 
     fig = plt.figure(figsize=(w_time_size, h_time_size))
     ax = fig.add_subplot(111)
     #hold(True)
 
+
     count = 0
     for i in xrange(0, len(ylists)):
-        ax.plot(xlist, ylists[i], colors[count]+'-',\
+        ax.plot(xlists[i], ylists[i], colors[count]+'-',\
                 label=my_labels[i], linewidth=w_line, alpha=alpha_line)
         count += 1
 
@@ -304,15 +377,18 @@ def time_values_one(fname, xlab, ylab):
     ax.xaxis.set_tick_params(which='minor', width=2, size=4)
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
+    #ax.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+    ax.yaxis.get_major_formatter().set_powerlimits((0, 1))
     myFmt = mpldates.DateFormatter('%H:00\n%b%d')
     ax.xaxis.set_major_formatter(myFmt)
 
-    lg = ax.legend(loc='best', shadow=False, ncol=(len(my_labels)+1)/2)
+    #lg = ax.legend(loc='best', shadow=False, ncol=len(my_labels))
+    lg = ax.legend(loc='best', shadow=False)
     lg.draw_frame(False)
     ax.tick_params(axis='y', pad=10)
     ax.set_ylabel(ylab)
-    ax.set_yscale('log')
-    ax.set_xlabel(xlab)
+    #ax.set_yscale('log')
+    #ax.set_xlabel(xlab)
 
     plt.savefig(get_newname(fname, 'time_values'), bbox_inches='tight')
     plt.close()
