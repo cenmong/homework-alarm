@@ -48,7 +48,7 @@ def alarmplot(sdate, granu):
         for dl in dv_level:
             # Number!(?)
             myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
-                    'AS count', 'prefix count')
+                    'AS count', 'prefix quantity (DV>20%)')
     except:
         print 'Cannot plot comparison!'
     return 0
@@ -716,7 +716,7 @@ class Alarm():
                 f.close()
 
         ###########################################
-        # prefix DV > 15% for miltiple times ranking
+        # record prefix DV > 15% for miltiple times ranking
         #############################################
         f = open(self.output_dir + 'dup_pfx.txt', 'w')
         f.write('0.15:\n')

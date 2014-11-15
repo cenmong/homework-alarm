@@ -116,7 +116,7 @@ def mean_cdf(fname, xlab, ylab):
     ax.set_ylabel(ylab)
     ax.set_xlabel(xlab)
     ax.plot(xlist, ylist, 'k-', label='$mean$')
-    ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\delta$')
+    ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\sigma$')
     ax.plot(xlist, ylist_high, 'k--')
 
     lg = ax.legend(loc='best', shadow=False)
@@ -193,7 +193,7 @@ def mean_cdfs_multi(fname, xlab, ylab):
             ax.set_ylabel('% of prefix (DV > 10%)')
         ax.set_xlabel(xlab)
         ax.plot(xlist, ylist, 'k-', label='$mean$')
-        ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\delta$')
+        ax.plot(xlist, ylist_low, 'k--', label=r'$mean\pm\sigma$')
         ax.plot(xlist, ylist_high, 'k--')
 
         lg = ax.legend(loc='best', shadow=False)
@@ -210,15 +210,15 @@ def cdfs_one(fname, xlab, ylab):
     for line in f:
         my_legend = line.split(':')[0]
         if my_legend == '0':
-            my_legend = r'$[0,5\%]$'
+            my_legend = r'$(0,5\%]$'
         if my_legend == '0.05':
-            my_legend = r'$[5\%,10\%]$'
+            my_legend = r'$(5\%,10\%]$'
         if my_legend == '0.1':
-            my_legend = r'$[10\%,15\%]$'
+            my_legend = r'$(10\%,15\%]$'
         if my_legend == '0.15':
-            my_legend = r'$[15\%,20\%]$'
+            my_legend = r'$(15\%,20\%]$'
         if my_legend == '0.2':
-            my_legend = r'$[20\%,1]$'
+            my_legend = r'$(20\%,1]$'
         mydicts[my_legend] = dict()
         items = line.split(':')[1]
         for item in items.split('|'): 
@@ -256,12 +256,13 @@ def cdfs_one(fname, xlab, ylab):
     ax.set_ylim([-0.1*ymax, 1.1*ymax])
     ax.set_xlim([-0.1*xmax, 1.02*xmax])
     if 'length' in fname:
-        ax.set_xlim([10, 1.02*xmax])
+        ax.set_xlim([14, 30])
     ax.set_ylabel(ylab)
+    #ax.yaxis.get_major_formatter().set_powerlimits((0, 1))
     ax.tick_params(axis='y', pad=10)
     ax.set_xlabel(xlab)
     count = 0
-    for key in xlists.keys():
+    for key in sorted(xlists):
         if len(xlists) > 2:
             ax.plot(xlists[key], ylists[key], colors[count]+'-',\
                     linewidth=w_line, label=key, alpha=alpha_line)
@@ -286,15 +287,15 @@ def boxes(fname, xlab, ylab):
         my_list = []
         my_legend = line.split(':')[0]
         if my_legend == '0':
-            my_legend = '[0,\n5%]'
+            my_legend = '(0,\n5%]'
         if my_legend == '0.05':
-            my_legend = '[5%,\n10%]'
+            my_legend = '(5%,\n10%]'
         if my_legend == '0.1':
-            my_legend = '[10%,\n15%]'
+            my_legend = '(10%,\n15%]'
         if my_legend == '0.15':
-            my_legend = '[15%,\n20%]'
+            my_legend = '(15%,\n20%]'
         if my_legend == '0.2':
-            my_legend = '[20%,\n1]'
+            my_legend = '(20%,\n1]'
         my_labels.append(my_legend)
         terms = line.split(':')[1]
         for term in terms.split('|'):
