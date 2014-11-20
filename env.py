@@ -1,26 +1,24 @@
 import os
 from os.path import expanduser
 
-hdname = ''
-if os.path.isdir('/media/cm/'):
-    #hdname = '/media/cm/4F4D-9698/'
-    hdname = '/media/cm/MyBook/'
-elif os.path.isdir('/media/sxr/'):
-    #hdname = '/media/sxr/MyBook/'
-    hdname = '/media/sxr/4F4D-9698/'
-else:
-    pass
+hdname = '/media/usb/'
+#if os.path.isdir('/media/cm/'):
+    #hdname = '/media/cm/MyBook/'
+#elif os.path.isdir('/media/sxr/'):
+    #hdname = '/media/sxr/4F4D-9698/'
 
 homedir = expanduser('~') + '/'
 
 # 0: routeviews; 1: ripe ris
+# TODO rank them so I can easily choose part of them
 collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
             '20000801'), ('rrc03', 1, '20010201'),\
              ('rrc04', 1, '20010501'), ('rrc05', 1, '20010701'), ('rrc06', 1,\
                      '20010901'), ('rrc07', 1, '20020501'),\
              ]
 
-# number of days in total 10:acer 01:tsj
+# number of days in total
+# 10:westdata 01:seagate
 daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2006-12-26 12:25:00', '', 'Earthquake\nhappened'),
             ('20081218', 4, 181, '2008 mediterranean cable cut 2', 1, 11,\

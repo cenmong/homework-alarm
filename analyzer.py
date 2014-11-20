@@ -15,7 +15,7 @@ class Analyzer():
                 '.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
 
         try:
-            self.cl_list = cmlib.get_collector(sdate)  # the collectors this event has
+            self.cl_list = cmlib.get_collector(sdate)  # the collectors for this event
         except:
             self.cl_list = []
 
@@ -53,6 +53,8 @@ class Analyzer():
                 ff = ff.replace('\n', '').replace('archive.', '')
                 print ff
 
+                # TODO: add disk location ahead
+
                 # unpack the update file
                 subprocess.call('gunzip -c '+ff+' > '+ff.replace('txt.gz', 'txt'), shell=True)
 
@@ -83,7 +85,7 @@ class Analyzer():
                         lastline = line
 
                 f.close()
-                # remove the unpacked file to save space
+                # remove the unpacked file to save space (the unpacked one always remains)
                 os.remove(ff.replace('txt.gz', 'txt'))
 
                 try:
