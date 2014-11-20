@@ -41,15 +41,15 @@ class Downloader():
         fcomb.close()
         return 0
 
-    def parse_updates(self, sdate, cl_name): # all updates from a collectors
-        flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')  # .xx.txt.gz file name
+    # leaving only .xx.txt.gz file
+    def parse_update(self, listname): # all updates from a collectors
+        flist = open(listname, 'r')  # .bz2/gz file name
         for line in flist:
-            line = line.replace('\n', '')
-            if not os.path.exists(line):  # xx.txt.gz not exists, .bz2/.gz exists
-                print line
-                cmlib.parse_mrt(line.replace('.txt.gz', ''), line.replace('txt.gz', 'txt'))
-                cmlib.pack_gz(line.replace('txt.gz', 'txt'))
-                os.remove(line.replace('.txt.gz', ''))  # remove .bz2/.gz update files
+            line = line.split('|')[0]
+            if not os.path.exists(hdname+line+'.txt.gz'):  # xx.txt.gz(our goal) not exists, .bz2/.gz exists
+                cmlib.parse_mrt(line, line+'txt')
+                cmlib.pack_gz(line+'txt')
+                os.remove(line)  # remove .bz2/.gz update files
             else:  # xx.txt.gz exists
                 pass
         flist.close()
@@ -219,10 +219,10 @@ class Downloader():
 
                 flist.write(filelocation+filename+'|'+str(fsize)+'\n')  # .bz2/.gz file list
 
-        return hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name
+        return hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name # listname
 
 
-    def get_parse_update(self, listname):
+    def get_update(self, listname):
         f = open(listname, 'r')
         if TEST: # Just read several files when testing
             testcount = 0
@@ -265,16 +265,16 @@ class Downloader():
 
         return 0
 
+    ## update and RIB file formats are either .bz2/gz or .xx.txt.gz!
     def get_file(self):
         for order in self.order_list:
             for clctr in collectors:
                 listname = self.get_update_list(order, clctr)
-                ## update and RIB file formats are either .bz2/gz or .xx.txt.gz!
-                self.get_parse_update(listname)
-                print 'parsing updates...'
-                # TODO clctr
-                self.parse_updates(sdate, cl_name)
-                self.get_parse_rib(order, clctr)
+                self.get_update(listname)
+                self.parse_update(listname)
+                rib_location = self.get_parse_rib(order, clctr)
+                self.delete_reset(rib_location, listname) # should after RIB download and parse
+            self.combine_flist(sdate) # TODO change
 
         return 0
 
@@ -294,7 +294,6 @@ class Downloader():
         cmlib.make_dir(hdname+filelocation)
 
         sdate = daterange[order][0]
-        sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
 
         # for each event, we only download one RIB (on or near the sdate)
         rib_fname = ''
@@ -341,39 +340,37 @@ class Downloader():
 
         cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename)
 
-        return 0
+        return hdname + rib_fname # .bz2/.gz
 
 
-                print 'parsing RIB and getting peers...'
-                rib_location = hdname + rib_fname  # .bz2/.gz
-                peers = self.get_peers(rib_location)
-                print 'peers: ', peers
+    def delete_reset(self, rib_location, listname):
+        peers = self.get_peers(rib_location)
+        print 'peers: ', peers
+        
+        print 'determining table transfers start and end time for each peer...'
+        if TEST:
+            peers = peers[0:2]
+        for peer in peers:  # must process each peer one by one
+            peer = peer.rstrip()
+            print 'processing ',peer,'...'
+            subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
+                    listname+' -p '+peer+' > '+\
+                    hdname+'tmp/'+peer+'_result.txt', shell=True)
                 
-                print 'determining table transfers start and end time for each peer...'
-                if TEST:
-                    peers = peers[0:2]
-                for peer in peers:  # must process each peer one by one
-                    peer = peer.rstrip()
-                    print 'processing ',peer,'...'
-                    subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
-                            hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name+' -p '+peer+' > '+\
-                            hdname+'tmp/'+peer+'_result.txt', shell=True)
-                        
-                print 'delete updates caused by session reset for each peer...'
-                for peer in peers:
-                    # No reset from this peer, so nothing in the file
-                    try:
-                        if os.path.getsize(hdname+'tmp/'+peer+'_result.txt') == 0:
-                            continue
-                    except: # cannot find file
-                        continue
-                    print '\nculprit now: ', peer
-                    self.del_tabletran_updates(peer, sdate, cl_name, cl_type)
+        print 'delete updates caused by session reset for each peer...'
+        for peer in peers:
+            # No reset from this peer, so nothing in the file
+            try:
+                if os.path.getsize(hdname+'tmp/'+peer+'_result.txt') == 0:
+                    continue
+            except: # cannot find file
+                continue
+            print '\nculprit now: ', peer
+            self.del_tabletran_updates(peer, sdate, cl_name, cl_type)
 
-                # delete all rubbish in the end
-                subprocess.call('rm '+hdname+'tmp/*', shell=True)
-                                    
-            self.combine_flist(sdate)
+        # delete all rubbish in the end
+        subprocess.call('rm '+hdname+'tmp/*', shell=True)
+                            
         return 0
 
 if __name__ == '__main__':
