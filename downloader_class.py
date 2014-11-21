@@ -41,16 +41,17 @@ class Downloader():
         fcomb.close()
         return 0
 
-    # leaving only .xx.txt.gz file
-    def parse_update(self, listname): # all updates from a collectors
-        flist = open(listname, 'r')  # .bz2/gz file name
+    # result: leaving only .bz2/gz.txt.gz update files
+    def parse_update(self, listname): # all update files from one collectors/list
+        flist = open(listname, 'r')
         for line in flist:
             line = line.split('|')[0]
-            if not os.path.exists(hdname+line+'.txt.gz'):  # xx.txt.gz(our goal) not exists, .bz2/.gz exists
-                cmlib.parse_mrt(line, line+'txt')
-                cmlib.pack_gz(line+'txt')
-                os.remove(line)  # remove .bz2/.gz update files
-            else:  # xx.txt.gz exists
+            line = line.replace('.txt.gz', '') # get the original .bz2/gz file name
+            if not os.path.exists(hdname+line+'.txt.gz'):
+                cmlib.parse_mrt(line, line+'txt') # .bz2/gz => .bz2/gz.txt
+                cmlib.pack_gz(line+'txt') # .bz2/gz.txt => .bz2/gz.txt.gz
+                os.remove(line)  # remove the original .bz2/.gz file
+            else:  # bz2/gz.txt.gz file already exists
                 pass
         flist.close()
         return 0
@@ -129,17 +130,11 @@ class Downloader():
         f_results.close()
         return 0
 
-    def get_peers(self, rib_location): # should end with .bz2/.gz
-        print rib_location
+    def get_peers(self, rib_comp_loc): # file name end with .bz2/gz.txt.gz
         peers = []
-        # get .txt
-        if os.path.exists(rib_location+'.txt.gz'):  # .xx.txt.gz file exists
-            subprocess.call('gunzip '+rib_location+'.txt.gz', shell=True)  # unpack                        
-        elif os.path.exists(rib_location):  # .bz2/.gz file exists
-            cmlib.parse_mrt(rib_location, rib_location+'.txt')
-            os.remove(rib_location)  # then remove .bz2/.gz
-        # read .txt
-        with open(rib_location+'.txt', 'r') as f:  # get peers from RIB
+        txtfile = rib_comp_loc.replace('txt.gz', 'txt')
+        subprocess.call('gunzip '+rib_comp_loc, shell=True)
+        with open(txtfile, 'r') as f:  # get peers from RIB
             for line in f:
                 try:
                     addr = line.split('|')[3]
@@ -148,9 +143,10 @@ class Downloader():
                 except:
                     pass
         f.close()
+
         # compress RIB into .gz
-        if not os.path.exists(rib_location+'.txt.gz'):
-            cmlib.pack_gz(rib_location+'.txt')
+        if not os.path.exists(rib_comp_loc):
+            cmlib.pack_gz(txtfile)
 
         return peers
 
@@ -188,18 +184,18 @@ class Downloader():
         flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
 
         for ym in yearmonth:
-            filelocation = ''
+            web_location = ''
             if cl_type == 0:
-                #filelocation = 'archive.routeviews.org/' +\
-                filelocation = 'routeviews.org/' +\
+                #web_location = 'archive.routeviews.org/' +\
+                web_location = 'routeviews.org/' +\
                         cl_name + '/bgpdata/' + ym + '/UPDATES/'
-                filelocation = filelocation.replace('//', '/')  # when name is ''
-                webraw = cmlib.get_weblist('http://' + filelocation)
+                web_location = web_location.replace('//', '/')  # when name is ''
+                webraw = cmlib.get_weblist('http://' + web_location)
             else:
-                filelocation = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
-                webraw = cmlib.get_weblist('http://' + filelocation)
+                web_location = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
+                webraw = cmlib.get_weblist('http://' + web_location)
 
-            cmlib.make_dir(hdname+filelocation)
+            cmlib.make_dir(hdname+web_location)
 
             for line in webraw.split('\n'):
                 if not 'updates' in line or line == '' or line == '\n':
@@ -216,8 +212,8 @@ class Downloader():
                 # check whether its datetime in our range
                 if int(filedate) < int(sdate) or int(filedate) > int(edate):
                     continue
-
-                flist.write(filelocation+filename+'|'+str(fsize)+'\n')  # .bz2/.gz file list
+                # .bz2/gz.txt.gz file list
+                flist.write(web_location+filename+'.txt.gz|'+str(fsize)+'\n')
 
         return hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name # listname
 
@@ -228,33 +224,36 @@ class Downloader():
             testcount = 0
         for line in f:
             line = line.replace('\n', '')
-            updatefile = line.split('|')[0] # == filelocation + filename
-            filename = updatefile.split('/')[-1]
-            filelocation = updatefile.replace(filename, '') 
+            line = line.replace('.txt.gz', '') # for getting original .bz2/gz name
+            tmp = line.split('|')[0] # == web location + filename
+            filename = tmp.split('/')[-1]
+            web_location = tmp.replace(filename, '') 
             fsize = int(line.split('|')[1])
 
             # remove existing xx.txt file to make things clearer
             try:
-                os.remove(updatefile+'.txt')
+                os.remove(web_location+filename+'.txt')
             except:
                 pass
 
-            if os.path.exists(updatefile+'.txt.gz'): # parsed file exists
-                if os.path.getsize(updatefile+'.txt.gz') > 0.1 * fsize: # size OK
-                    if os.path.exists(updatefile):  # .bz2/.gz useless anymore
-                        os.remove(updatefile)
+            # consequence: ???.bz2/.gz or ???.bz2/gz.txt.gz
+
+            if os.path.exists(web_location+filename+'.txt.gz'): # parsed file exists
+                if os.path.getsize(web_location+filename+'.txt.gz') > 0.1 * fsize: # size OK
+                    if os.path.exists(web_location+filename):  # .bz2/.gz useless anymore
+                        os.remove(web_location+filename)
                     continue
                 else:
-                    os.remove(updatefile+'.txt.gz')
+                    os.remove(web_location+filename+'.txt.gz')
 
-            if os.path.exists(updatefile): # original file exists
-                if os.path.getsize(updatefile) > 0.95 * fsize: # size OK
+            if os.path.exists(web_location+filename): # original file exists
+                if os.path.getsize(web_location+filename) > 0.95 * fsize: # size OK
                     continue
                 else:
-                    os.remove(updatefile)
+                    os.remove(web_location+filename)
 
-            cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename) 
-            print 'Downloading ' + 'http://'+filelocation
+            cmlib.force_download_file('http://'+web_location, hdname+web_location, filename) 
+            print 'Downloading ' + 'http://'+web_location
 
             if TEST:
                 testcount += 1
@@ -272,8 +271,8 @@ class Downloader():
                 listname = self.get_update_list(order, clctr)
                 self.get_update(listname)
                 self.parse_update(listname)
-                rib_location = self.get_parse_rib(order, clctr)
-                self.delete_reset(rib_location, listname) # should after RIB download and parse
+                rib_comp_loc = self.get_parse_rib(order, clctr)
+                self.delete_reset(rib_comp_loc, listname) # should after RIB download and parse
             self.combine_flist(sdate) # TODO change
 
         return 0
@@ -282,7 +281,7 @@ class Downloader():
         cl_name = clctr[0]
         cl_type = clctr[1]
         if cl_type == 0:
-            #filelocation = 'archive.routeviews.org/' +\
+            #filelocation = 'archive.routeviews.org/' +\  # RV abandoned this
             filelocation = 'routeviews.org/' +\
                     cl_name + '/bgpdata/' + yearmonth[0] + '/RIBS/'
             filelocation = filelocation.replace('//', '/')  # when name is ''
@@ -292,11 +291,9 @@ class Downloader():
             webraw = cmlib.get_weblist('http://' + filelocation)
         
         cmlib.make_dir(hdname+filelocation)
-
         sdate = daterange[order][0]
 
         # for each event, we only download one RIB (on or near the sdate)
-        rib_fname = ''
         rib_list = webraw.split('\n')
         filter(lambda a: a != '', rib_list)
         filter(lambda a: a != '\n', rib_list)
@@ -311,40 +308,45 @@ class Downloader():
                 closest = diff
                 target_line = line
 
-        size = target_line.split()[-1]
+        size = target_line.split()[-1] # claimed RIB file size
         if size.isdigit():
             fsize = float(size)
         else:
             fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
 
         filename = target_line.split()[0]
-        print filename
-        origin_floc = hdname + filelocation + filename # RIB .bz2/.gz loc+name
+        complete_loc = hdname + web_location + filename # .bz2/.gz
 
         try:
-            os.remove(origin_floc+'.txt')
+            os.remove(complete_loc+'.txt')
         except:
             pass
 
-        rib_fname = filelocation + filename
-        if os.path.exists(origin_floc+'.txt.gz'): 
-            if os.path.getsize(origin_floc+'.txt.gz') > 0.1 * fsize:
-                if os.path.exists(origin_floc):  # .bz2/.gz useless anymore
-                    os.remove(origin_floc)
+        if os.path.exists(complete_loc+'.txt.gz'): 
+            if os.path.getsize(complete_loc+'.txt.gz') > 0.1 * fsize:
+                if os.path.exists(complete_loc):  # .bz2/.gz useless anymore
+                    os.remove(complete_loc)
+                return complete_loc+'.txt.gz'
             else:
-                os.remove(origin_floc+'.txt.gz')
+                os.remove(complete_loc+'.txt.gz') # too small to be complete
+                cmlib.force_download_file('http://'+web_location, hdname+web_location, filename)
 
-        if os.path.exists(origin_floc): 
-            if os.path.getsize(origin_floc) <= 0.9 * fsize:
-                os.remove(origin_floc)
+        if os.path.exists(complete_loc): 
+            if os.path.getsize(complete_loc) <= 0.9 * fsize:
+                os.remove(complete_loc)
+                cmlib.force_download_file('http://'+web_location, hdname+web_location, filename)
+            else:
+                pass
 
-        cmlib.force_download_file('http://'+filelocation, hdname+filelocation, filename)
+        cmlib.parse_mrt(complete_loc, complete_loc+'.txt')
+        os.remove(complete_loc)  # then remove .bz2/.gz
+        cmlib.pack_gz(complete_loc+'.txt')
 
-        return hdname + rib_fname # .bz2/.gz
+        return complete_loc+'.txt.gz'
 
 
-    def delete_reset(self, rib_location, listname):
-        peers = self.get_peers(rib_location)
+    def delete_reset(self, rib_comp_loc, listname):
+        peers = self.get_peers(rib_comp_loc)
         print 'peers: ', peers
         
         print 'determining table transfers start and end time for each peer...'
@@ -353,7 +355,7 @@ class Downloader():
         for peer in peers:  # must process each peer one by one
             peer = peer.rstrip()
             print 'processing ',peer,'...'
-            subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_location+'.txt.gz'+' -ul '+\
+            subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
                     listname+' -p '+peer+' > '+\
                     hdname+'tmp/'+peer+'_result.txt', shell=True)
                 
