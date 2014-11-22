@@ -51,15 +51,23 @@ class Analyzer():
             filelist = open(self.filelist, 'r')
             for ff in filelist:
                 ff = ff.replace('\n', '').replace('archive.', '')
-                print ff
-
-                # TODO: add disk location ahead
+                ff = ff.split('|')[0]
+                ff = hdname + ff
+                print 'Reading ' + ff
 
                 # unpack the update file
                 subprocess.call('gunzip -c '+ff+' > '+ff.replace('txt.gz', 'txt'), shell=True)
 
                 # get collector
-                cl = ff.split('/')[5]
+
+                attributes = ff.split('/') 
+                site_index = -1
+                for a in attributes:
+                    site_index += 1
+                    if a == 'data.ris.ripe.net' or a == 'routeviews.org':
+                        break
+
+                cl = ff.split('/')[site_index + 1]
                 if cl == 'bgpdata':  # route-views2, the special case
                     cl = ''
 

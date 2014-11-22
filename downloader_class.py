@@ -259,7 +259,7 @@ class Downloader():
                     os.remove(web_location+filename)
 
             cmlib.force_download_file('http://'+web_location, hdname+web_location, filename) 
-            print 'Downloading ' + 'http://'+web_location
+            print 'Downloading ' + 'http://'+web_location + filename
 
             if TEST:
                 testcount += 1
