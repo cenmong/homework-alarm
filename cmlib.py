@@ -69,6 +69,7 @@ def get_weblist(url):
             break
         except:
             pass
+
     return webraw
 
 def parse_mrt(old_loc_fname, new_loc_fname):

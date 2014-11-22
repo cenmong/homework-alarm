@@ -13,7 +13,8 @@ class Downloader():
         self.order_list = order_list
 
     # TODO not flexible
-    def combine_flist(self, sdate):
+    def combine_flist(self, order):
+        sdate = daterange[order][0]
         fnames = {}
         clist = cmlib.get_collector(sdate)
         for cl_name in clist:
@@ -35,6 +36,8 @@ class Downloader():
             flist.close()
         fnlist = sorted(fnames, key=fnames.get)
 
+        if os.path.exists(hdname+'metadata/'+sdate+'/updt_filelist_comb'):
+            os.remove(hdname+'metadata/'+sdate+'/updt_filelist_comb')
         fcomb = open(hdname+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
         for fn in fnlist:
             fcomb.write(fn+'\n')
@@ -154,7 +157,7 @@ class Downloader():
         try:
             if int(daterange[order][0]) < int(clctr[2]):
                 print 'error: this collector started too late'
-                continue
+                return -1
         except:  # usually when testing, clctr[2] may not be set
             pass
 
@@ -181,6 +184,8 @@ class Downloader():
             yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
         cmlib.make_dir(hdname+'metadata/'+sdate)
+        if os.path.exists(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name):
+            os.remove(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name)
         flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
 
         for ym in yearmonth:
@@ -214,6 +219,7 @@ class Downloader():
                     continue
                 # .bz2/gz.txt.gz file list
                 flist.write(web_location+filename+'.txt.gz|'+str(fsize)+'\n')
+                print web_location+filename+'.txt.gz|'+str(fsize)
 
         return hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name # listname
 
@@ -269,11 +275,13 @@ class Downloader():
         for order in self.order_list:
             for clctr in collectors:
                 listname = self.get_update_list(order, clctr)
-                self.get_update(listname)
-                self.parse_update(listname)
-                rib_comp_loc = self.get_parse_rib(order, clctr)
-                self.delete_reset(rib_comp_loc, listname) # should after RIB download and parse
-            self.combine_flist(sdate) # TODO change
+                if listname == -1: # fail
+                    continue
+                #self.get_update(listname)
+                #self.parse_update(listname)
+                #rib_comp_loc = self.get_parse_rib(order, clctr)
+                #self.delete_reset(rib_comp_loc, listname) # should after RIB download and parse
+            self.combine_flist(order)
 
         return 0
 
@@ -376,5 +384,5 @@ class Downloader():
         return 0
 
 if __name__ == '__main__':
-    dl = Downloader([24])
+    dl = Downloader([0])
     dl.get_file()
