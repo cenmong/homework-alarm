@@ -11,43 +11,43 @@ from env import *
 from supporter_class import *
 
 def alarmplot(sdate, granu):
-    print 'Plotting...'
+    print 'Plotting form output file...'
+    out_dir = hdname+'output/'+sdate+'_'+str(granu)+'/'
 
-    output_dir = hdname+'output/'+sdate+'_'+str(granu)+'/'
-    # Good! DV > 0
-    myplot.mean_cdf(output_dir+'dv_distribution.txt', 'Dynamic Visibility (%)',\
+    # For DV > 0
+    myplot.mean_cdf(out_dir+'dv_distribution.txt', 'Dynamic Visibility (%)',\
             '% of prefix (DV > 0)')
-    # Good! Not range!
-    myplot.mean_cdfs_multi(output_dir+'as_distribution.txt',\
+    # Not range
+    myplot.mean_cdfs_multi(out_dir+'as_distribution.txt',\
             'AS count', 'prefix ratio (DV > x)') # in multiple figures
-    # Good! Range!
-    myplot.cdfs_one(output_dir+'prefix_length_cdf.txt', 'prefix length',\
+    # Range
+    myplot.cdfs_one(out_dir+'prefix_length_cdf.txt', 'prefix length',\
             '% of prefix (DV in range)') # CDF curves in one figure
-    # Number!
-    myplot.boxes(output_dir+'high_dv.txt', 'DV range', 'prefix quantity') # boxes in one figure (range)
-    # Number!
-    myplot.time_values_one(output_dir+'HDVP.txt', 'time', 'prefix quantity')
-    myplot.time_values_one(output_dir+'high_dv.txt', 'time', 'prefix quantity')
+    # Number
+    myplot.boxes(out_dir+'high_dv.txt', 'DV range', 'prefix quantity') # boxes in one figure (range)
+    # Number
+    myplot.time_values_one(out_dir+'HDVP.txt', 'time', 'prefix quantity')
+    myplot.time_values_one(out_dir+'high_dv.txt', 'time', 'prefix quantity')
     '''
-    myplot.time_value(output_dir+'announce_count.txt')
-    myplot.time_value(output_dir+'withdraw_count.txt')
-    myplot.time_value(output_dir+'update_count.txt')
-    myplot.time_value(output_dir+'prefix_count.txt')
+    myplot.time_value(out_dir+'announce_count.txt')
+    myplot.time_value(out_dir+'withdraw_count.txt')
+    myplot.time_value(out_dir+'update_count.txt')
+    myplot.time_value(out_dir+'prefix_count.txt')
     '''
     dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
-    #myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+    #myplot.cdfs_one(out_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
             #'prefix ratio (DV > 0)')
     #for dl in dv_level:
-        #myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+        #myplot.cdfs_one(out_dir+'event_as_cdfs_'+str(dl)+'.txt',\
                 #'AS count', 'prefix count')
     try:
-        # Good! DV > 0
-        myplot.cdfs_one(output_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+        # For DV > 0
+        myplot.cdfs_one(out_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
                 'prefix ratio (DV > 0)')
 
         for dl in dv_level:
             # Number!(?)
-            myplot.cdfs_one(output_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+            myplot.cdfs_one(out_dir+'event_as_cdfs_'+str(dl)+'.txt',\
                     'AS count', 'prefix quantity (DV>20%)')
     except:
         print 'Cannot plot comparison!'
@@ -55,7 +55,7 @@ def alarmplot(sdate, granu):
 
 class Alarm():
 
-    def __init__(self, granu, sdate, cl_list, dthres, cdfbound):
+    def __init__(self, granu, sdate, cl_list, cdfbound):
         ##############################################
         # For coordinating different collectors
         #################################################
@@ -79,7 +79,6 @@ class Alarm():
         ############################
         self.sdate = sdate # Starting date
         self.granu = granu  # Time granularity in minutes
-        self.dthres = dthres # detection threshold, also known as \theta_d
         
         self.dt_list = list() # the list of datetime
         self.peerlist = dict() # dt: monitor list
@@ -90,14 +89,15 @@ class Alarm():
         self.wpctg = dict() # dt: withdrawal percentage 
 
         spt = Supporter(sdate)
-        self.pfx2as = spt.get_pfx2as_trie()  # all prefixes to AS in a trie
-        self.as2nation = spt.get_as2nation_dict() # all ASes to origin nation (latest)
-        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS count
-        self.all_pcount = cmlib.get_all_pcount(self.sdate) # DV >= 0
-        self.all_pcount_lzero = 0 # DV > 0
-        self.as2cc = spt.get_as2cc_dict()  # all ASes to size of customer cones
+        self.pfx2as = spt.get_pfx2as_trie() # all prefixes mappingg to AS
+        self.as2nation = spt.get_as2nation_dict() # all ASes mapping to nation (latest info)
 
-        self.as2rank = dict() # AS:rank by customer cone
+        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS quantity
+        self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix quantity
+        self.all_pcount_lzero = 0 # quantity of prefixes having DV > 0
+        self.as2cc = spt.get_as2cc_dict()  # all ASes mapped to sizes of customer cones
+
+        self.as2rank = dict() # All ASes mapped to rank (according to customer cone size)
         pre_value = 999999
         rank = 0 # number (of ASes whose CC is larger) + 1
         buffer = 0 # number (of ASes having the same CC size) - 1
@@ -107,7 +107,7 @@ class Alarm():
                 pre_value = item[1]
                 self.as2rank[item[0]] = rank
                 buffer = 0
-            else: # item[1] == pre_value
+            else: # item[1] (cc size) == pre_value
                 buffer += 1
                 self.as2rank[item[0]] = rank
 
@@ -141,9 +141,10 @@ class Alarm():
         print 'monitor AS count:', self.m_ascount
         self.m_nationcount = len(self.m_nation_as.keys())
         print 'monitor nation count:', self.m_nationcount
-        print 'nations:', self.m_nation_as.keys()
+        print 'monitor nations:', self.m_nation_as.keys()
 
 
+        # TODO not flexible
         self.dv_level = [0, 0.05, 0.1, 0.15, 0.2]
         ###################################################
         # Coarser DV values
@@ -164,7 +165,7 @@ class Alarm():
 
         
         # only record DV > 0.15
-        self.dup_trie = patricia.trie(None) # Enough memory for this?
+        self.dup_trie = patricia.trie(None) # TODO Enough memory for this?
 
         ###################################################
         # CDFs for the slot before and after the cdfbound (HDVP peak)
@@ -242,7 +243,7 @@ class Alarm():
         if ':' in attr[5]: # IPv6 # TODO: should put in analyzer
             return -1
 
-        if len(attr[5]) == 1: # I don't know why they exist
+        if len(attr[5]) == 1: # I don't know why this exists
             return -1
 
         intdt = int(attr[1])
@@ -413,31 +414,6 @@ class Alarm():
             self.wpctg[dt] = float(self.wcount[dt]) / float(self.ucount[dt])
 
         return 0
-
-    def direct_plot(self, dthres, soccur, eoccur, desc): # this is called before everybody!
-        # polt from intial data directly
-        # get name of the interested data and divide into categories according
-        # to diffrent polting needs
-        array1 = []
-        array2 = []
-        array3 = []
-        array1.append(self.dvi_desc) # the DVI we've decided
-        array2.append('update_count')
-        array2.append('prefix_count')
-        array3.append('CDF')
-
-        # Now, let's rock and roll
-        for name in array1:
-            myplot.direct_ts_plot(self.granu,\
-                    name, dthres,\
-                    soccur, eoccur, desc)
-        for name in array2:
-            myplot.direct_ts_plot(self.granu,\
-                    name, dthres,\
-                    soccur, eoccur, desc)
-        for name in array3:
-            myplot.direct_cdf_plot(self.granu,\
-                    name)
 
     def output(self):
         for dt in self.pfxcount[0].keys():
