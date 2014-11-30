@@ -5,16 +5,16 @@ from alarm_class import *
 #TEST = False
 TEST = True
 
-
 #cmlib.combine_slot_dvi()
 #cmlib.combine_ht()
 #cmlib.combine_cdf()
+
 #dthres = 0.005785
-dthres = 0.002
-#for i in xrange(0,len(daterange)):
+granu = 10 # granularity (in minutes)
+
 for i in [0]:
 
-    if TEST: # shorter list (some events, e.g., 0)
+    if TEST: # read a shorter list for testing (only for events 0)
         filelist = hdname+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
     else:
         filelist = hdname+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
@@ -28,24 +28,22 @@ for i in [0]:
     except:
         peak = None
 
-    #alarmplot(daterange[i][0], 10) # Directly plot from existent data
+    #alarmplot(daterange[i][0], granu) # Directly plot from existent data
     # If no existent data, manually uncomment the following 5 lines
     if TEST:
-        ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
+        ana = Analyzer(filelist, granu, daterange[i][0], '2006-12-25 00:40:00')
     else:
-        ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
+        ana = Analyzer(filelist, granu, daterange[i][0], peak)
     ana.parse_updates()
 
     ''' This is the ideal way, totally automatic
     try:
-        alarmplot(daterange[i][0], 10)
+        alarmplot(daterange[i][0], granu)
     except:
         if TEST:
-            ana = Analyzer(filelist, 10, daterange[i][0], dthres, '2006-12-25 00:40:00')
+            ana = Analyzer(filelist, granu, daterange[i][0], '2006-12-25 00:40:00')
         else:
-            ana = Analyzer(filelist, 10, daterange[i][0], dthres, peak)
+            ana = Analyzer(filelist, granu, daterange[i][0], peak)
 
         ana.parse_updates()
-
-        pass
     '''

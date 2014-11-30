@@ -17,8 +17,12 @@ collectors = [('', 0, '20011101'), ('rrc00', 1, '19991101'), ('rrc01', 1,\
                      '20010901'), ('rrc07', 1, '20020501'),\
              ]
 
-# number of days in total
-# 10:westdata 01:seagate
+# [4th parm] order (for easier coding)
+# [5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
+# [6th parm] event start date time
+# [7th parm] (opt) event end date time
+# [8th parm] event discription (for plotting)
+# [9th parm] curve peak date time (for plotting)
 daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2006-12-26 12:25:00', '', 'Earthquake\nhappened'),
             ('20081218', 4, 181, '2008 mediterranean cable cut 2', 1, 11,\
