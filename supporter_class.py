@@ -10,17 +10,17 @@ class Supporter():
 
     def __init__(self, sdate):
         self.sdate = sdate
-        cmlib.make_dir(hdname+'support/')
+        cmlib.make_dir(datadir+'support/')
 
     def get_as2nation_file(self):
         print 'Calculating AS to nation file...'
-        if os.path.exists(hdname+'support/as2nation.txt'):
+        if os.path.exists(datadir+'support/as2nation.txt'):
             return 0
 
         # get the latest AS to nation mapping
         # this mapping seems stable across years
         rows = cmlib.get_weblist('http://bgp.potaroo.net/cidr/autnums.html')
-        f = open(hdname+'support/as2nation.txt', 'w')
+        f = open(datadir+'support/as2nation.txt', 'w')
         for line in rows.split('\n'):
             if 'AS' not in line:
                 continue
@@ -32,10 +32,10 @@ class Supporter():
         return 0
 
     def get_as2cc_file(self): # AS to customer cone
-        location = hdname + 'support/' + self.sdate + '/'
+        location = datadir + 'support/' + self.sdate + '/'
         cmlib.make_dir(location)
 
-        tmp = os.listdir(hdname+'support/'+self.sdate+'/')
+        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
         for line in tmp:
             if 'ppdc' in line:
                 return 0 # we already have a prefix2as file
@@ -68,10 +68,10 @@ class Supporter():
         return 0
 
     def get_pfx2as_file(self):
-        location = hdname + 'support/' + self.sdate + '/'
+        location = datadir + 'support/' + self.sdate + '/'
         cmlib.make_dir(location)
 
-        tmp = os.listdir(hdname+'support/'+self.sdate+'/')
+        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
         for line in tmp:
             if 'pfx2as' in line:
                 return 0 # we already have a prefix2as file
@@ -108,13 +108,13 @@ class Supporter():
             self.get_pfx2as_file()
 
             pfx2as_file = ''
-            tmp = os.listdir(hdname+'support/'+self.sdate+'/')
+            tmp = os.listdir(datadir+'support/'+self.sdate+'/')
             for line in tmp:
                 if 'pfx2as' in line:
                     pfx2as_file = line
                     break
 
-            f = open(hdname+'support/'+self.sdate+'/'+pfx2as_file)
+            f = open(datadir+'support/'+self.sdate+'/'+pfx2as_file)
             for line in f:
                 line = line.rstrip('\n')
                 attr = line.split()
@@ -130,8 +130,8 @@ class Supporter():
         else:
             # Extract info from RIB of the monitor route-views2
             mydate = self.sdate[0:4] + '.' + self.sdate[4:6]
-            rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
-            dir_list = os.listdir(hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
+            rib_location = datadir+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
+            dir_list = os.listdir(datadir+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
 
 
             for f in dir_list:
@@ -172,7 +172,7 @@ class Supporter():
         print 'Calculating AS to nation dict...'
         as2nation = {}
 
-        f = open(hdname+'support/as2nation.txt')
+        f = open(datadir+'support/as2nation.txt')
         for line in f:
             as2nation[int(line.split()[0])] = line.split()[1]
         f.close()
@@ -183,7 +183,7 @@ class Supporter():
         as2type = {}
 
         # TODO: consider datetime
-        f = open(hdname+'support/as2attr.txt')
+        f = open(datadir+'support/as2attr.txt')
         for line in f:
             line = line.strip('\n')
             as2type[int(line.split()[0])] = line.split()[-1]
@@ -196,14 +196,14 @@ class Supporter():
         print 'Calculating AS to customer cone dict...'
 
         as2cc_file = ''
-        tmp = os.listdir(hdname+'support/'+self.sdate+'/')
+        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
         for line in tmp:
             if 'ppdc' in line:
                 as2cc_file = line
                 break
 
         as2cc = {}
-        f = open(hdname+'support/'+self.sdate+'/'+as2cc_file)
+        f = open(datadir+'support/'+self.sdate+'/'+as2cc_file)
         for line in f:
             if line == '' or line == '\n':
                 continue
@@ -220,7 +220,7 @@ class Supporter():
     def get_nation2cont_dict(self):
         nation2cont == {}
 
-        f = open(hdname+'support/continents.txt')
+        f = open(datadir+'support/continents.txt')
         for line in f:
             line = line.strip('\n')
             nation2cont[line.split(',')[0]] = line.split(',')[1]

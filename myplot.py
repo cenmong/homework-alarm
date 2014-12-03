@@ -415,12 +415,12 @@ def cdf_plot(granu, my_dict, describe):
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    cmlib.make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf')
+    cmlib.make_dir(datadir+'output/'+sdate+'_'+str(granu)+'/')
+    plt.savefig(datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf')
     plt.close()
 
     # Record plot data in a separate file for future use
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'/'+\
+    f = open(datadir+'output/'+sdate+'_'+str(granu)+'/'+\
             describe+'.txt', 'w')
     for i in xrange(0, len(xlist)):
         f.write(str(xlist[i])+','+str(ylist[i])+'\n')
@@ -448,12 +448,12 @@ def time_series_plot(granu, my_dict, describe):
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    cmlib.make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf')
+    cmlib.make_dir(datadir+'output/'+sdate+'_'+str(granu)+'/')
+    plt.savefig(datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf')
     plt.close()
 
     # Record plot data in a separate file for future use
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'/'+\
+    f = open(datadir+'output/'+sdate+'_'+str(granu)+'/'+\
             describe+'.txt', 'w')
     for i in xrange(0, len(dt)):
         f.write(str(dt[i])+','+str(value[i])+'\n')
@@ -492,13 +492,13 @@ def box_plot_grouped(granu, my_dict, describe):
 
     # make a dir according to datetime, granularity and h threshold
     sdate = describe.split('_')[0]
-    cmlib.make_dir(hdname+'output/'+sdate+'_'+str(granu)+'/')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf',\
+    cmlib.make_dir(datadir+'output/'+sdate+'_'+str(granu)+'/')
+    plt.savefig(datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'.pdf',\
             bbox_inches='tight')
     plt.close()
 
     # Record plot data in a separate file for future use
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'_'+'/'+\
+    f = open(datadir+'output/'+sdate+'_'+str(granu)+'_'+'/'+\
             describe+'.txt', 'w')
     for k in my_dict.keys():
         f.write(str(k)+':')
@@ -515,7 +515,7 @@ def direct_ts_plot(granu, describe, thres, soccur, eoccur, des):
     sdate = describe.split('_')[0]
     count_peak = 0
     fname =\
-            hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.txt'
+            datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'.txt'
     dt = []
     value = []
     circlex = []
@@ -647,23 +647,23 @@ def direct_ts_plot(granu, describe, thres, soccur, eoccur, des):
     ax.tick_params(axis='y',pad=10)
     # save figure
     if 'dvi' in describe:
-        plt.savefig(hdname+'output/'+sdate+'.pdf',\
+        plt.savefig(datadir+'output/'+sdate+'.pdf',\
                 bbox_inches='tight')
     if 'update' in describe:
         if sdate == '20030813' or sdate == '20110310':
-            plt.savefig(hdname+'output/'+sdate+'update.pdf',\
+            plt.savefig(datadir+'output/'+sdate+'update.pdf',\
                     bbox_inches='tight')
     if 'prefix' in describe:
         if sdate == '20030813' or sdate == '20110310':
-            plt.savefig(hdname+'output/'+sdate+'prefix.pdf',\
+            plt.savefig(datadir+'output/'+sdate+'prefix.pdf',\
                     bbox_inches='tight')
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'_new.pdf')
+    plt.savefig(datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'_new.pdf')
     plt.close()
 
 def direct_cdf_plot(granu, describe):
     sdate = describe.split('_')[0]
     fname =\
-            hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'.txt'
+            datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'.txt'
     xlist = []
     ylist = []
     f = open(fname, 'r')
@@ -720,7 +720,7 @@ def direct_cdf_plot(granu, describe):
     #print 'p3',x3,y3
 
     sdate = describe.split('_')[0]
-    plt.savefig(hdname+'output/'+sdate+'_'+str(granu)+'/'+describe+'_new.pdf')
+    plt.savefig(datadir+'output/'+sdate+'_'+str(granu)+'/'+describe+'_new.pdf')
     plt.close()
 
 def combine_ts_diffgranu(fdict, xlabel, ylabel):
@@ -781,7 +781,7 @@ def combine_ts_diffgranu(fdict, xlabel, ylabel):
     # save figure
     ax.tick_params(axis='y',pad=10)
     ax.set_ylabel(ylabel)
-    plt.savefig(hdname+'output/combine_slot_'+flist[0]+'.pdf',\
+    plt.savefig(datadir+'output/combine_slot_'+flist[0]+'.pdf',\
             bbox_inches='tight')
     plt.close()
 
@@ -844,7 +844,7 @@ def combine_ts_samegranu(fdict, xlabel, ylabel):
     ax.set_ylabel(ylabel)
     ax.tick_params(axis='y',pad=10)
     # save figure
-    plt.savefig(hdname+'output/combine_ts_samegranu_'+flist[0]+'.pdf',\
+    plt.savefig(datadir+'output/combine_ts_samegranu_'+flist[0]+'.pdf',\
             bbox_inches='tight')
     plt.close()
 
@@ -895,5 +895,5 @@ def combine_cdf(fdict, xlabel, ylabel): # fdict {filename: legend}
     ax.set_ylim([-2,102])
     ax.set_xlim([-5,75])
     ax.tick_params(axis='y', pad=10)
-    plt.savefig(hdname+'output/combine_cdf_'+flist[0]+'.pdf', bbox_inches='tight')
+    plt.savefig(datadir+'output/combine_cdf_'+flist[0]+'.pdf', bbox_inches='tight')
     plt.close()

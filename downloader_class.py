@@ -23,7 +23,7 @@ class Downloader():
             else:
                 cl_type = 0
             # .bz2.txt.gz file name
-            flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
+            flist = open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
             for filename in flist:
                 filename = filename.replace('\n', '')
                 file_attr = filename.split('.')
@@ -36,9 +36,9 @@ class Downloader():
             flist.close()
         fnlist = sorted(fnames, key=fnames.get)
 
-        if os.path.exists(hdname+'metadata/'+sdate+'/updt_filelist_comb'):
-            os.remove(hdname+'metadata/'+sdate+'/updt_filelist_comb')
-        fcomb = open(hdname+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
+        if os.path.exists(datadir+'metadata/'+sdate+'/updt_filelist_comb'):
+            os.remove(datadir+'metadata/'+sdate+'/updt_filelist_comb')
+        fcomb = open(datadir+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
         for fn in fnlist:
             fcomb.write(fn+'\n')
         fcomb.close()
@@ -50,7 +50,7 @@ class Downloader():
         for line in flist:
             line = line.split('|')[0]
             line = line.replace('.txt.gz', '') # get the original .bz2/gz file name
-            if not os.path.exists(hdname+line+'.txt.gz'):
+            if not os.path.exists(datadir+line+'.txt.gz'):
                 cmlib.parse_mrt(line, line+'txt') # .bz2/gz => .bz2/gz.txt
                 cmlib.pack_gz(line+'txt') # .bz2/gz.txt => .bz2/gz.txt.gz
                 os.remove(line)  # remove the original .bz2/.gz file
@@ -60,7 +60,7 @@ class Downloader():
         return 0
 
     def del_tabletran_updates(self, peer, sdate, cl_name, cl_type):
-        f_results = open(hdname+'tmp/'+peer+'_result.txt', 'r')
+        f_results = open(datadir+'tmp/'+peer+'_result.txt', 'r')
         for line in f_results:  # get all affection info of this peer
             line = line.replace('\n', '')
             attr = line.split(',')
@@ -78,7 +78,7 @@ class Downloader():
             print 'from ', start_datetime, ' to ', end_datetime
 
             updatefile_list =\
-                    open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
+                    open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
             for updatefile in updatefile_list:  
                 updatefile = updatefile.replace('\n', '')
                 file_attr = updatefile.split('.')
@@ -101,7 +101,7 @@ class Downloader():
                         myfilename, shell=True)
                 # only .txt from now on!
                 oldfile = open(myfilename, 'r')
-                newfile = open(hdname+'tmp/'+myfilename.split('/')[-1], 'w')
+                newfile = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
 
                 counted_pfx = patricia.trie(None)
                 for updt in oldfile:  # loop over each update
@@ -124,7 +124,7 @@ class Downloader():
 
                 os.remove(updatefile)  # remove old .gz file
                 # compress .txt into txt.gz to replace the old file
-                subprocess.call('gzip -c '+hdname+'tmp/'+myfilename.split('/')[-1]+\
+                subprocess.call('gzip -c '+datadir+'tmp/'+myfilename.split('/')[-1]+\
                         ' > '+updatefile, shell=True)
                 size_after = os.path.getsize(updatefile)
                 print 'size(b):', size_before, ',size(a):', size_after
@@ -165,11 +165,11 @@ class Downloader():
         cl_type = clctr[1]
 
         if cl_type == 0: # RouteViews
-            hdname_detail = hdname + 'archive.routeviews.org/' + cl_name +\
+            datadir_detail = datadir + 'archive.routeviews.org/' + cl_name +\
                 '/bgpdata/'
-            hdname_detail = hdname_detail.replace('//', '/') # happens when cl = ''
+            datadir_detail = datadir_detail.replace('//', '/') # happens when cl = ''
         else:
-            hdname_detail = hdname + 'data.ris.ripe.net/' + cl_name + '/'
+            datadir_detail = datadir + 'data.ris.ripe.net/' + cl_name + '/'
 
         sdate = daterange[order][0]
         sdate_obj = datetime.datetime.strptime(sdate, '%Y%m%d').date()
@@ -183,10 +183,10 @@ class Downloader():
         if edate[0:4] + '.' + edate[4:6] not in yearmonth:
             yearmonth.append(edate[0:4] + '.' + edate[4:6])
 
-        cmlib.make_dir(hdname+'metadata/'+sdate)
-        if os.path.exists(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name):
-            os.remove(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name)
-        flist = open(hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
+        cmlib.make_dir(datadir+'metadata/'+sdate)
+        if os.path.exists(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name):
+            os.remove(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name)
+        flist = open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'w')  
 
         for ym in yearmonth:
             web_location = ''
@@ -200,7 +200,7 @@ class Downloader():
                 web_location = 'data.ris.ripe.net/'+cl_name+'/'+ym+'/' 
                 webraw = cmlib.get_weblist('http://' + web_location)
 
-            cmlib.make_dir(hdname+web_location)
+            cmlib.make_dir(datadir+web_location)
 
             for line in webraw.split('\n'):
                 if not 'updates' in line or line == '' or line == '\n':
@@ -221,7 +221,7 @@ class Downloader():
                 flist.write(web_location+filename+'.txt.gz|'+str(fsize)+'\n')
                 print web_location+filename+'.txt.gz|'+str(fsize)
 
-        return hdname+'metadata/'+sdate+'/updt_filelist_'+cl_name # listname
+        return datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name # listname
 
 
     def get_update(self, listname):
@@ -258,7 +258,7 @@ class Downloader():
                 else:
                     os.remove(web_location+filename)
 
-            cmlib.force_download_file('http://'+web_location, hdname+web_location, filename) 
+            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
             print 'Downloading ' + 'http://'+web_location + filename
 
             if TEST:
@@ -298,7 +298,7 @@ class Downloader():
             filelocation = 'data.ris.ripe.net/' + cl_name + '/' + yearmonth[0] + '/' 
             webraw = cmlib.get_weblist('http://' + filelocation)
         
-        cmlib.make_dir(hdname+filelocation)
+        cmlib.make_dir(datadir+filelocation)
         sdate = daterange[order][0]
 
         # for each event, we only download one RIB (on or near the sdate)
@@ -323,7 +323,7 @@ class Downloader():
             fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
 
         filename = target_line.split()[0]
-        complete_loc = hdname + web_location + filename # .bz2/.gz
+        complete_loc = datadir + web_location + filename # .bz2/.gz
 
         try:
             os.remove(complete_loc+'.txt')
@@ -337,12 +337,12 @@ class Downloader():
                 return complete_loc+'.txt.gz'
             else:
                 os.remove(complete_loc+'.txt.gz') # too small to be complete
-                cmlib.force_download_file('http://'+web_location, hdname+web_location, filename)
+                cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
 
         if os.path.exists(complete_loc): 
             if os.path.getsize(complete_loc) <= 0.9 * fsize:
                 os.remove(complete_loc)
-                cmlib.force_download_file('http://'+web_location, hdname+web_location, filename)
+                cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
             else:
                 pass
 
@@ -365,13 +365,13 @@ class Downloader():
             print 'processing ',peer,'...'
             subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
                     listname+' -p '+peer+' > '+\
-                    hdname+'tmp/'+peer+'_result.txt', shell=True)
+                    datadir+'tmp/'+peer+'_result.txt', shell=True)
                 
         print 'delete updates caused by session reset for each peer...'
         for peer in peers:
             # No reset from this peer, so nothing in the file
             try:
-                if os.path.getsize(hdname+'tmp/'+peer+'_result.txt') == 0:
+                if os.path.getsize(datadir+'tmp/'+peer+'_result.txt') == 0:
                     continue
             except: # cannot find file
                 continue
@@ -379,7 +379,7 @@ class Downloader():
             self.del_tabletran_updates(peer, sdate, cl_name, cl_type)
 
         # delete all rubbish in the end
-        subprocess.call('rm '+hdname+'tmp/*', shell=True)
+        subprocess.call('rm '+datadir+'tmp/*', shell=True)
                             
         return 0
 

@@ -87,7 +87,7 @@ def store_symbol_count(granu, my_dict, describe):
         ylist.append(item[1])
 
     sdate = describe.split('_')[0]
-    f = open(hdname+'output/'+sdate+'_'+str(granu)+'/'+\
+    f = open(datadir+'output/'+sdate+'_'+str(granu)+'/'+\
             describe+'-raw.txt', 'w')
     for i in xrange(0, len(xlist)):
         f.write(str(xlist[i])+'|ASN,'+str(ylist[i])+'|count\n')
@@ -127,7 +127,7 @@ def ip_to_binary(content, peer):  # can deal with ip addr and pfx
 
 def get_collector(sdate):
     clist = []
-    dir_list = os.listdir(hdname+'metadata/'+sdate+'/')
+    dir_list = os.listdir(datadir+'metadata/'+sdate+'/')
     for f in dir_list:
         if not 'filelist' in f:
             continue
@@ -157,8 +157,8 @@ def get_all_length(sdate):
     trie = patricia.trie(None)
 
     mydate = sdate[0:4] + '.' + sdate[4:6]
-    dir_list = os.listdir(hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
-    rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
+    dir_list = os.listdir(datadir+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
+    rib_location = datadir+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
     for f in dir_list:
         if not f.startswith('.'):
             rib_location = rib_location + f # if RIB is of the same month. That's OK.
@@ -207,21 +207,21 @@ def get_monitors(sdate):
     monitors = dict() # monitor ip: AS
     for c in clist:
         if c.startswith('rrc'):
-            rib_location = hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/'
-            dir_list_tmp = os.listdir(hdname+'data.ris.ripe.net/'+c+'/'+mydate+'/')
+            rib_location = datadir+'data.ris.ripe.net/'+c+'/'+mydate+'/'
+            dir_list_tmp = os.listdir(datadir+'data.ris.ripe.net/'+c+'/'+mydate+'/')
             dir_list = []
             for f in dir_list_tmp:
                 if f.startswith('bview'):
                     dir_list.append(f)
         else:
             if c == '':
-                rib_location = hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
+                rib_location = datadir+'routeviews.org/bgpdata/'+mydate+'/RIBS/'
                 dir_list =\
-                    os.listdir(hdname+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
+                    os.listdir(datadir+'routeviews.org/bgpdata/'+mydate+'/RIBS/')
             else:
                 rib_location = 'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/'
                 dir_list =\
-                    os.listdir(hdname+'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/')
+                    os.listdir(datadir+'routeviews.org/'+c+'/bgpdata/'+mydate+'/RIBS/')
 
         for f in dir_list:
             if not f.startswith('.'):
@@ -255,7 +255,7 @@ def get_monitors(sdate):
 
         print 'Monitor quantity by now: ', len(monitors.keys())
 
-    f = open(hdname+'metadata/sdate&peercount', 'a')
+    f = open(datadir+'metadata/sdate&peercount', 'a')
     f.write(sdate+' '+str(len(monitors.keys()))+'\n')
     f.close()
 
@@ -268,7 +268,7 @@ def get_all_pcount(sdate):
 
     dtlist = []
     pclist = []
-    floc = hdname + 'support/bgp-active.txt'
+    floc = datadir + 'support/bgp-active.txt'
     f = open(floc, 'r')
     for line in f:
         dt = line.split()[0]
@@ -302,7 +302,7 @@ def get_all_ascount(sdate):
 
     dtlist = []
     pclist = []
-    floc = hdname + 'support/bgp-as-count.txt'
+    floc = datadir + 'support/bgp-as-count.txt'
     f = open(floc, 'r')
     for line in f:
         dt = line.split()[0]

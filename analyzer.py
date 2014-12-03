@@ -45,7 +45,7 @@ class Analyzer():
             ff = ff.replace('\n', '')
             ff = ff.replace('archive.', '')
             ff = ff.split('|')[0]
-            ff = hdname + ff
+            ff = datadir + ff
             print 'Reading ' + ff + '...'
 
             # unpack the update file

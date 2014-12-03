@@ -12,7 +12,7 @@ from supporter_class import *
 
 def alarmplot(sdate, granu):
     print 'Plotting form output file...'
-    out_dir = hdname+'output/'+sdate+'_'+str(granu)+'/'
+    out_dir = datadir+'output/'+sdate+'_'+str(granu)+'/'
 
     # For DV > 0
     myplot.mean_cdf(out_dir+'dv_distribution.txt', 'Dynamic Visibility (%)',\
@@ -181,6 +181,8 @@ class Alarm():
             self.bfr_start = time_lib.mktime((self.cdfbound +\
                     datetime.timedelta(minutes=-(self.granu*2))).timetuple())
             self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
+            print self.cdfbound
+            print self.bfr_start
 
             for dl in self.dv_level:
                 self.as_bfr[dl] = dict() # dv: ASN: count
@@ -189,7 +191,7 @@ class Alarm():
         ###########################################
         # Output
         #############################################
-        self.output_dir = hdname+'output/'+self.sdate+'_'+str(self.granu)+'/'
+        self.output_dir = datadir+'output/'+self.sdate+'_'+str(self.granu)+'/'
         cmlib.make_dir(self.output_dir)
 
 
@@ -207,7 +209,7 @@ class Alarm():
 
         if is_end == False:
             if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # frequent
-                # e.g., aggregate everything <= 10:50 only when now > 11:00
+                # e.g., aggregate everything <= 10:50 only when everyone > 11:00
                 self.ceiling = new_ceil - 60 * self.granu
                 self.release_memo()
         else:
@@ -224,6 +226,8 @@ class Alarm():
             if self.floor <= dt <= self.ceiling:
                 rel_dt.append(dt)
 
+        print 'rel_dt:'
+        print str(rel_dt)
         self.aggregate(rel_dt)
 
         self.del_garbage()
@@ -249,7 +253,8 @@ class Alarm():
         intdt = int(attr[1])
         objdt = datetime.datetime.fromtimestamp(intdt).\
                 replace(second = 0, microsecond = 0) +\
-                datetime.timedelta(hours=-8) # note the 8H shift
+                datetime.timedelta(hours=-0) # no need for 8H shift. WHY???  TODO
+                #datetime.timedelta(hours=-8) # note the 8H shift
 
         # Reset date time to fit granularity
         mi = self.xia_qu_zheng(objdt.minute, 'm')
@@ -444,6 +449,8 @@ class Alarm():
         # dv,mean,deviation|dv ...
         #####################################################
         print 'Recording DV distribution...'
+        print 'self.dv_distribution:'
+        print str(self.dv_distribution)
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
             for dv in self.dv_distribution[dt].keys():
                 self.dv_distribution[dt][dv] = \
@@ -456,6 +463,10 @@ class Alarm():
             all_dv_list.append(float(i)/float(self.mcount))
 
         dv_mean_dev = dict() # dv: [mean, deviation] for all dt's
+        print 'all_dv_list:' 
+        print str(all_dv_list)
+        print 'self.dv_cdf.keys[][]:'
+        print str(self.dv_cdf)
         for dv in all_dv_list:
             values = [] # values of all dt's
             for dt in self.dv_cdf.keys():
@@ -638,6 +649,7 @@ class Alarm():
         # before:dv,count|dv...\n after:dv,count|dv...
         # before:AS count,value|AS count...\n after:AS count,value|...
         ######################################
+        print self.pfxcount
         if self.compare:
             #DV distribution
             f = open(self.output_dir+'dv_cdf_bfr_aft.txt', 'w')

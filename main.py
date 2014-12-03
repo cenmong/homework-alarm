@@ -15,9 +15,9 @@ granu = 10 # granularity (in minutes)
 for i in [0]:
 
     if TEST: # read a shorter list for testing (only for events 0)
-        filelist = hdname+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
+        filelist = datadir+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
     else:
-        filelist = hdname+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
+        filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
 
     soccur = daterange[i][6] # event occur start
     eoccur = daterange[i][7] # event occur end
