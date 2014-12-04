@@ -115,8 +115,12 @@ class Alarm():
         ###########################################
         # Get data about monitors
         ######################################
+        '''
         self.monitors = cmlib.get_monitors(self.sdate) # monitors ip: AS number
         self.mcount = len(self.monitors.keys())
+        '''
+        self.monitors = {'1.1.1.1':500}
+        self.mcount = 1
 
         self.m_as_m = dict() # AS number: monitor count
         self.m_nation_as = dict() # nation: AS (of monitors) count
@@ -181,8 +185,6 @@ class Alarm():
             self.bfr_start = time_lib.mktime((self.cdfbound +\
                     datetime.timedelta(minutes=-(self.granu*2))).timetuple())
             self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
-            print self.cdfbound
-            print self.bfr_start
 
             for dl in self.dv_level:
                 self.as_bfr[dl] = dict() # dv: ASN: count
@@ -226,8 +228,6 @@ class Alarm():
             if self.floor <= dt <= self.ceiling:
                 rel_dt.append(dt)
 
-        print 'rel_dt:'
-        print str(rel_dt)
         self.aggregate(rel_dt)
 
         self.del_garbage()
@@ -449,8 +449,6 @@ class Alarm():
         # dv,mean,deviation|dv ...
         #####################################################
         print 'Recording DV distribution...'
-        print 'self.dv_distribution:'
-        print str(self.dv_distribution)
         for dt in self.dv_distribution.keys(): # dt: DV value: prefix count 
             for dv in self.dv_distribution[dt].keys():
                 self.dv_distribution[dt][dv] = \
@@ -463,10 +461,6 @@ class Alarm():
             all_dv_list.append(float(i)/float(self.mcount))
 
         dv_mean_dev = dict() # dv: [mean, deviation] for all dt's
-        print 'all_dv_list:' 
-        print str(all_dv_list)
-        print 'self.dv_cdf.keys[][]:'
-        print str(self.dv_cdf)
         for dv in all_dv_list:
             values = [] # values of all dt's
             for dt in self.dv_cdf.keys():
@@ -595,7 +589,10 @@ class Alarm():
                 total_pfx = 0
                 for dt in self.pfxcount_range[dl].keys():
                     total_pfx += self.pfxcount_range[dl][dt]
-                value = float(value) / total_pfx
+                if total_pfx != 0:
+                    value = float(value) / total_pfx
+                else:
+                    value = 0
                 f.write(str(k)+','+str(value)+'|')
             f.write('\n')
 
@@ -649,7 +646,6 @@ class Alarm():
         # before:dv,count|dv...\n after:dv,count|dv...
         # before:AS count,value|AS count...\n after:AS count,value|...
         ######################################
-        print self.pfxcount
         if self.compare:
             #DV distribution
             f = open(self.output_dir+'dv_cdf_bfr_aft.txt', 'w')
@@ -823,11 +819,13 @@ class Alarm():
             return False
 
     def set_now(self, cl, line):
-        self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
+        #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
+        self.cl_dt[cl][1] = int(line.split('|')[1]) # WHY not -8H any more?
         return 0
     
     def set_start(self, cl, first_line):
-        self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
+        #self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
+        self.cl_dt[cl][0] = int(first_line.split('|')[1])
         non_zero = True # True if all collectors have started
         for cl in self.cl_list:
             if self.cl_dt[cl][0] == 0:
