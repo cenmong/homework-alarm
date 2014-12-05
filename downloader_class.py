@@ -1,10 +1,17 @@
+# The downloading work should be de-coupled from other works, and should run alone.
+# While this code is mainly for downloading updates, we also download a RIB for 
+# 1) deleting reset; 2) get the monitors' info
+# TODO: when downloading multiple RIBs, use another mechanism other than this
+
 import cmlib
 import datetime
 import patricia
 import subprocess
+import logging
+logging.basicConfig(filename='download.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from env import *
-# TODO: change file name for RV when time < Feb, 2003.
+# XXX: change file name for RV when time < Feb, 2003.
 TEST = False
 
 class Downloader():
@@ -12,7 +19,7 @@ class Downloader():
     def __init__(self, order_list):
         self.order_list = order_list
 
-    # TODO not flexible
+    # FIXME not flexible
     def combine_flist(self, order):
         sdate = daterange[order][0]
         fnames = {}
@@ -260,6 +267,7 @@ class Downloader():
 
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
             print 'Downloading ' + 'http://'+web_location + filename
+            logging.info('Downloading ' + 'http://'+web_location + filename)
 
             if TEST:
                 testcount += 1
@@ -384,5 +392,16 @@ class Downloader():
         return 0
 
 if __name__ == '__main__':
+    '''
+    order_list = [0, 1]
+    collector_list = []
+    for order in order_list:
+        sdate = 
+        edate = 
+        for co in collector_list:
+            dl = Downloader(sdate, edate, co)
+            listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
+            dl.get_all_updates(listfile) # para: update list file location
+    '''
     dl = Downloader([0])
     dl.get_file()

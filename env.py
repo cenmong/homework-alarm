@@ -1,16 +1,12 @@
 from os.path import expanduser
 
-#if os.path.isdir('/media/cm/'):
-    #hdname = '/media/cm/MyBook/'
-#elif os.path.isdir('/media/sxr/'):
-    #hdname = '/media/sxr/4F4D-9698/'
-
 datadir = '/media/usb/'
 homedir = expanduser('~') + '/'
 
 # 0: routeviews; 1: ripe ris
 # TODO rank them so I can easily choose part of them
-collectors = [
+# FIXME name changed
+all_collectors = [
     ('', 0, '20011101'), 
     ('rrc00', 1, '19991101'), 
     ('rrc01', 1, '20000801'), 
@@ -27,7 +23,18 @@ collectors = [
 # [7th parm] (opt) event end date time
 # [8th parm] event discription (for plotting)
 # [9th parm] curve peak date time (for plotting)
-daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
+daterange = {
+    0:('20061225','20061228'), #taiwan cable cut | 11
+    1:('20081218','20081221'), #mediterranean cable cut 2 | 11
+    2:('20030813','20030816'), #east coast blackout | 11
+    3:('20050911','20050914'), #LA blackout | 11
+    4:('20050828','20050831'), #Hurricane Katrina | 11
+    5:('20080129','20080201'), #mediterranean cable cut 1 | 11
+    # TODO add other date ranges
+    27:('20141130','20141201'), # XXX test only
+}
+
+old_daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2006-12-26 12:25:00', '', 'Earthquake\nhappened'),
             ('20081218', 4, 181, '2008 mediterranean cable cut 2', 1, 11,\
                 '2008-12-19 07:28:00', '', 'First\ncable\ncut', '2008-12-19 07:30:00'),

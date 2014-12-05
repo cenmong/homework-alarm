@@ -5,7 +5,7 @@ import logging
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
 
-logging.basicConfig(filename='status.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 #cmlib.combine_slot_dvi()
 #cmlib.combine_ht()

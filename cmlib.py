@@ -230,25 +230,28 @@ def get_monitors(sdate):
         print 'Getting monitors/AS:', rib_location
 
         if rib_location.endswith('txt.gz'):
-            subprocess.call('yes n | gunzip '+rib_location, shell=True)  # unpack                        
+            # unpack (don't ask about overwirte existent ones)                         
+            subprocess.call('yes n | gunzip '+rib_location, shell=True)
             rib_location = rib_location.replace('.txt.gz', '.txt')
         elif not rib_location.endswith('txt'):  # .bz2/.gz file exists
             parse_mrt(rib_location, rib_location+'.txt')
             os.remove(rib_location)  # then remove .bz2/.gz
             rib_location = rib_location + '.txt'
-        # now rib file definitely ends with .txt  
-        with open(rib_location, 'r') as f:  # get monitors from RIB
-            for line in f:
-                try:
-                    addr = line.split('|')[3]
-                    asn = int(line.split('|')[4])
-                except: # incomplete entry may exsits
-                    continue
-                try: 
-                    test = monitors[addr] # whether already exists
-                except:
-                    monitors[addr] = asn
+
+        # Now tbe RIB file definitely ends with .txt  
+        f = open(rib_location, 'r')  # get monitors from RIB
+        for line in f:
+            try:
+                addr = line.split('|')[3]
+                asn = int(line.split('|')[4])
+            except: # incomplete entry may exsits
+                continue
+            try: 
+                test = monitors[addr] # whether already exists
+            except:
+                monitors[addr] = asn
         f.close()
+        
         # compress the RIB back into .gz
         if not os.path.exists(rib_location+'.gz'):
             pack_gz(rib_location)
