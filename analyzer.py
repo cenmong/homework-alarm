@@ -2,6 +2,7 @@ import os
 import subprocess
 import string
 import cmlib
+import logging
 
 from alarm_class import *
 from netaddr import *
@@ -14,6 +15,8 @@ from env import *
 class Analyzer():
 
     def __init__(self, filelist, granu, sdate, peak):
+        logging.info('in analyzer')
+        logging.info('granu: %d', granu)
         self.filelist = filelist  # filelist file name 
         self.allowed = set(string.ascii_letters+string.digits+\
                 '.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')

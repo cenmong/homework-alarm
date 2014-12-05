@@ -6,5 +6,8 @@
 *.swn
 *.pdf
 *.psd
+*.log
+*.json
+show_memory.py
 tmpfile
 result_tmp

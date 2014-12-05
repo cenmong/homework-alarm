@@ -1,9 +1,11 @@
 from analyzer import *
 from env import *
 from alarm_class import *
+import logging
+from meliae import scanner
+scanner.dump_all_objects('memory.json')
 
-#TEST = False
-TEST = True
+logging.basicConfig(filename='status.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 #cmlib.combine_slot_dvi()
 #cmlib.combine_ht()
@@ -12,12 +14,11 @@ TEST = True
 #dthres = 0.005785
 granu = 10 # granularity (in minutes)
 
+logging.info('Program starts!')
+
 for i in [0]:
 
-    if TEST: # read a shorter list for testing (only for events 0)
-        filelist = datadir+'metadata/' + daterange[i][0] + '/test_updt_filelist_comb'
-    else:
-        filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
+    filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
 
     soccur = daterange[i][6] # event occur start
     eoccur = daterange[i][7] # event occur end
@@ -30,20 +31,16 @@ for i in [0]:
 
     #alarmplot(daterange[i][0], granu) # Directly plot from existent data
     # If no existent data, manually uncomment the following 5 lines
-    if TEST:
-        ana = Analyzer(filelist, granu, daterange[i][0], '2006-12-25 00:40:00')
-    else:
-        ana = Analyzer(filelist, granu, daterange[i][0], peak)
+    ana = Analyzer(filelist, granu, daterange[i][0], peak)
     ana.parse_updates()
 
     ''' This is the ideal way, totally automatic
     try:
         alarmplot(daterange[i][0], granu)
     except:
-        if TEST:
-            ana = Analyzer(filelist, granu, daterange[i][0], '2006-12-25 00:40:00')
-        else:
-            ana = Analyzer(filelist, granu, daterange[i][0], peak)
+        ana = Analyzer(filelist, granu, daterange[i][0], peak)
 
         ana.parse_updates()
     '''
+
+logging.info('Program ends!')
