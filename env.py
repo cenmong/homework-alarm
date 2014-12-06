@@ -6,16 +6,16 @@ homedir = expanduser('~') + '/'
 # 0: routeviews; 1: ripe ris
 # TODO rank them so I can easily choose part of them
 # FIXME name changed
-all_collectors = [
-    ('', 0, '20011101'), 
-    ('rrc00', 1, '19991101'), 
-    ('rrc01', 1, '20000801'), 
-    ('rrc03', 1, '20010201'),
-    ('rrc04', 1, '20010501'), 
-    ('rrc05', 1, '20010701'), 
-    ('rrc06', 1, '20010901'), 
-    ('rrc07', 1, '20020501'),
-    ]
+all_collectors = {
+    '': '20011101', 
+    'rrc00': '19991101', 
+    'rrc01': '20000801', 
+    'rrc03': '20010201',
+    'rrc04': '20010501', 
+    'rrc05': '20010701', 
+    'rrc06': '20010901', 
+    'rrc07': '20020501',
+}
 
 # [4th parm] order (for easier coding)
 # [5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
