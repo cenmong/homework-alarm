@@ -16,6 +16,25 @@ import operator
 from netaddr import *
 from env import *
 
+def get_peer_list_from_rib(rib_full_loc): # file name end with .bz2/gz.txt.gz
+    peers = []
+    txtfile = rib_full_loc.replace('txt.gz', 'txt')
+    subprocess.call('gunzip '+rib_comp_loc, shell=True)
+    with open(txtfile, 'r') as f:  # get peers from RIB
+        for line in f:
+            try:
+                addr = line.split('|')[3]
+                if addr not in peers:
+                    peers.append(addr)
+            except:
+                pass
+    f.close()
+
+    # compress RIB into .gz
+    if not os.path.exists(rib_comp_loc):
+        cmlib.pack_gz(txtfile)
+
+    return peers
 
 def download_file(url, save_loc, filename):
     make_dir(save_loc)

@@ -52,10 +52,11 @@ class Downloader():
         self.sdate = sdate
         self.edate = edate
         self.co = co
+        self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
 
     # output: .bz2/gz.txt.gz files
-    def parse_updates(self, listfile): # all update files from one collectors/list
-        flist = open(listfile, 'r')
+    def parse_updates(self): # all update files from one collectors/list
+        flist = open(self.listfile, 'r')
         for line in flist:
             line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
             if not os.path.exists(datadir+line+'.txt.gz'):
@@ -67,58 +68,57 @@ class Downloader():
         flist.close()
         return 0
 
-    def del_tabletran_updates(self, peer, sdate, cl_name, cl_type):
-        f_results = open(datadir+'tmp/'+peer+'_result.txt', 'r')
-        for line in f_results:  # get all affection info of this peer
-            line = line.replace('\n', '')
-            attr = line.split(',')
+    # XXX this function is highly ineffective
+    def del_tabletran_updates(self, peer, tmp_filename):
+        # the reset info for this peer
+        f_results = open(datadir+'tmp/'+tmp_filename, 'r')
+        for line in f_results: 
+            print line
+
+            attr = line.replace('\n', '').split(',')
             if attr[0] == '#START':
                 continue
 
-            print line
-            print 'get session reset time...'
-            stime_unix = int(attr[0])
-            endtime_unix = int(attr[1])
+            stime_unix, endtime_unix= int(attr[0]), int(attr[1])
             start_datetime = datetime.datetime.fromtimestamp(stime_unix) +\
-                    datetime.timedelta(hours=-8)
+                    datetime.timedelta(hours=-8) # XXX note the time shift
             end_datetime = datetime.datetime.fromtimestamp(endtime_unix) +\
                     datetime.timedelta(hours=-8)
-            print 'from ', start_datetime, ' to ', end_datetime
+            print 'session reset from ', start_datetime, ' to ', end_datetime
 
-            updatefile_list =\
-                    open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
-            for updatefile in updatefile_list:  
+            thelistfile = open(self.listfile, 'r')
+            for updatefile in thelistfile:  
                 updatefile = updatefile.replace('\n', '')
+
                 file_attr = updatefile.split('.')
-                if cl_type == 0:
-                    fattr_date, fattr_time = file_attr[3], file_attr[4]
-                else:
+                # FIXME the position of each factor has changed?
+                if self.co.startswith('rrc'): # note the difference in file name formats
                     fattr_date, fattr_time = file_attr[5], file_attr[6]
+                else:
+                    fattr_date, fattr_time = file_attr[3], file_attr[4]
                 dt = datetime.datetime(int(fattr_date[0:4]),\
                         int(fattr_date[4:6]), int(fattr_date[6:8]),\
                         int(fattr_time[0:2]), int(fattr_time[2:4]))
-
-                if not start_datetime + datetime.timedelta(minutes =\
-                        -15) <= dt <= end_datetime:  # filename not OK
+                
+                # filename not OK
+                if not start_datetime + datetime.timedelta(minutes = -15) <= dt <=\
+                        end_datetime:
                     continue
+
                 print 'session reset exists in: ', updatefile
                 size_before = os.path.getsize(updatefile)
-                # unpack
-                myfilename = updatefile.replace('txt.gz', 'txt')  # .txt file
-                subprocess.call('gunzip -c ' + updatefile + ' > ' +\
-                        myfilename, shell=True)
-                # only .txt from now on!
+                myfilename = updatefile.replace('txt.gz', 'txt')
+                subprocess.call('gunzip -c ' + updatefile + ' > ' + myfilename, shell=True)
                 oldfile = open(myfilename, 'r')
                 newfile = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
 
                 counted_pfx = patricia.trie(None)
                 for updt in oldfile:  # loop over each update
-                    updt = updt.replace('\n', '')
-                    update_attr = updt.split('|')
-                    if (cmp(update_attr[3], peer)==0)\
-                    & (stime_unix<int(update_attr[1])<\
-                    endtime_unix):  # culprit update confirmed
-                        pfx = update_attr[5]
+                    updt = updt.rstrip('\n')
+                    attr = updt.split('|')
+                    # culprit update confirmed
+                    if cmp(attr[3], peer) == 0 and (stime_unix < int(attr[1]) < endtime_unix):
+                        pfx = attr[5]
                         try:  # Test whether the trie has the pfx
                             test = counted_pfx[pfx]
                             newfile.write(updt+'\n')  # pfx exists
@@ -137,44 +137,15 @@ class Downloader():
                 size_after = os.path.getsize(updatefile)
                 print 'size(b):', size_before, ',size(a):', size_after
                        
-            updatefile_list.close()
+            thelistfile.close()
         f_results.close()
         return 0
 
-    def get_peers(self, rib_comp_loc): # file name end with .bz2/gz.txt.gz
-        peers = []
-        txtfile = rib_comp_loc.replace('txt.gz', 'txt')
-        subprocess.call('gunzip '+rib_comp_loc, shell=True)
-        with open(txtfile, 'r') as f:  # get peers from RIB
-            for line in f:
-                try:
-                    addr = line.split('|')[3]
-                    if addr not in peers:
-                        peers.append(addr)
-                except:
-                    pass
-        f.close()
-
-        # compress RIB into .gz
-        if not os.path.exists(rib_comp_loc):
-            cmlib.pack_gz(txtfile)
-
-        return peers
-
-    def get_update_list(self, clctr, listfile):
-        if int(self.sdate) < int(all_collectors[clctr]):
+    def get_update_list(self):
+        if int(self.sdate) < int(all_collectors[self.co]):
             print 'error: this collector started too late'
             logging.error('collector\' start date too late')
             return -1
-
-        # TODO
-        ''' Seems useless anymore
-        if clctr.startswith('rrc'):
-            datadir_detail = datadir + 'data.ris.ripe.net/' + clctr + '/'
-        else:
-            datadir_detail = datadir + 'archive.routeviews.org/' + clctr + '/bgpdata/'
-            datadir_detail = datadir_detail.replace('//', '/') # when cl = ''
-        '''
 
         # change into month quantity for easy calculation
         smonth = int(sdate[0:4])*12 + int(sdate[4:6])
@@ -199,18 +170,18 @@ class Downloader():
             month_list.append(str(now_year)+'.'+str_now_month) 
 
 
-        tmp_filename = listfile.split('/')[-1]
-        tmp_dir = listfile.replace(tmp_filename, '')
+        tmp_filename = self.listfile.split('/')[-1]
+        tmp_dir = self.listfile.replace(tmp_filename, '')
         cmlib.make_dir(tmp_dir)
-        flist = open(listfile, 'w')  
+        flist = open(self.listfile, 'w')  
 
         for month in month_list:
             web_location = ''
-            if clctr.startswith('rrc'):
-                web_location = 'data.ris.ripe.net/'+clctr+'/'+month+'/' 
+            if self.co.startswith('rrc'):
+                web_location = 'data.ris.ripe.net/'+self.co+'/'+month+'/' 
             else:
                 #web_location = 'archive.routeviews.org/' +\ # XXX I don't know why change
-                web_location = 'routeviews.org/' + clctr + '/bgpdata/' + month + '/UPDATES/'
+                web_location = 'routeviews.org/' + self.co + '/bgpdata/' + month + '/UPDATES/'
                 web_location = web_location.replace('//', '/')  # when name is ''
 
             webraw = cmlib.get_weblist('http://' + web_location)
@@ -238,11 +209,11 @@ class Downloader():
         return 0
 
 
-    def download_updates(self, listfile):
+    def download_updates(self):
         if TEST: # XXX Just read several files when testing
             testcount = 0
 
-        f = open(listfile, 'r')
+        f = open(self.listfile, 'r')
         for line in f:
             line = line.replace('\n', '').replace('.txt.gz', '') # get original .bz2/gz name
             filename = tmp.split('/')[-1]
@@ -277,26 +248,22 @@ class Downloader():
                 if testcount == 5:
                     break
         f.close()
-
         return 0
 
     # Note: update and RIB file formats are either .bz2/gz or .xx.txt.gz!
-    def get_all_updates(self, listfile):
-        for clctr in self.co:
-            listname = self.get_update_list(clctr, listfile)
-            if listname == -1: # fail to create
+    def get_all_updates(self):
+            tmp_flag = self.get_update_list()
+            if tmp_flag == -1: # fail to create
                 continue
-            self.download_updates(listfile)
-            self.parse_updates(listfile)
-            rib_full_loc = self.get_parse_one_rib(clctr)
-            #self.delete_reset(rib_full_loc, listname) # should after RIB download and parse
+            self.download_updates()
+            self.parse_updates()
+            rib_full_loc = self.get_parse_one_rib() # return full path of the RIB file
+            self.delete_reset(rib_full_loc)
         #self.combine_flist(order)
 
-        return 0
-
-    def get_parse_one_rib(self, clctr):
+    def get_parse_one_rib(self):
         tmp_month = self.sdate[0:4] + self.sdate[4:6]
-        if clctr.startswith('rrc'):
+        if self.co.startswith('rrc'):
             filelocation = 'data.ris.ripe.net/' + cl_name + '/' + tmp_month + '/' 
         else:
             filelocation = 'routeviews.org/' + cl_name + '/bgpdata/' + tmp_month + '/RIBS/'
@@ -357,32 +324,34 @@ class Downloader():
         return full_loc+'.txt.gz'
 
 
-    def delete_reset(self, rib_comp_loc, listname):
-        peers = self.get_peers(rib_comp_loc)
+    def delete_reset(self, rib_full_loc):
+        peers = cmlib.get_peer_list_from_rib(rib_full_loc)
         print 'peers: ', peers
-        
-        print 'determining table transfers start and end time for each peer...'
+
         if TEST:
             peers = peers[0:2]
-        for peer in peers:  # must process each peer one by one
-            peer = peer.rstrip()
-            print 'processing ',peer,'...'
-            subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
-                    listname+' -p '+peer+' > '+\
-                    datadir+'tmp/'+peer+'_result.txt', shell=True)
-                
-        print 'delete updates caused by session reset for each peer...'
-        for peer in peers:
-            # No reset from this peer, so nothing in the file
-            try:
-                if os.path.getsize(datadir+'tmp/'+peer+'_result.txt') == 0:
-                    continue
-            except: # cannot find file
-                continue
-            print '\nculprit now: ', peer
-            self.del_tabletran_updates(peer, sdate, cl_name, cl_type)
 
-        # delete all rubbish in the end
+        for peer in peers:
+            print '\ndeleting reset updates caused by peer: ', peer
+            peer = peer.rstrip()
+
+            # record reset info into a temp file
+            tmp_filename = peer+'_resets.txt'
+
+            #FIXME list file incorrect: full path needed
+            subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
+                    self.listfile+' -p '+peer+' > '+ datadir+'tmp/'+tmp_filename, shell=True)
+
+            # No reset for this peer    
+            if os.path.exists(datadir+'tmp/'+tmp_filename): 
+                if os.path.getsize(datadir+'tmp/'+tmp_filename) == 0:
+                    continue
+            else:
+                continue
+            
+            # delete the corresponding updates
+            self.del_tabletran_updates(peer, tmp_filename)
+
         subprocess.call('rm '+datadir+'tmp/*', shell=True)
                             
         return 0
@@ -395,7 +364,6 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list:
             dl = Downloader(sdate, edate, co)
-            listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
-            dl.get_all_updates(listfile) # para: update list file location
+            dl.get_all_updates()
     #dl = Downloader([0])
     #dl.get_file()
