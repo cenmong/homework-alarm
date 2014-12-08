@@ -7,44 +7,13 @@ import cmlib
 import datetime
 import patricia
 import subprocess
+import os
 import logging
 logging.basicConfig(filename='download.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from env import *
 # XXX: change file name for RV when time < Feb, 2003.
 TEST = False
-
-# FIXME not flexible
-def combine_flist(self, order):
-    sdate = daterange[order][0]
-    fnames = {}
-    clist = cmlib.get_collector(sdate)
-    for cl_name in clist:
-        if cl_name.startswith('rrc'):
-            cl_type = 1 # collector type
-        else:
-            cl_type = 0
-        # .bz2.txt.gz file name
-        flist = open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
-        for filename in flist:
-            filename = filename.replace('\n', '')
-            file_attr = filename.split('.')
-            if cl_type == 0:
-                file_dt = file_attr[3] + file_attr[4]
-            else:
-                file_dt = file_attr[5] + file_attr[6]
-            dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
-            fnames[filename] = dt_obj
-        flist.close()
-    fnlist = sorted(fnames, key=fnames.get)
-
-    if os.path.exists(datadir+'metadata/'+sdate+'/updt_filelist_comb'):
-        os.remove(datadir+'metadata/'+sdate+'/updt_filelist_comb')
-    fcomb = open(datadir+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
-    for fn in fnlist:
-        fcomb.write(fn+'\n')
-    fcomb.close()
-    return 0
 
 class Downloader():
 
@@ -66,79 +35,6 @@ class Downloader():
             else:
                 pass
         flist.close()
-        return 0
-
-    # XXX this function is highly ineffective
-    def del_tabletran_updates(self, peer, tmp_filename):
-        # the reset info for this peer
-        f_results = open(datadir+'tmp/'+tmp_filename, 'r')
-        for line in f_results: 
-            print line
-
-            attr = line.replace('\n', '').split(',')
-            if attr[0] == '#START':
-                continue
-
-            stime_unix, endtime_unix= int(attr[0]), int(attr[1])
-            start_datetime = datetime.datetime.fromtimestamp(stime_unix) +\
-                    datetime.timedelta(hours=-8) # XXX note the time shift
-            end_datetime = datetime.datetime.fromtimestamp(endtime_unix) +\
-                    datetime.timedelta(hours=-8)
-            print 'session reset from ', start_datetime, ' to ', end_datetime
-
-            thelistfile = open(self.listfile, 'r')
-            for updatefile in thelistfile:  
-                updatefile = updatefile.replace('\n', '')
-
-                file_attr = updatefile.split('.')
-                # FIXME the position of each factor has changed?
-                if self.co.startswith('rrc'): # note the difference in file name formats
-                    fattr_date, fattr_time = file_attr[5], file_attr[6]
-                else:
-                    fattr_date, fattr_time = file_attr[3], file_attr[4]
-                dt = datetime.datetime(int(fattr_date[0:4]),\
-                        int(fattr_date[4:6]), int(fattr_date[6:8]),\
-                        int(fattr_time[0:2]), int(fattr_time[2:4]))
-                
-                # filename not OK
-                if not start_datetime + datetime.timedelta(minutes = -15) <= dt <=\
-                        end_datetime:
-                    continue
-
-                print 'session reset exists in: ', updatefile
-                size_before = os.path.getsize(updatefile)
-                myfilename = updatefile.replace('txt.gz', 'txt')
-                subprocess.call('gunzip -c ' + updatefile + ' > ' + myfilename, shell=True)
-                oldfile = open(myfilename, 'r')
-                newfile = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
-
-                counted_pfx = patricia.trie(None)
-                for updt in oldfile:  # loop over each update
-                    updt = updt.rstrip('\n')
-                    attr = updt.split('|')
-                    # culprit update confirmed
-                    if cmp(attr[3], peer) == 0 and (stime_unix < int(attr[1]) < endtime_unix):
-                        pfx = attr[5]
-                        try:  # Test whether the trie has the pfx
-                            test = counted_pfx[pfx]
-                            newfile.write(updt+'\n')  # pfx exists
-                        except:  # Node does not exist
-                            counted_pfx[pfx] = True
-                    else:  # not culprit update
-                        newfile.write(updt+'\n')
-
-                oldfile.close()
-                newfile.close()
-
-                os.remove(updatefile)  # remove old .gz file
-                # compress .txt into txt.gz to replace the old file
-                subprocess.call('gzip -c '+datadir+'tmp/'+myfilename.split('/')[-1]+\
-                        ' > '+updatefile, shell=True)
-                size_after = os.path.getsize(updatefile)
-                print 'size(b):', size_before, ',size(a):', size_after
-                       
-            thelistfile.close()
-        f_results.close()
         return 0
 
     def get_update_list(self):
@@ -216,9 +112,10 @@ class Downloader():
         f = open(self.listfile, 'r')
         for line in f:
             line = line.replace('\n', '').replace('.txt.gz', '') # get original .bz2/gz name
+            tmp = line.split('|')[0]
             filename = tmp.split('/')[-1]
             web_location = tmp.replace(filename, '') 
-            fsize = int(line.split('|')[1])
+            fsize = float(line.split('|')[1])
 
             # remove (if) existing xx.txt file to make things clearer
             # consequence: only XXX.bz2/.gz or XXX.bz2/gz.txt.gz exists
@@ -254,116 +151,237 @@ class Downloader():
     def get_all_updates(self):
             tmp_flag = self.get_update_list()
             if tmp_flag == -1: # fail to create
-                continue
+                logging.info('collector start date too late')
+                return -1
             self.download_updates()
             self.parse_updates()
-            rib_full_loc = self.get_parse_one_rib() # return full path of the RIB file
-            self.delete_reset(rib_full_loc)
+            #rib_full_loc = self.get_parse_one_rib() # return full path of the RIB file
+            #self.delete_reset(rib_full_loc)
         #self.combine_flist(order)
 
-    def get_parse_one_rib(self):
-        tmp_month = self.sdate[0:4] + self.sdate[4:6]
-        if self.co.startswith('rrc'):
-            filelocation = 'data.ris.ripe.net/' + cl_name + '/' + tmp_month + '/' 
-        else:
-            filelocation = 'routeviews.org/' + cl_name + '/bgpdata/' + tmp_month + '/RIBS/'
-            filelocation = filelocation.replace('//', '/')
-        webraw = cmlib.get_weblist('http://' + filelocation)
-
-        cmlib.make_dir(datadir+filelocation)
-
-        # download one RIB on or near sdate only for deleting reset
-        # TODO: if duration too long, we may need multiple RIBs
-        rib_list = webraw.split('\n')
-        filter(lambda a: a != '', rib_list)
-        filter(lambda a: a != '\n', rib_list)
-        rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
-
-        # TODO: avoid the RIB with strange size
-        target_line = '' # the RIB file for downloading
-        closest = 99999
-        for line in rib_list:
-            fdate = line.split()[0].split('.')[-3]
-            diff = abs(int(fdate)-int(self.sdate)) # >0
-            if diff < closest:
-                closest = diff
-                target_line = line
-
-        size = target_line.split()[-1] # claimed RIB file size
-        if size.isdigit():
-            fsize = float(size)
-        else:
-            fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
-
-        filename = target_line.split()[0]
-        full_loc = datadir + web_location + filename # .bz2/.gz
-
-        if os.path.exists(full_loc+'.txt'):
-            os.remove(full_loc+'.txt')
-
-        if os.path.exists(full_loc+'.txt.gz'): 
-            if os.path.getsize(full_loc+'.txt.gz') > 0.1 * fsize:
-                if os.path.exists(full_loc):  # .bz2/.gz useless anymore
-                    os.remove(full_loc)
-                return full_loc+'.txt.gz'
-            else:
-                os.remove(full_loc+'.txt.gz') # too small to be complete
-                cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-
-        if os.path.exists(full_loc): 
-            if os.path.getsize(full_loc) <= 0.95 * fsize:
-                os.remove(full_loc)
-                cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            else:
-                pass
-
-        cmlib.parse_mrt(full_loc, full_loc+'.txt')
-        os.remove(full_loc)  # then remove .bz2/.gz
-        cmlib.pack_gz(full_loc+'.txt')
-
-        return full_loc+'.txt.gz'
-
-
-    def delete_reset(self, rib_full_loc):
-        peers = cmlib.get_peer_list_from_rib(rib_full_loc)
-        print 'peers: ', peers
-
-        if TEST:
-            peers = peers[0:2]
-
-        for peer in peers:
-            print '\ndeleting reset updates caused by peer: ', peer
-            peer = peer.rstrip()
-
-            # record reset info into a temp file
-            tmp_filename = peer+'_resets.txt'
-
-            #FIXME list file incorrect: full path needed
-            subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
-                    self.listfile+' -p '+peer+' > '+ datadir+'tmp/'+tmp_filename, shell=True)
-
-            # No reset for this peer    
-            if os.path.exists(datadir+'tmp/'+tmp_filename): 
-                if os.path.getsize(datadir+'tmp/'+tmp_filename) == 0:
-                    continue
-            else:
-                continue
-            
-            # delete the corresponding updates
-            self.del_tabletran_updates(peer, tmp_filename)
-
-        subprocess.call('rm '+datadir+'tmp/*', shell=True)
-                            
-        return 0
 
 if __name__ == '__main__':
     order_list = [27]
     collector_list = ['', 'rrc00']
+
+    # download update files
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list:
             dl = Downloader(sdate, edate, co)
             dl.get_all_updates()
-    #dl = Downloader([0])
-    #dl.get_file()
+
+    # deleting reset updates
+    for order in order_list:
+        sdate = daterange[order][0]
+        edate = daterange[order][1]
+        for co in collector_list:
+            rib_full_loc = get_parse_one_rib(co, sdate)
+            '''
+            # TODO download redundant update files
+            # TODO create a full-path update file list
+            # TODO delete the reset updates
+            '''
+#--------------------------------------------------------------------
+def get_parse_one_rib(co, sdate): # argument: collector, sdate
+    tmp_month = sdate[0:4] + sdate[4:6]
+    if co.startswith('rrc'):
+        filelocation = 'data.ris.ripe.net/' + cl_name + '/' + tmp_month + '/' 
+    else:
+        filelocation = 'routeviews.org/' + cl_name + '/bgpdata/' + tmp_month + '/RIBS/'
+        filelocation = filelocation.replace('//', '/')
+    webraw = cmlib.get_weblist('http://' + filelocation)
+
+    cmlib.make_dir(datadir+filelocation)
+
+    # download one RIB on or near sdate only for deleting reset
+    # TODO: if duration too long, we may need multiple RIBs
+    rib_list = webraw.split('\n')
+    filter(lambda a: a != '', rib_list)
+    filter(lambda a: a != '\n', rib_list)
+    rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
+
+    # TODO: avoid the RIB with strange size
+    target_line = '' # the RIB file for downloading
+    closest = 99999
+    for line in rib_list:
+        fdate = line.split()[0].split('.')[-3]
+        diff = abs(int(fdate)-int(sdate)) # >0
+        if diff < closest:
+            closest = diff
+            target_line = line
+
+    size = target_line.split()[-1] # claimed RIB file size
+    if size.isdigit():
+        fsize = float(size)
+    else:
+        fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+
+    filename = target_line.split()[0]
+    full_loc = datadir + web_location + filename # .bz2/.gz
+
+    if os.path.exists(full_loc+'.txt'):
+        os.remove(full_loc+'.txt')
+
+    if os.path.exists(full_loc+'.txt.gz'): 
+        if os.path.getsize(full_loc+'.txt.gz') > 0.1 * fsize:
+            if os.path.exists(full_loc):  # .bz2/.gz useless anymore
+                os.remove(full_loc)
+            return full_loc+'.txt.gz'
+        else:
+            os.remove(full_loc+'.txt.gz') # too small to be complete
+            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
+
+    if os.path.exists(full_loc): 
+        if os.path.getsize(full_loc) <= 0.95 * fsize:
+            os.remove(full_loc)
+            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
+        else:
+            pass
+
+    cmlib.parse_mrt(full_loc, full_loc+'.txt')
+    os.remove(full_loc)  # then remove .bz2/.gz
+    cmlib.pack_gz(full_loc+'.txt')
+
+    return full_loc+'.txt.gz'
+
+
+'''
+def delete_reset(#TODO):
+    peers = cmlib.get_peer_list_from_rib(rib_full_loc)
+    print 'peers: ', peers
+
+    if TEST:
+        peers = peers[0:2]
+
+    for peer in peers:
+        print '\ndeleting reset updates caused by peer: ', peer
+        peer = peer.rstrip()
+
+        # record reset info into a temp file
+        tmp_filename = peer+'_resets.txt'
+
+        #FIXME list file incorrect: full path needed
+        subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
+                self.listfile+' -p '+peer+' > '+ datadir+'tmp/'+tmp_filename, shell=True)
+
+        # No reset for this peer    
+        if os.path.exists(datadir+'tmp/'+tmp_filename): 
+            if os.path.getsize(datadir+'tmp/'+tmp_filename) == 0:
+                continue
+        else:
+            continue
+        
+        # delete the corresponding updates
+        self.del_tabletran_updates(peer, tmp_filename)
+
+    subprocess.call('rm '+datadir+'tmp/*', shell=True)
+                        
+    return 0
+
+# XXX this function is highly ineffective. But I seem cannot improve it
+def del_tabletran_updates(self, peer, tmp_filename):
+    # the reset info for this peer
+    f_results = open(datadir+'tmp/'+tmp_filename, 'r')
+    for line in f_results: 
+        print line
+
+        attr = line.replace('\n', '').split(',')
+        if attr[0] == '#START':
+            continue
+
+        stime_unix, endtime_unix= int(attr[0]), int(attr[1])
+        start_datetime = datetime.datetime.fromtimestamp(stime_unix) +\
+                datetime.timedelta(hours=-8) # XXX note the time shift
+        end_datetime = datetime.datetime.fromtimestamp(endtime_unix) +\
+                datetime.timedelta(hours=-8)
+        print 'session reset from ', start_datetime, ' to ', end_datetime
+
+        thelistfile = open(self.listfile, 'r')
+        for updatefile in thelistfile:  
+            updatefile = updatefile.replace('\n', '')
+
+            file_attr = updatefile.split('.')
+            # FIXME the position of each factor has changed?
+            if self.co.startswith('rrc'): # note the difference in file name formats
+                fattr_date, fattr_time = file_attr[5], file_attr[6]
+            else:
+                fattr_date, fattr_time = file_attr[3], file_attr[4]
+            dt = datetime.datetime(int(fattr_date[0:4]),\
+                    int(fattr_date[4:6]), int(fattr_date[6:8]),\
+                    int(fattr_time[0:2]), int(fattr_time[2:4]))
+            
+            # filename not OK
+            if not start_datetime + datetime.timedelta(minutes = -15) <= dt <=\
+                    end_datetime:
+                continue
+
+            print 'session reset exists in: ', updatefile
+            size_before = os.path.getsize(updatefile)
+            myfilename = updatefile.replace('txt.gz', 'txt')
+            subprocess.call('gunzip -c ' + updatefile + ' > ' + myfilename, shell=True)
+            oldfile = open(myfilename, 'r')
+            newfile = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
+
+            counted_pfx = patricia.trie(None)
+            for updt in oldfile:  # loop over each update
+                updt = updt.rstrip('\n')
+                attr = updt.split('|')
+                # culprit update confirmed
+                if cmp(attr[3], peer) == 0 and (stime_unix < int(attr[1]) < endtime_unix):
+                    pfx = attr[5]
+                    try:  # Test whether the trie has the pfx
+                        test = counted_pfx[pfx]
+                        newfile.write(updt+'\n')  # pfx exists
+                    except:  # Node does not exist
+                        counted_pfx[pfx] = True
+                else:  # not culprit update
+                    newfile.write(updt+'\n')
+
+            oldfile.close()
+            newfile.close()
+
+            os.remove(updatefile)  # remove old .gz file
+            # compress .txt into txt.gz to replace the old file
+            subprocess.call('gzip -c '+datadir+'tmp/'+myfilename.split('/')[-1]+\
+                    ' > '+updatefile, shell=True)
+            size_after = os.path.getsize(updatefile)
+            print 'size(b):', size_before, ',size(a):', size_after
+                   
+        thelistfile.close()
+    f_results.close()
+    return 0
+
+# FIXME not flexible
+def combine_flist(self, order):
+    sdate = daterange[order][0]
+    fnames = {}
+    clist = cmlib.get_collector(sdate)
+    for cl_name in clist:
+        if cl_name.startswith('rrc'):
+            cl_type = 1 # collector type
+        else:
+            cl_type = 0
+        # .bz2.txt.gz file name
+        flist = open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
+        for filename in flist:
+            filename = filename.replace('\n', '')
+            file_attr = filename.split('.')
+            if cl_type == 0:
+                file_dt = file_attr[3] + file_attr[4]
+            else:
+                file_dt = file_attr[5] + file_attr[6]
+            dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
+            fnames[filename] = dt_obj
+        flist.close()
+    fnlist = sorted(fnames, key=fnames.get)
+
+    if os.path.exists(datadir+'metadata/'+sdate+'/updt_filelist_comb'):
+        os.remove(datadir+'metadata/'+sdate+'/updt_filelist_comb')
+    fcomb = open(datadir+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
+    for fn in fnlist:
+        fcomb.write(fn+'\n')
+    fcomb.close()
+    return 0
+'''
