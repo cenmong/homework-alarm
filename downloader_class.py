@@ -23,19 +23,8 @@ class Downloader():
         self.co = co
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
 
-    # output: .bz2/gz.txt.gz files
-    def parse_updates(self): # all update files from one collectors/list
-        flist = open(self.listfile, 'r')
-        for line in flist:
-            line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
-            if not os.path.exists(datadir+line+'.txt.gz'):
-                cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
-                cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
-                os.remove(datadir+line)  # remove the original .bz2/.gz file
-            else:
-                pass
-        flist.close()
-        return 0
+    def get_list_file(self):
+        return self.listfile
 
     def get_update_list(self):
         if int(self.sdate) < int(all_collectors[self.co]):
@@ -98,7 +87,7 @@ class Downloader():
                 # check whether its date in our range
                 if int(filedate) < int(self.sdate) or int(filedate) > int(self.edate):
                     continue
-                # .bz2/gz.txt.gz file list
+                # FIXME store the original .bz2/.gz file name
                 flist.write(web_location+filename+'.txt.gz|'+str(fsize)+'\n')
                 logging.info('record file name: '+web_location+filename+'.txt.gz|'+str(fsize))
 
@@ -161,12 +150,15 @@ class Downloader():
                 logging.info('collector start date too late')
                 return -1
             self.download_updates()
-            self.parse_updates()
 
+#----------------------------------------------------------------------------
+# The main function
 
 if __name__ == '__main__':
     order_list = [27]
     collector_list = ['', 'rrc00']
+
+    listfiles = []
 
     # download update files
     for order in order_list:
@@ -175,6 +167,12 @@ if __name__ == '__main__':
         for co in collector_list:
             dl = Downloader(sdate, edate, co)
             dl.get_all_updates()
+            listf = dl.get_listfile()
+            listfiles.append(listf)
+
+    # parse the updates TODO under test
+    for listf in listfiles:
+        parse_updates(listf) # argu: listfile
 
     # deleting reset updates
     for order in order_list:
@@ -190,6 +188,21 @@ if __name__ == '__main__':
             # TODO delete the reset updates
             '''
 #--------------------------------------------------------------------
+
+# output: .bz2/gz.txt.gz files
+def parse_updates(self, listfile): # all update files from one collectors/list
+    flist = open(listfile, 'r')
+    for line in flist:
+        line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
+        if not os.path.exists(datadir+line+'.txt.gz'):
+            cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
+            cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
+            os.remove(datadir+line)  # remove the original .bz2/.gz file
+        else:
+            pass
+    flist.close()
+    return 0
+
 def get_parse_one_rib(co, sdate): # argument: collector, sdate
     tmp_month = sdate[0:4] + sdate[4:6]
     if co.startswith('rrc'):
