@@ -93,7 +93,7 @@ def get_weblist(url):
 
 def parse_mrt(old_loc_fname, new_loc_fname):
     if not os.path.exists(new_loc_fname):
-        subprocess.call('~/Downloads/libbgpdump-1.4.99.11/bgpdump -m '+\
+        subprocess.call('~/tool/libbgpdump-1.4.99.11/bgpdump -m '+\
                 old_loc_fname+' > '+new_loc_fname, shell=True)
     else:  # file already exists
         pass

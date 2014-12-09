@@ -13,7 +13,7 @@ logging.basicConfig(filename='download.log', filemode='w', level=logging.DEBUG, 
 
 from env import *
 # XXX: change file name for RV when time < Feb, 2003.
-TEST = False
+TEST = True
 
 class Downloader():
 
@@ -29,9 +29,9 @@ class Downloader():
         for line in flist:
             line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
             if not os.path.exists(datadir+line+'.txt.gz'):
-                cmlib.parse_mrt(line, line+'txt') # .bz2/gz => .bz2/gz.txt
-                cmlib.pack_gz(line+'txt') # .bz2/gz.txt => .bz2/gz.txt.gz
-                os.remove(line)  # remove the original .bz2/.gz file
+                cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
+                cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
+                os.remove(datadir+line)  # remove the original .bz2/.gz file
             else:
                 pass
         flist.close()
@@ -116,25 +116,32 @@ class Downloader():
             filename = tmp.split('/')[-1]
             web_location = tmp.replace(filename, '') 
             fsize = float(line.split('|')[1])
+            full_path = datadir + web_location + filename
+            print 'full_path:', full_path
 
             # remove (if) existing xx.txt file to make things clearer
             # consequence: only XXX.bz2/.gz or XXX.bz2/gz.txt.gz exists
-            if os.path.exists(web_location+filename+'.txt'):
-                os.remove(web_location+filename+'.txt')
+            if os.path.exists(full_path+'.txt'):
+                os.remove(full_path+'.txt')
 
-            if os.path.exists(web_location+filename+'.txt.gz'): # parsed file exists
-                if os.path.getsize(web_location+filename+'.txt.gz') > 0.1 * fsize: # size OK
-                    if os.path.exists(web_location+filename):  # .bz2/.gz useless anymore
-                        os.remove(web_location+filename)
+            if os.path.exists(full_path+'.txt.gz'): # parsed file exists
+                if os.path.getsize(full_path+'.txt.gz') > 0.1 * fsize: # size OK
+                    logging.info('file exists:%s', full_path+'.txt.gz')
+                    if os.path.exists(full_path):  # .bz2/.gz useless anymore
+                        os.remove(full_path)
                     continue
                 else:
-                    os.remove(web_location+filename+'.txt.gz')
+                    os.remove(full_path+'.txt.gz')
 
-            if os.path.exists(web_location+filename): # original file exists
-                if os.path.getsize(web_location+filename) > 0.95 * fsize: # size OK
+            if os.path.exists(full_path): # original file exists
+                logging.info('file exists:%s', full_path)
+                now_size = os.path.getsize(full_path)
+                logging.info('now size: %d', now_size)
+                logging.info('file size: %d', fsize)
+                if now_size > 0.95 * fsize: # size OK
                     continue
                 else:
-                    os.remove(web_location+filename)
+                    os.remove(full_path)
 
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
             print 'Downloading ' + 'http://'+web_location + filename
@@ -155,9 +162,6 @@ class Downloader():
                 return -1
             self.download_updates()
             self.parse_updates()
-            #rib_full_loc = self.get_parse_one_rib() # return full path of the RIB file
-            #self.delete_reset(rib_full_loc)
-        #self.combine_flist(order)
 
 
 if __name__ == '__main__':
@@ -180,7 +184,9 @@ if __name__ == '__main__':
             rib_full_loc = get_parse_one_rib(co, sdate)
             '''
             # TODO download redundant update files
+            download_redundant_updates(sdate, edate)
             # TODO create a full-path update file list
+            full_listfile = get_tmp_full_listfile()
             # TODO delete the reset updates
             '''
 #--------------------------------------------------------------------
@@ -232,11 +238,13 @@ def get_parse_one_rib(co, sdate): # argument: collector, sdate
         else:
             os.remove(full_loc+'.txt.gz') # too small to be complete
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
+            logging('downloading %s:', filename)
 
     if os.path.exists(full_loc): 
         if os.path.getsize(full_loc) <= 0.95 * fsize:
             os.remove(full_loc)
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
+            logging('downloading %s:', filename)
         else:
             pass
 
