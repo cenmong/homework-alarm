@@ -12,182 +12,9 @@ import logging
 logging.basicConfig(filename='download.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from env import *
-# XXX: change file name for RV when time < Feb, 2003.
-TEST = True
 
-class Downloader():
-
-    def __init__(self, sdate, edate, co):
-        self.sdate = sdate
-        self.edate = edate
-        self.co = co
-        self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
-
-    def get_list_file(self):
-        return self.listfile
-
-    def get_update_list(self):
-        if int(self.sdate) < int(all_collectors[self.co]):
-            print 'error: this collector started too late'
-            logging.error('collector\' start date too late')
-            return -1
-
-        # change into month quantity for easy calculation
-        smonth = int(sdate[0:4])*12 + int(sdate[4:6])
-        emonth = int(edate[0:4])*12 + int(edate[4:6])
-        month_gap = emonth - smonth # could be zero
-
-        month_list = [] 
-        for m in xrange(0, month_gap+1):
-            now_month = smonth + m
-            if now_month % 12 == 0: # the 12th month
-                now_year = now_month / 12 - 1
-                now_month = 12
-            else:
-                now_year = now_month / 12
-                now_month = now_month % 12
-
-            if now_month / 10 == 0:
-                str_now_month = '0' + str(now_month) # E.g., '5'=>'05'
-            else:
-                str_now_month = str(now_month)
-
-            month_list.append(str(now_year)+'.'+str_now_month) 
-
-
-        tmp_filename = self.listfile.split('/')[-1]
-        tmp_dir = self.listfile.replace(tmp_filename, '')
-        cmlib.make_dir(tmp_dir)
-        flist = open(self.listfile, 'w')  
-
-        for month in month_list:
-            web_location = ''
-            if self.co.startswith('rrc'):
-                web_location = 'data.ris.ripe.net/'+self.co+'/'+month+'/' 
-            else:
-                #web_location = 'archive.routeviews.org/' +\ # XXX I don't know why change
-                web_location = 'routeviews.org/' + self.co + '/bgpdata/' + month + '/UPDATES/'
-                web_location = web_location.replace('//', '/')  # when name is ''
-
-            webraw = cmlib.get_weblist('http://' + web_location)
-            cmlib.make_dir(datadir+web_location)
-
-            for line in webraw.split('\n'):
-                if not 'updates' in line or line == '' or line == '\n':
-                    continue
-
-                size = line.split()[-1]
-                if size.isdigit():
-                    fsize = float(size)
-                else: # E.g., 155 K
-                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
-                filename = line.split()[0]  # omit uninteresting info
-                filedate = filename.split('.')[-3]
-
-                # check whether its date in our range
-                if int(filedate) < int(self.sdate) or int(filedate) > int(self.edate):
-                    continue
-                # FIXME store the original .bz2/.gz file name
-                flist.write(web_location+filename+'.txt.gz|'+str(fsize)+'\n')
-                logging.info('record file name: '+web_location+filename+'.txt.gz|'+str(fsize))
-
-        return 0
-
-
-    def download_updates(self):
-        if TEST: # XXX Just read several files when testing
-            testcount = 0
-
-        f = open(self.listfile, 'r')
-        for line in f:
-            line = line.replace('\n', '').replace('.txt.gz', '') # get original .bz2/gz name
-            tmp = line.split('|')[0]
-            filename = tmp.split('/')[-1]
-            web_location = tmp.replace(filename, '') 
-            fsize = float(line.split('|')[1])
-            full_path = datadir + web_location + filename
-            print 'full_path:', full_path
-
-            # remove (if) existing xx.txt file to make things clearer
-            # consequence: only XXX.bz2/.gz or XXX.bz2/gz.txt.gz exists
-            if os.path.exists(full_path+'.txt'):
-                os.remove(full_path+'.txt')
-
-            if os.path.exists(full_path+'.txt.gz'): # parsed file exists
-                if os.path.getsize(full_path+'.txt.gz') > 0.1 * fsize: # size OK
-                    logging.info('file exists:%s', full_path+'.txt.gz')
-                    if os.path.exists(full_path):  # .bz2/.gz useless anymore
-                        os.remove(full_path)
-                    continue
-                else:
-                    os.remove(full_path+'.txt.gz')
-
-            if os.path.exists(full_path): # original file exists
-                logging.info('file exists:%s', full_path)
-                now_size = os.path.getsize(full_path)
-                logging.info('now size: %d', now_size)
-                logging.info('file size: %d', fsize)
-                if now_size > 0.95 * fsize: # size OK
-                    continue
-                else:
-                    os.remove(full_path)
-
-            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
-            print 'Downloading ' + 'http://'+web_location + filename
-            logging.info('Downloading ' + 'http://'+web_location + filename)
-
-            if TEST: # XXX only download 5 files when testing
-                testcount += 1
-                if testcount == 5:
-                    break
-        f.close()
-        return 0
-
-    # Note: update and RIB file formats are either .bz2/gz or .xx.txt.gz!
-    def get_all_updates(self):
-            tmp_flag = self.get_update_list()
-            if tmp_flag == -1: # fail to create
-                logging.info('collector start date too late')
-                return -1
-            self.download_updates()
-
-#----------------------------------------------------------------------------
-# The main function
-
-if __name__ == '__main__':
-    order_list = [27]
-    collector_list = ['', 'rrc00']
-
-    listfiles = []
-
-    # download update files
-    for order in order_list:
-        sdate = daterange[order][0]
-        edate = daterange[order][1]
-        for co in collector_list:
-            dl = Downloader(sdate, edate, co)
-            dl.get_all_updates()
-            listf = dl.get_listfile()
-            listfiles.append(listf)
-
-    # parse the updates TODO under test
-    for listf in listfiles:
-        parse_updates(listf) # argu: listfile
-
-    # deleting reset updates
-    for order in order_list:
-        sdate = daterange[order][0]
-        edate = daterange[order][1]
-        for co in collector_list:
-            rib_full_loc = get_parse_one_rib(co, sdate)
-            '''
-            # TODO download redundant update files
-            download_redundant_updates(sdate, edate)
-            # TODO create a full-path update file list
-            full_listfile = get_tmp_full_listfile()
-            # TODO delete the reset updates
-            '''
 #--------------------------------------------------------------------
+# Stand-alone functions
 
 # output: .bz2/gz.txt.gz files
 def parse_updates(self, listfile): # all update files from one collectors/list
@@ -406,3 +233,185 @@ def combine_flist(self, order):
     fcomb.close()
     return 0
 '''
+
+# XXX: change file name for RV when time < Feb, 2003.
+TEST = False
+
+class Downloader():
+
+    def __init__(self, sdate, edate, co):
+        self.sdate = sdate
+        self.edate = edate
+        self.co = co
+        self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
+
+    def get_listfile(self):
+        return self.listfile
+
+    #-----------------------------------------------------------------------
+    # Get a list of the update files before downloading them
+    def get_update_list(self):
+        if int(self.sdate) < int(all_collectors[self.co]):
+            print 'error: this collector started too late'
+            logging.error('collector\' start date too late')
+            return -1
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Get a list of the target monthes for forming the target urls 
+        smonth = int(sdate[0:4])*12 + int(sdate[4:6])
+        emonth = int(edate[0:4])*12 + int(edate[4:6])
+        month_gap = emonth - smonth # could be zero
+
+        month_list = [] 
+        for m in xrange(0, month_gap+1):
+            now_month = smonth + m
+            if now_month % 12 == 0: # the 12th month
+                now_year = now_month / 12 - 1
+                now_month = 12
+            else:
+                now_year = now_month / 12
+                now_month = now_month % 12
+
+            if now_month / 10 == 0:
+                str_now_month = '0' + str(now_month) # E.g., '5'=>'05'
+            else:
+                str_now_month = str(now_month)
+
+            month_list.append(str(now_year)+'.'+str_now_month) 
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Create the urls according to the month list and obtain the file list
+        tmp_filename = self.listfile.split('/')[-1]
+        tmp_dir = self.listfile.replace(tmp_filename, '')
+        cmlib.make_dir(tmp_dir)
+        flist = open(self.listfile, 'w')  
+
+        for month in month_list:
+            web_location = ''
+            if self.co.startswith('rrc'):
+                web_location = 'data.ris.ripe.net/'+self.co+'/'+month+'/' 
+            else:
+                #web_location = 'archive.routeviews.org/' +\ # XXX I don't know why change
+                web_location = 'routeviews.org/' + self.co + '/bgpdata/' + month + '/UPDATES/'
+                web_location = web_location.replace('//', '/')  # when name is ''
+
+            webraw = cmlib.get_weblist('http://' + web_location)
+            cmlib.make_dir(datadir+web_location)
+
+            for line in webraw.split('\n'):
+                if not 'updates' in line or line == '' or line == '\n':
+                    continue
+
+                size = line.split()[-1]
+                if size.isdigit():
+                    fsize = float(size)
+                else: # E.g., 155 K
+                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+                filename = line.split()[0]  # omit uninteresting info
+                filedate = filename.split('.')[-3]
+
+                # check whether its date in our range
+                if int(filedate) < int(self.sdate) or int(filedate) > int(self.edate):
+                    continue
+                # XXX storing the original .bz2/.gz file name makes logic clearer
+                flist.write(web_location+filename+'.txt.gz|'+str(fsize)+'\n')
+                logging.info('record file name: '+web_location+filename+'.txt.gz|'+str(fsize))
+
+        return 0
+
+
+    #------------------------------------------------------------------------------
+    # Read the file list and download the files
+    def download_updates(self):
+        if TEST: # XXX Just read several files when testing
+            testcount = 0
+
+        f = open(self.listfile, 'r')
+        for line in f:
+            line = line.replace('\n', '').replace('.txt.gz', '') # get original .bz2/gz name
+            tmp = line.split('|')[0]
+            filename = tmp.split('/')[-1]
+            web_location = tmp.replace(filename, '') 
+            fsize = float(line.split('|')[1])
+            full_path = datadir + web_location + filename
+
+            # Goal: only XXX.bz2/.gz or XXX.bz2/gz.txt.gz exists
+            # remove (if) existing xx.txt file to make things clearer
+            if os.path.exists(full_path+'.txt'):
+                os.remove(full_path+'.txt')
+
+            if os.path.exists(full_path+'.txt.gz'): # parsed file exists
+                if os.path.getsize(full_path+'.txt.gz') > 2 * fsize: # size OK
+                    logging.info('file exists:%s', full_path+'.txt.gz')
+                    if os.path.exists(full_path):  # .bz2/.gz useless anymore
+                        os.remove(full_path)
+                    continue
+                else:
+                    os.remove(full_path+'.txt.gz')
+
+            if os.path.exists(full_path): # original file exists
+                now_size = os.path.getsize(full_path)
+                if now_size > 0.95 * fsize: # size OK
+                    logging.info('file exists:%s', full_path)
+                    continue
+                else:
+                    os.remove(full_path)
+
+            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
+            print 'Downloading ' + 'http://'+web_location + filename
+            logging.info('Downloading ' + 'http://'+web_location + filename)
+
+            if TEST: # XXX only download 5 files when testing
+                testcount += 1
+                if testcount == 5:
+                    break
+        f.close()
+        return 0
+
+
+    def get_all_updates(self):
+            tmp_flag = self.get_update_list()
+            if tmp_flag == -1: # fail to create
+                logging.info('collector start date too late')
+                return -1
+            self.download_updates()
+
+
+#----------------------------------------------------------------------------
+# The main function of this py file
+if __name__ == '__main__':
+    order_list = [27]
+    collector_list = ['', 'rrc00']
+
+    listfiles = []
+
+    # download update files
+    for order in order_list:
+        sdate = daterange[order][0]
+        edate = daterange[order][1]
+        for co in collector_list:
+            dl = Downloader(sdate, edate, co)
+            dl.get_all_updates()
+            listf = dl.get_listfile()
+            listfiles.append(listf)
+
+    # parse the all the update files into readable ones TODO under test
+    for listf in listfiles:
+        parse_updates(listf) # argu: listfile
+
+    # Deleting updates caused by reset
+    # FIXME download a RIB every one or two months, cannot be too long
+    for order in order_list:
+        sdate = daterange[order][0]
+        edate = daterange[order][1]
+        for co in collector_list:
+            rib_full_loc = get_parse_one_rib(co, sdate)
+            '''
+            # TODO download redundant update files
+            download_redundant_updates(sdate, edate)
+            # TODO create a full-path update file list
+            full_listfile = get_tmp_full_listfile()
+            # TODO delete the reset updates
+            '''
+
+
