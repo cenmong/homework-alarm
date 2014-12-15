@@ -8,15 +8,9 @@ from alarm_class import *
 from netaddr import *
 from env import *
 
-##################################################
-# The Analyzer class read and pre-process every update. After that, each update is injected into
-# certain object for analysis.
-##################################################
 class Analyzer():
 
     def __init__(self, filelist, granu, sdate, peak):
-        logging.info('in analyzer')
-        logging.info('granu: %d', granu)
         self.filelist = filelist  # filelist file name 
         self.allowed = set(string.ascii_letters+string.digits+\
                 '.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
@@ -35,7 +29,6 @@ class Analyzer():
         self.alarm = Alarm(granu, sdate, self.cl_list, peak)
 
     # check whether an update is normal or not
-    # we see occational trash characters
     def is_normal(self, update):
         if set(update).issubset(self.allowed) and len(update.split('|')) > 5:
             return True
@@ -45,17 +38,12 @@ class Analyzer():
     def parse_updates(self):
         filelist = open(self.filelist, 'r')
         for ff in filelist:
-            ff = ff.replace('\n', '')
-            ff = ff.replace('archive.', '')
-            ff = ff.split('|')[0]
-            ff = datadir + ff
+            ff = datadir + ff.replace('\n', '').replace('archive.', '').split('|')[0]
             print 'Reading ' + ff + '...'
 
-            # unpack the update file
-            subprocess.call('gunzip -c '+ff+' > '+ff.replace('txt.gz', 'txt'), shell=True)
+            subprocess.call('gunzip -c '+ff+' > '+ff.replace('txt.gz', 'txt'), shell=True) # unpack
 
             # get collector
-
             attributes = ff.split('/') 
             site_index = -1
             for a in attributes:

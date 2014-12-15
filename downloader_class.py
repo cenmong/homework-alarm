@@ -17,36 +17,38 @@ from env import *
 # Stand-alone functions
 
 # output: .bz2/gz.txt.gz files
-def parse_updates(self, listfile): # all update files from one collectors/list
+def parse_updates(listfile): # all update files from one collectors/list
+    print 'Parsing update files...'
     flist = open(listfile, 'r')
     for line in flist:
         line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
+        logging.info('Parsing:%s', line)
         if not os.path.exists(datadir+line+'.txt.gz'):
             cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
             cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
             os.remove(datadir+line)  # remove the original .bz2/.gz file
         else:
+            logging.info('Parsed file exists')
             pass
     flist.close()
     return 0
 
-def get_parse_one_rib(co, sdate): # argument: collector, sdate
-    tmp_month = sdate[0:4] + sdate[4:6]
+def get_parse_one_rib(co, sdate):
+    tmp_month = sdate[0:4] + '.' + sdate[4:6]
     if co.startswith('rrc'):
-        filelocation = 'data.ris.ripe.net/' + cl_name + '/' + tmp_month + '/' 
+        web_location = 'data.ris.ripe.net/' + co + '/' + tmp_month + '/' 
     else:
-        filelocation = 'routeviews.org/' + cl_name + '/bgpdata/' + tmp_month + '/RIBS/'
-        filelocation = filelocation.replace('//', '/')
-    webraw = cmlib.get_weblist('http://' + filelocation)
+        web_location = 'routeviews.org/' + co + '/bgpdata/' + tmp_month + '/RIBS/'
+        web_location = web_location.replace('//', '/')
+    webraw = cmlib.get_weblist('http://' + web_location)
 
-    cmlib.make_dir(datadir+filelocation)
+    cmlib.make_dir(datadir+web_location)
 
-    # download one RIB on or near sdate only for deleting reset
-    # TODO: if duration too long, we may need multiple RIBs
     rib_list = webraw.split('\n')
     filter(lambda a: a != '', rib_list)
     filter(lambda a: a != '\n', rib_list)
     rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
+    logging.info('the online rib list:%s', str(rib_list))
 
     # TODO: avoid the RIB with strange size
     target_line = '' # the RIB file for downloading
@@ -58,6 +60,7 @@ def get_parse_one_rib(co, sdate): # argument: collector, sdate
             closest = diff
             target_line = line
 
+    logging.info('Selected RIB:%s', target_line)
     size = target_line.split()[-1] # claimed RIB file size
     if size.isdigit():
         fsize = float(size)
@@ -71,32 +74,34 @@ def get_parse_one_rib(co, sdate): # argument: collector, sdate
         os.remove(full_loc+'.txt')
 
     if os.path.exists(full_loc+'.txt.gz'): 
-        if os.path.getsize(full_loc+'.txt.gz') > 0.1 * fsize:
+        if os.path.getsize(full_loc+'.txt.gz') > 0.1 * fsize: # FIXME change the ratio
             if os.path.exists(full_loc):  # .bz2/.gz useless anymore
                 os.remove(full_loc)
             return full_loc+'.txt.gz'
         else:
             os.remove(full_loc+'.txt.gz') # too small to be complete
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            logging('downloading %s:', filename)
+            logging.info('downloading %s:', filename)
 
     if os.path.exists(full_loc): 
         if os.path.getsize(full_loc) <= 0.95 * fsize:
             os.remove(full_loc)
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            logging('downloading %s:', filename)
+            logging.info('downloading %s:', filename)
         else:
             pass
 
     cmlib.parse_mrt(full_loc, full_loc+'.txt')
-    os.remove(full_loc)  # then remove .bz2/.gz
+    try:
+        os.remove(full_loc)  # then remove .bz2/.gz
+    except: # XXX I do not know why file not exist
+        pass
     cmlib.pack_gz(full_loc+'.txt')
 
     return full_loc+'.txt.gz'
 
 
-'''
-def delete_reset(#TODO):
+def delete_reset(rib_full_loc, tmp_full_listfile):
     peers = cmlib.get_peer_list_from_rib(rib_full_loc)
     print 'peers: ', peers
 
@@ -108,30 +113,32 @@ def delete_reset(#TODO):
         peer = peer.rstrip()
 
         # record reset info into a temp file
-        tmp_filename = peer+'_resets.txt'
+        reset_info_file = peer+'_resets.txt'
 
-        #FIXME list file incorrect: full path needed
+        #FIXME create a temprory list (do not hard code the full path in the original list!)
+        #TODO add 2 hours' redundant update files before and after the duration
+        # Note: the list has to store XXX.txt.gz full path file names
         subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
-                self.listfile+' -p '+peer+' > '+ datadir+'tmp/'+tmp_filename, shell=True)
+                tmp_full_listfile+' -p '+peer+' > '+ datadir+'tmp/'+reset_info_file, shell=True)
 
         # No reset for this peer    
-        if os.path.exists(datadir+'tmp/'+tmp_filename): 
-            if os.path.getsize(datadir+'tmp/'+tmp_filename) == 0:
+        if os.path.exists(datadir+'tmp/'+reset_info_file): 
+            if os.path.getsize(datadir+'tmp/'+reset_info_file) == 0:
                 continue
         else:
             continue
         
         # delete the corresponding updates
-        self.del_tabletran_updates(peer, tmp_filename)
+        del_tabletran_updates(peer, reset_info_file, tmp_full_listfile)
 
     subprocess.call('rm '+datadir+'tmp/*', shell=True)
                         
     return 0
 
 # XXX this function is highly ineffective. But I seem cannot improve it
-def del_tabletran_updates(self, peer, tmp_filename):
+def del_tabletran_updates(peer, reset_info_file, tmp_full_listfile):
     # the reset info for this peer
-    f_results = open(datadir+'tmp/'+tmp_filename, 'r')
+    f_results = open(datadir+'tmp/'+reset_info_file, 'r')
     for line in f_results: 
         print line
 
@@ -146,8 +153,8 @@ def del_tabletran_updates(self, peer, tmp_filename):
                 datetime.timedelta(hours=-8)
         print 'session reset from ', start_datetime, ' to ', end_datetime
 
-        thelistfile = open(self.listfile, 'r')
-        for updatefile in thelistfile:  
+        f = open(tmp_full_listfile, 'r')
+        for updatefile in f:  
             updatefile = updatefile.replace('\n', '')
 
             file_attr = updatefile.split('.')
@@ -197,7 +204,7 @@ def del_tabletran_updates(self, peer, tmp_filename):
             size_after = os.path.getsize(updatefile)
             print 'size(b):', size_before, ',size(a):', size_after
                    
-        thelistfile.close()
+        f.close()
     f_results.close()
     return 0
 
@@ -232,7 +239,9 @@ def combine_flist(self, order):
         fcomb.write(fn+'\n')
     fcomb.close()
     return 0
-'''
+
+
+
 
 # XXX: change file name for RV when time < Feb, 2003.
 TEST = False
@@ -384,7 +393,7 @@ if __name__ == '__main__':
     collector_list = ['', 'rrc00']
 
     listfiles = []
-
+    '''
     # download update files
     for order in order_list:
         sdate = daterange[order][0]
@@ -395,16 +404,18 @@ if __name__ == '__main__':
             listf = dl.get_listfile()
             listfiles.append(listf)
 
-    # parse the all the update files into readable ones TODO under test
+
+    # parse all the update files into readable ones TODO under test
     for listf in listfiles:
-        parse_updates(listf) # argu: listfile
+        parse_updates(listf)
+    '''
 
     # Deleting updates caused by reset
-    # FIXME download a RIB every one or two months, cannot be too long
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list:
+            # FIXME download a RIB every one or two months, cannot be too long
             rib_full_loc = get_parse_one_rib(co, sdate)
             '''
             # TODO download redundant update files
@@ -412,6 +423,7 @@ if __name__ == '__main__':
             # TODO create a full-path update file list
             full_listfile = get_tmp_full_listfile()
             # TODO delete the reset updates
+            delete_reset(rib_full_loc, tmp_full_listfile)
             '''
 
 
