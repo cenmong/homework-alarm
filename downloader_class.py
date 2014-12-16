@@ -17,7 +17,7 @@ from env import *
 # Stand-alone functions
 
 # output: .bz2/gz.txt.gz files
-def parse_updates(listfile): # all update files from one collectors/list
+def parse_update_files(listfile): # all update files from one collectors/list
     print 'Parsing update files...'
     flist = open(listfile, 'r')
     for line in flist:
@@ -32,6 +32,9 @@ def parse_updates(listfile): # all update files from one collectors/list
             pass
     flist.close()
     return 0
+
+#---------------------------------------------------------------------
+# Get and parse the RIB that is closest to 00:00 of sdate
 
 def get_parse_one_rib(co, sdate):
     tmp_month = sdate[0:4] + '.' + sdate[4:6]
@@ -113,7 +116,7 @@ def delete_reset(rib_full_loc, tmp_full_listfile):
         print '\ndeleting reset updates caused by peer: ', peer
         peer = peer.rstrip()
 
-        # record reset info into a temp file
+        ## record reset info into a temp file
         reset_info_file = peer+'_resets.txt'
 
         #FIXME create a temprory list (do not hard code the full path in the original list!)
@@ -242,7 +245,21 @@ def combine_flist(self, order):
     return 0
 
 
+def download_redundant_updates(sdate, edate, 2):
+    smonth
+    emonth
+    r_smonth
+    r_stime
+    r_emonth
+    r_etime
+    
+    # get update lists from r monthes
+    # filter and form our list
+    # download files from the lists
 
+
+#--------------------------------------------------------------------------
+# The class definition
 
 # XXX: change file name for RV when time < Feb, 2003.
 TEST = False
@@ -408,7 +425,7 @@ if __name__ == '__main__':
 
     # parse all the update files into readable ones TODO under test
     for listf in listfiles:
-        parse_updates(listf)
+        parse_update_files(listf)
     '''
 
     # Deleting updates caused by reset
@@ -416,15 +433,16 @@ if __name__ == '__main__':
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list:
-            # FIXME download a RIB every one or two months, cannot be too long
+            # XXX download a RIB every one or two months, cannot be too long
             rib_full_loc = get_parse_one_rib(co, sdate)
+            rlist = download_redundant_updates(sdate, edate, 2) # 2 hours before and after
+            # TODO create full-path update file list according to original and abundant lists
+            dl = Downloader(sdate, edate, co)
+            listf = dl.get_listfile()
             '''
-            # TODO download redundant update files
-            download_redundant_updates(sdate, edate)
-            # TODO create a full-path update file list
-            full_listfile = get_tmp_full_listfile()
+            full_list = get_tmp_full_list(listf, rlist)
             # TODO delete the reset updates
-            delete_reset(rib_full_loc, tmp_full_listfile)
+            delete_reset(rib_full_loc, full_list)
             '''
 
 

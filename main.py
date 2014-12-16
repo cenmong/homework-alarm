@@ -10,22 +10,26 @@ import string
 import cmlib
 import logging
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
+logging.info('Program starts!')
 
 #cmlib.combine_slot_dvi()
 #cmlib.combine_ht()
 #cmlib.combine_cdf()
 #dthres = 0.005785
 
-granu = 10 # granularity in minutes
-logging.info('Program starts!')
-
-# we see occational trash characters
+#----------------------------------------------------------------
+# Check whether an update contains ilegal char
+# Note: this happen rather rarely
 def update_is_normal(update):
     allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
     if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
         return True
     else:
         return False
+
+
+#-----------------------------------------------------------------
+# The major task
 
 for i in [0]:
     cl_list = [] # collectors to use
@@ -47,6 +51,8 @@ for i in [0]:
     #except:
         #peak = None
 
+    granu = 10 # granularity in minutes
+    sdate = ???
     alarm = Alarm(granu, sdate, cl_list, peak)
 
     f = open(filelist, 'r')
@@ -109,9 +115,7 @@ for i in [0]:
     try:
         alarmplot(daterange[i][0], granu)
     except:
-        ana = Analyzer(filelist, granu, daterange[i][0], peak)
-
-        ana.parse_updates()
+        # Read and analyze everything
     '''
 
 logging.info('Program ends!')
