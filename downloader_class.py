@@ -48,9 +48,8 @@ def get_parse_one_rib(co, sdate):
     filter(lambda a: a != '', rib_list)
     filter(lambda a: a != '\n', rib_list)
     rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
-    logging.info('the online rib list:%s', str(rib_list))
 
-    # TODO: avoid the RIB with strange size
+    # XXX avoid the RIB having strange size
     target_line = '' # the RIB file for downloading
     closest = 99999
     for line in rib_list:
@@ -60,7 +59,7 @@ def get_parse_one_rib(co, sdate):
             closest = diff
             target_line = line
 
-    logging.info('Selected RIB:%s', target_line)
+    print 'Selected RIB:', target_line
     size = target_line.split()[-1] # claimed RIB file size
     if size.isdigit():
         fsize = float(size)
@@ -74,23 +73,25 @@ def get_parse_one_rib(co, sdate):
         os.remove(full_loc+'.txt')
 
     if os.path.exists(full_loc+'.txt.gz'): 
-        if os.path.getsize(full_loc+'.txt.gz') > 0.1 * fsize: # FIXME change the ratio
+        print 'file exists:%f;original:%f',os.path.getsize(full_loc+'.txt.gz'),fsize
+        if os.path.getsize(full_loc+'.txt.gz') > 1 * fsize: # FIXME change the ratio
             if os.path.exists(full_loc):  # .bz2/.gz useless anymore
                 os.remove(full_loc)
             return full_loc+'.txt.gz'
         else:
             os.remove(full_loc+'.txt.gz') # too small to be complete
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            logging.info('downloading %s:', filename)
+            print 'downloading %s:', filename
 
     if os.path.exists(full_loc): 
         if os.path.getsize(full_loc) <= 0.95 * fsize:
             os.remove(full_loc)
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            logging.info('downloading %s:', filename)
+            print 'downloading %s:', filename
         else:
             pass
 
+    print 'Parsing and packing the downloaded RIB'
     cmlib.parse_mrt(full_loc, full_loc+'.txt')
     try:
         os.remove(full_loc)  # then remove .bz2/.gz
