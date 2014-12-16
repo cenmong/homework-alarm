@@ -5,6 +5,8 @@ import numpy as np
 import cmlib
 import myplot
 import operator
+import logging
+logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from netaddr import *
 from env import *
@@ -56,27 +58,28 @@ def alarmplot(sdate, granu):
 class Alarm():
 
     def __init__(self, granu, sdate, cl_list, cdfbound):
-        ##############################################
+        #-----------------------------------------------------
         # For coordinating different collectors
-        #################################################
         self.cl_list = cl_list
         self.cl_dt = {}  # collector: [from_dt, now_dt] 
+        '''
         for cl in self.cl_list:
             self.cl_dt[cl] = [0, 0]  # start dt, now dt
-        self.ceiling = 0  # we aggregate everything before ceiling
-        self.floor = 0  # for not recording the lowest dt
+        '''
+        for cl in self.cl_list:
+            self.cl_dt[cl] = 0
+        self.ceiling = 0  # we aggregate everything below ceiling and above floor
+        self.floor = 0  # for not recording the lowest dt the corresponding tries should be removed
 
 
-        #####################################
+        #-----------------------------------------------------
         # DV distribution in every time slot
-        ####################################
         self.dv_distribution = dict() # dt: DV: count
         self.dv_cdf = dict() # dt: DV: cumulative count
 
 
-        ###########################
+        #------------------------------------------------------
         # Basic values assignment
-        ############################
         self.sdate = sdate # Starting date
         self.granu = granu  # Time granularity in minutes
         
@@ -196,9 +199,16 @@ class Alarm():
         self.output_dir = datadir+'output/'+self.sdate+'_'+str(self.granu)+'/'
         cmlib.make_dir(self.output_dir)
 
-
+    # TODO put 'check whether every collector has existed' here
     def check_memo(self, is_end):
-        if self.ceiling == 0:  # not everybody is ready
+        for co in self.cl_list:
+            if self.cl_dt[co] == 0: # a collector does not exist yet
+                return -1
+
+        self.floor = self.shang_qu_zheng(self.floor, 's')
+        logging('checking memory...  self.floor=%d',self.floor)
+        '''
+        if self.ceiling == 0:  # not every monitor has existed
             return 0
     
         # We are now sure that all collectors exist and any info that is 
@@ -217,7 +227,7 @@ class Alarm():
         else:
             self.ceiling = new_ceil - 60 * self.granu
             self.release_memo()
-
+        '''
         return 0
 
     # aggregate everything before ceiling and remove garbage
@@ -799,11 +809,13 @@ class Alarm():
             return self.as2rank[myasn]
         except:
             return -1
+    
+    #-----------------------------------------------------------------
+    # change a value to exactly fit to the granularity
 
     def shang_qu_zheng(self, value, tp):  # 'm': minute, 's': second
         if tp == 's':
-            return (value + 60 * self.granu) / (60 * self.granu) * (60 *\
-                        self.granu)
+            return (value + 60 * self.granu) / (60 * self.granu) * (60 * self.granu)
         elif tp == 'm':
             return (value + self.granu) / self.granu * self.granu
         else:
@@ -811,18 +823,29 @@ class Alarm():
 
     def xia_qu_zheng(self, value, tp):
         if tp == 's':
-            return value / (60 * self.granu) * (60 *\
-                        self.granu)
+            return value / (60 * self.granu) * (60 * self.granu)
         elif tp == 'm':
             return value / self.granu * self.granu
         else:
             return False
 
+    #-----------------------------------------------------------------
+    # Set the datetime flag of every collector for synchronization
+    # TODO: combine the following two
+
     def set_now(self, cl, line):
         #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
+        '''
         self.cl_dt[cl][1] = int(line.split('|')[1]) # WHY not -8H any more?
         return 0
+        '''
+        dt_int = int(line.split('|')[1])
+        if self.cl_dt[cl] == 0:
+            if self.floor < dt_int:
+                self.floor = dt_int
+        self.cl_dt[cl] = dt_int
     
+    '''
     def set_start(self, cl, first_line):
         #self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
         self.cl_dt[cl][0] = int(first_line.split('|')[1])
@@ -838,4 +861,4 @@ class Alarm():
             # delete everything before floor
             self.del_garbage()
         return 0
-
+    '''

@@ -21,25 +21,23 @@ logging.info('Program starts!')
 # Check whether an update contains ilegal char
 # Note: this happen rather rarely
 def update_is_normal(update):
+    #XXX do not check every update; put 'try except' when analyzing the update
     allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
     if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
         return True
     else:
+        logging.info('abnormal update:%s',update)
         return False
 
 
 #-----------------------------------------------------------------
-# The major task
+# The major task for a special type of application
 
-for i in [0]:
+for i in [27]:
+    # TODO decide the monitors/collectors to use, consider time duration length
     cl_list = [] # collectors to use
-    # TODO decide the monitors to use, consider time duration length
     # TODO create a combined update file list according to the corresponding collectors
     filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
-
-    cl_first = dict() # collector first existence, True or False
-    for cl in cl_list:
-        cl_first[cl] = True # initial value: True
 
     # Do not put the logic of specific missions here!
     #soccur = daterange[i][6] # event occur start
@@ -52,22 +50,33 @@ for i in [0]:
         #peak = None
 
     granu = 10 # granularity in minutes
-    sdate = ???
+    sdate = daterange[i][0]
     alarm = Alarm(granu, sdate, cl_list, peak)
+
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # Read and analyze updates
+
+    '''
+    cl_first = dict() # collector first existence, True or False
+    for cl in cl_list:
+        cl_first[cl] = True # initial value: True
+    '''
 
     f = open(filelist, 'r')
     for fline in f:
         fline = datadir + fline.replace('\n', '').replace('archive.', '').split('|')[0]
         print 'Reading ' + fline + '...'
 
-        subprocess.call('gunzip -c '+fline+' > '+fline.replace('txt.gz', 'txt'), shell=True) # unpack
+        subprocess.call('gunzip '+fline, shell=True) # unpack
 
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # get current file's collector
+
         attributes = fline.split('/') 
         site_index = -1
         for a in attributes:
             site_index += 1
-            if a == 'data.ris.ripe.net' or a == 'routeviews.org':
+            if a.startswith('data.ris') or a.startswith('routeviews'):
                 break
 
         cl = fline.split('/')[site_index + 1]
@@ -76,9 +85,15 @@ for i in [0]:
 
         lastline = 'Do not delete me!'
         f2 = open(fline.replace('txt.gz', 'txt'), 'r')
-        # this collector appears for the first time
-        if cl_first[cl] == True:
-            for line in f2:  # get first (ipv4) line
+
+
+        #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Process the updates one by one
+        
+        #XXX do not put the synchronization logic here
+        '''
+        if cl_first[cl] == True: # this collector appears for the first time
+            for line in f2: 
                 line = line.rstrip('\n')
                 if not update_is_normal(line):
                     continue
@@ -86,7 +101,7 @@ for i in [0]:
             alarm.set_start(cl, line)  # set colllector's starting dt
             alarm.add(line)
             cl_first[cl] = False
-
+        '''
         for line in f2:
             line = line.rstrip('\n')
             if not update_is_normal(line):
@@ -98,11 +113,9 @@ for i in [0]:
         # remove the unpacked file to save space (the original one always remains)
         # Note that sometimes os. may fail to excute
         os.remove(fline.replace('txt.gz', 'txt'))
-
-        try:
-            alarm.set_now(cl, lastline)  # set the current collector's latest dt
-        except:
-            pass
+        # FIXME use first line instead of last line to record floor
+        # FIXME use last line to record ceiling
+        alarm.set_now(cl, lastline)  # set the current collector's latest dt
         alarm.check_memo(False) # not the ending check
 
     alarm.check_memo(True) # the ending check
