@@ -17,9 +17,10 @@ from netaddr import *
 from env import *
 
 def get_peer_list_from_rib(rib_full_loc): # file name end with .bz2/gz.txt.gz
+    print 'Getting peers from RIB...'
     peers = []
     txtfile = rib_full_loc.replace('txt.gz', 'txt')
-    subprocess.call('gunzip '+rib_comp_loc, shell=True)
+    subprocess.call('gunzip '+rib_full_loc, shell=True)
     with open(txtfile, 'r') as f:  # get peers from RIB
         for line in f:
             try:
@@ -31,8 +32,8 @@ def get_peer_list_from_rib(rib_full_loc): # file name end with .bz2/gz.txt.gz
     f.close()
 
     # compress RIB into .gz
-    if not os.path.exists(rib_comp_loc):
-        cmlib.pack_gz(txtfile)
+    if not os.path.exists(rib_full_loc):
+        pack_gz(txtfile)
 
     return peers
 

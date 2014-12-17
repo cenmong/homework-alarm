@@ -2,6 +2,10 @@
 # While this code is mainly for downloading updates, we also download a RIB for 
 # 1) deleting reset; 2) get the monitors' info
 # TODO: when downloading multiple RIBs, use another mechanism other than this
+#--------------------------------------------------------------------------------
+# Note: when analyzing updates, ignore the first and last hours because the 
+# reset-updates in it may have not been completely deleted
+# This desicino also makes the synchronization much easier
 
 import cmlib
 import datetime
@@ -119,6 +123,7 @@ def delete_reset(rib_full_loc, tmp_full_listfile):
         ## record reset info into a temp file
         reset_info_file = peer+'_resets.txt'
 
+        cmlib.make_dir(datadir+'tmp/')
         #FIXME create a temprory list (do not hard code the full path in the original list!)
         #TODO add 2 hours' redundant update files before and after the duration
         # Note: the list has to store XXX.txt.gz full path file names
@@ -126,8 +131,9 @@ def delete_reset(rib_full_loc, tmp_full_listfile):
                 tmp_full_listfile+' -p '+peer+' > '+ datadir+'tmp/'+reset_info_file, shell=True)
 
         # No reset for this peer    
-        if os.path.exists(datadir+'tmp/'+reset_info_file): 
-            if os.path.getsize(datadir+'tmp/'+reset_info_file) == 0:
+        reset_info_file = datadir+'tmp/'+reset_info_file
+        if os.path.exists(reset_info_file): 
+            if os.path.getsize(reset_info_file) == 0:
                 continue
         else:
             continue
@@ -141,8 +147,7 @@ def delete_reset(rib_full_loc, tmp_full_listfile):
 
 # XXX this function is highly ineffective. But I seem cannot improve it
 def del_tabletran_updates(peer, reset_info_file, tmp_full_listfile):
-    # the reset info for this peer
-    f_results = open(datadir+'tmp/'+reset_info_file, 'r')
+    f_results = open(reset_info_file, 'r')
     for line in f_results: 
         print line
 
@@ -159,47 +164,45 @@ def del_tabletran_updates(peer, reset_info_file, tmp_full_listfile):
 
         f = open(tmp_full_listfile, 'r')
         for updatefile in f:  
-            updatefile = updatefile.replace('\n', '')
-
+            updatefile = updatefile.split('|')[0]
             file_attr = updatefile.split('.')
-            # FIXME the position of each factor has changed?
+
             if self.co.startswith('rrc'): # note the difference in file name formats
                 fattr_date, fattr_time = file_attr[5], file_attr[6]
             else:
                 fattr_date, fattr_time = file_attr[3], file_attr[4]
+
             dt = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
             
             # filename not OK
-            if not start_datetime + datetime.timedelta(minutes = -15) <= dt <=\
-                    end_datetime:
+            if not start_datetime + datetime.timedelta(minutes=-15) <= dt <= end_datetime:
                 continue
 
             print 'session reset exists in: ', updatefile
             size_before = os.path.getsize(updatefile)
             myfilename = updatefile.replace('txt.gz', 'txt')
-            subprocess.call('gunzip -c ' + updatefile + ' > ' + myfilename, shell=True)
-            oldfile = open(myfilename, 'r')
-            newfile = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
+            subprocess.call('gunzip -c '+updatefile+' > '+myfilename, shell=True)
+            old_f = open(myfilename, 'r')
+            new_f = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
 
             counted_pfx = patricia.trie(None)
-            for updt in oldfile:  # loop over each update
-                updt = updt.rstrip('\n')
-                attr = updt.split('|')
+            for updt in old_f:  # loop over each update
+                attr = updt.rstrip('\n').split('|')
                 # culprit update confirmed
-                if cmp(attr[3], peer) == 0 and (stime_unix < int(attr[1]) < endtime_unix):
+                if cmp(attr[3], peer) == 0 and (stime_unix<int(attr[1])<endtime_unix):
                     pfx = attr[5]
                     try:  # Test whether the trie has the pfx
                         test = counted_pfx[pfx]
-                        newfile.write(updt+'\n')  # pfx exists
+                        new_f.write(updt+'\n')  # pfx exists
                     except:  # Node does not exist
                         counted_pfx[pfx] = True
                 else:  # not culprit update
-                    newfile.write(updt+'\n')
+                    new_f.write(updt+'\n')
 
-            oldfile.close()
-            newfile.close()
+            old_f.close()
+            new_f.close()
 
             os.remove(updatefile)  # remove old .gz file
             # compress .txt into txt.gz to replace the old file
@@ -245,25 +248,26 @@ def combine_flist(self, order):
     return 0
 
 
-def download_redundant_updates(sdate, edate, 2):
-    smonth
-    emonth
-    r_smonth
-    r_stime
-    r_emonth
-    r_etime
-    
-    # get update lists from r monthes
-    # filter and form our list
-    # download files from the lists
+def get_tmp_full_list(dlder):
+    listfile = dlder.get_listfile()
+    list_dir = dlder.get_listfile_dir()
+    tmp_file = list_dir + 'tmp_full_list'
 
+    fr = open(listfile, 'r')
+    fw = open(tmp_file, 'w')
 
-#--------------------------------------------------------------------------
-# The class definition
+    for line in fr:
+        line = line.split('|')[0]
+        fw.write(datadir+line+'\n')
 
-# XXX: change file name for RV when time < Feb, 2003.
+    fr.close()
+    fw.close()
+
+    return tmp_file
+
 TEST = False
-
+# XXX: change file name for RV when time < Feb, 2003.
+#--------------------------------------------------------------------------
 class Downloader():
 
     def __init__(self, sdate, edate, co):
@@ -272,8 +276,14 @@ class Downloader():
         self.co = co
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
 
+    #----------------------------------------------------------------------
     def get_listfile(self):
         return self.listfile
+
+    def get_listfile_dir(self):
+        tmp_filename = self.listfile.split('/')[-1]
+        tmp_dir = self.listfile.replace(tmp_filename, '') + '/'
+        return tmp_dir
 
     #-----------------------------------------------------------------------
     # Get a list of the update files before downloading them
@@ -308,8 +318,7 @@ class Downloader():
 
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # Create the urls according to the month list and obtain the file list
-        tmp_filename = self.listfile.split('/')[-1]
-        tmp_dir = self.listfile.replace(tmp_filename, '')
+        tmp_dir = self.get_listfile_dir()
         cmlib.make_dir(tmp_dir)
         flist = open(self.listfile, 'w')  
 
@@ -435,14 +444,10 @@ if __name__ == '__main__':
         for co in collector_list:
             # XXX download a RIB every one or two months, cannot be too long
             rib_full_loc = get_parse_one_rib(co, sdate)
-            rlist = download_redundant_updates(sdate, edate, 2) # 2 hours before and after
-            # TODO create full-path update file list according to original and abundant lists
+
+            # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
-            listf = dl.get_listfile()
-            '''
-            full_list = get_tmp_full_list(listf, rlist)
-            # TODO delete the reset updates
+            full_list = get_tmp_full_list(dl)
+
             delete_reset(rib_full_loc, full_list)
-            '''
-
-
+            os.remove(full_list)
