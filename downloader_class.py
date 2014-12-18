@@ -79,26 +79,24 @@ def get_parse_one_rib(co, sdate):
     if os.path.exists(full_loc+'.txt'):
         os.remove(full_loc+'.txt')
 
+    print 'full location of the RIB:', full_loc
     if os.path.exists(full_loc+'.txt.gz'): 
-        print 'file exists:%f;original:%f',os.path.getsize(full_loc+'.txt.gz'),fsize
-        if os.path.getsize(full_loc+'.txt.gz') > 1 * fsize: # FIXME change the ratio
+        print 'existed file size:%f;original size:%f',os.path.getsize(full_loc+'.txt.gz'),fsize
+        if os.path.getsize(full_loc+'.txt.gz') > 0.95 * fsize:
             if os.path.exists(full_loc):  # .bz2/.gz useless anymore
                 os.remove(full_loc)
             return full_loc+'.txt.gz'
         else:
             os.remove(full_loc+'.txt.gz') # too small to be complete
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            print 'downloading %s:', filename
 
     if os.path.exists(full_loc): 
         if os.path.getsize(full_loc) <= 0.95 * fsize:
             os.remove(full_loc)
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-            print 'downloading %s:', filename
         else:
             pass
 
-    print 'Parsing and packing the downloaded RIB'
     cmlib.parse_mrt(full_loc, full_loc+'.txt')
     try:
         os.remove(full_loc)  # then remove .bz2/.gz
@@ -127,7 +125,7 @@ def delete_reset(rib_full_loc, tmp_full_listfile):
         #FIXME create a temprory list (do not hard code the full path in the original list!)
         #TODO add 2 hours' redundant update files before and after the duration
         # Note: the list has to store XXX.txt.gz full path file names
-        subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_comp_loc+' -ul '+\
+        subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
                 tmp_full_listfile+' -p '+peer+' > '+ datadir+'tmp/'+reset_info_file, shell=True)
 
         # No reset for this peer    

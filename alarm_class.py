@@ -59,21 +59,30 @@ class Alarm():
 
     def __init__(self, granu, sdate, cl_list, cdfbound):
         #-----------------------------------------------------
-        # For coordinating different collectors
+        # For coordinating multiple collectors
+        # Note: assume every collector exists after sdate + 1 hour
+
         self.cl_list = cl_list
-        self.cl_dt = {}  # collector: [from_dt, now_dt] 
-        '''
-        for cl in self.cl_list:
-            self.cl_dt[cl] = [0, 0]  # start dt, now dt
-        '''
+        self.cl_dt = {}  # The current datetime of every collector, for getting ceiling
         for cl in self.cl_list:
             self.cl_dt[cl] = 0
-        self.ceiling = 0  # we aggregate everything below ceiling and above floor
-        self.floor = 0  # for not recording the lowest dt the corresponding tries should be removed
+
+        tmp_dt = datetime.datetime(int(edate[0:4]),int(edate[4:6]),int(edate[6:8]),23,59)
+        tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
+        tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
+        self.top_ceiling = tmp_dt
+
+        tmp_dt = datetime.datetime(int(sdate[0:4]),int(sdate[4:6]),int(sdate[6:8]),0,0)
+        tmp_dt = tmp_dt + datetime.timedelta(minutes=58)
+        tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
+
+        self.floor = tmp_dt  # ignore the lowest 1 hour
+        self.ceiling = self.floor  # we aggregate everything below ceiling and above floor
 
 
         #-----------------------------------------------------
         # DV distribution in every time slot
+
         self.dv_distribution = dict() # dt: DV: count
         self.dv_cdf = dict() # dt: DV: cumulative count
 
@@ -199,25 +208,13 @@ class Alarm():
         self.output_dir = datadir+'output/'+self.sdate+'_'+str(self.granu)+'/'
         cmlib.make_dir(self.output_dir)
 
-    # TODO put 'check whether every collector has existed' here
     def check_memo(self, is_end):
-        for co in self.cl_list:
-            if self.cl_dt[co] == 0: # a collector does not exist yet
-                return -1
-
-        self.floor = self.shang_qu_zheng(self.floor, 's')
-        logging('checking memory...  self.floor=%d',self.floor)
-        '''
-        if self.ceiling == 0:  # not every monitor has existed
-            return 0
-    
-        # We are now sure that all collectors exist and any info that is 
-        # too early to be combined are deleted
-
+        print 'Checking memory to see if it is time to aggregate and release...'
+        # Obtain the lowest 'current datatime' among all collectors
         new_ceil = 9999999999
         for cl in self.cl_list:
-            if self.cl_dt[cl][1] < new_ceil:
-                new_ceil = self.cl_dt[cl][1]
+            if self.cl_dt[cl] < new_ceil:
+                new_ceil = self.cl_dt[cl]
 
         if is_end == False:
             if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # frequent
@@ -227,7 +224,6 @@ class Alarm():
         else:
             self.ceiling = new_ceil - 60 * self.granu
             self.release_memo()
-        '''
         return 0
 
     # aggregate everything before ceiling and remove garbage
@@ -835,15 +831,9 @@ class Alarm():
 
     def set_now(self, cl, line):
         #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
-        '''
         self.cl_dt[cl][1] = int(line.split('|')[1]) # WHY not -8H any more?
-        return 0
-        '''
-        dt_int = int(line.split('|')[1])
-        if self.cl_dt[cl] == 0:
-            if self.floor < dt_int:
-                self.floor = dt_int
         self.cl_dt[cl] = dt_int
+        return 0
     
     '''
     def set_start(self, cl, first_line):

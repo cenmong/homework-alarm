@@ -49,6 +49,7 @@ def download_file(url, save_loc, filename):
             pass
 
 def force_download_file(url, save_loc, filename):
+    print 'Downloading '+url+filename
     make_dir(save_loc)
     while 1:
         try:
@@ -72,6 +73,7 @@ def get_unpack_bz2(url, save_loc, filename):
         pass
 
 def pack_gz(loc_fname):
+    print 'gz packing: '+loc_fname
     if not os.path.exists(loc_fname+'.gz'):
         subprocess.call('gzip '+loc_fname, shell=True)
     else:
@@ -93,6 +95,7 @@ def get_weblist(url):
     return webraw
 
 def parse_mrt(old_loc_fname, new_loc_fname):
+    print 'Parsing: '+old_loc_fname
     if not os.path.exists(new_loc_fname):
         subprocess.call('~/tool/libbgpdump-1.4.99.11/bgpdump -m '+\
                 old_loc_fname+' > '+new_loc_fname, shell=True)
