@@ -12,6 +12,7 @@ from netaddr import *
 from env import *
 from supporter_class import *
 
+# TODO put plotting somewhere else. de-couple plotting and logic
 def alarmplot(sdate, granu):
     print 'Plotting form output file...'
     out_dir = datadir+'output/'+sdate+'_'+str(granu)+'/'
@@ -57,28 +58,27 @@ def alarmplot(sdate, granu):
 
 class Alarm():
 
-    def __init__(self, granu, sdate, cl_list, cdfbound):
+    def __init__(self, granu, sdate, cl_list):
         #-----------------------------------------------------
-        # For coordinating multiple collectors
-        # Note: assume every collector exists after sdate + 1 hour
+        # Note: assume all collectors exist after sdate + 1 hour
 
         self.cl_list = cl_list
         self.cl_dt = {}  # The current datetime of every collector, for getting ceiling
         for cl in self.cl_list:
             self.cl_dt[cl] = 0
 
+        tmp_dt = datetime.datetime(int(sdate[0:4]),int(sdate[4:6]),int(sdate[6:8]),0,0)
+        tmp_dt = tmp_dt + datetime.timedelta(minutes=58)
+        tmp_dt = time_lib.mktime(tmp_dt.timetuple())
+
+        # floor is only for ignoring anything before sdate + 1 hour
+        self.floor = tmp_dt
+        self.ceiling = self.floor  # we aggregate everything below ceiling and above floor
+
         tmp_dt = datetime.datetime(int(edate[0:4]),int(edate[4:6]),int(edate[6:8]),23,59)
         tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
         tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
-        self.top_ceiling = tmp_dt
-
-        tmp_dt = datetime.datetime(int(sdate[0:4]),int(sdate[4:6]),int(sdate[6:8]),0,0)
-        tmp_dt = tmp_dt + datetime.timedelta(minutes=58)
-        tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
-
-        self.floor = tmp_dt  # ignore the lowest 1 hour
-        self.ceiling = self.floor  # we aggregate everything below ceiling and above floor
-
+        self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
 
         #-----------------------------------------------------
         # DV distribution in every time slot
@@ -186,6 +186,7 @@ class Alarm():
         ###################################################
         # CDFs for the slot before and after the cdfbound (HDVP peak)
         ##################################################
+        #TODO obtain cdfbound
         self.compare = False
         if cdfbound != None:
             self.compare = True
@@ -210,7 +211,7 @@ class Alarm():
 
     def check_memo(self, is_end):
         print 'Checking memory to see if it is time to aggregate and release...'
-        # Obtain the lowest 'current datatime' among all collectors
+        # Obtain the lowest 'current datetime' among all collectors
         new_ceil = 9999999999
         for cl in self.cl_list:
             if self.cl_dt[cl] < new_ceil:
@@ -221,6 +222,7 @@ class Alarm():
                 # e.g., aggregate everything <= 10:50 only when everyone > 11:00
                 self.ceiling = new_ceil - 60 * self.granu
                 self.release_memo()
+        # XXX Is this else really necessary and correct?
         else:
             self.ceiling = new_ceil - 60 * self.granu
             self.release_memo()
@@ -246,28 +248,26 @@ class Alarm():
                 del self.pfx_trie[dt]
         return 0
 
-    # add a new line of update to our monitoring system
+    # XXX simply record here. put any costly analysis in 'aggregate' ???
+    # XXX occasionally we need to analyze the update content, e.g., AS path
+    # XXX maybe I should not put everything into tries. Just read and process each line ???
     def add(self, update):
-        attr = update.split('|')[0:6]  # Get 0~5
-
-        if ':' in attr[5]: # IPv6 # TODO: should put in analyzer
-            return -1
-
-        if len(attr[5]) == 1: # I don't know why this exists
+        attr = update.split('|')[0:6]  # Get only 0~5 attributes
+        if ':' in attr[5] or len(attr[5])==1: # IPv6 and a very strange case
             return -1
 
         intdt = int(attr[1])
-        objdt = datetime.datetime.fromtimestamp(intdt).\
-                replace(second = 0, microsecond = 0) +\
+        objdt = datetime.datetime.fromtimestamp(intdt).replace(second = 0, microsecond = 0) +\
                 datetime.timedelta(hours=-0) # no need for 8H shift. WHY???  TODO
                 #datetime.timedelta(hours=-8) # note the 8H shift
 
         # Reset date time to fit granularity
-        mi = self.xia_qu_zheng(objdt.minute, 'm')
-        objdt = objdt.replace(minute = mi)
-        dt = time_lib.mktime(objdt.timetuple())  # Change into seconds int
+        min = self.xia_qu_zheng(objdt.minute, 'm')
+        objdt = objdt.replace(minute = min)
+        dt = time_lib.mktime(objdt.timetuple())  # Change into UNIX seconds
 
-        # meet a brand new dt for sure!
+        # a brand new dt for sure!
+        # XXX this is so inefficient!
         if dt not in self.dt_list:
             self.dt_list.append(dt)
             self.peerlist[dt] = []
@@ -278,36 +278,38 @@ class Alarm():
 
 
         # record update type and number
+        # XXX logic messed up by these shit
         if attr[2] == 'A':  # announcement
             self.acount[dt] += 1
         else:  # withdrawal
             self.wcount[dt] += 1
         self.ucount[dt] += 1
 
+        # XXX very inefficient
         peer = attr[3]
         if peer not in self.peerlist[dt]:
             self.peerlist[dt].append(peer)
 
-        # deal with the prefix -- the core mission!
         pfx = cmlib.ip_to_binary(attr[5], peer)
         try:
-            try:  # Test whether the trie has the node
+            try: # Test whether the trie has the node
                 pfx_peer = self.pfx_trie[dt][pfx]
-            except:  # Node does not exist, then we create a new node
+                if peer not in pfx_peer:
+                    self.pfx_trie[dt][pfx].append(peer)
+            except: # Node does not exist, then we create a new node
                 self.pfx_trie[dt][pfx] = [peer]
-                pfx_peer = self.pfx_trie[dt][pfx]
-            if peer not in pfx_peer:
-                self.pfx_trie[dt][pfx].append(peer)
-        except:  # self.pfx_trie[dt] has already been deleted
+        except: # self.pfx_trie[dt] has already been deleted # XXX how can this possible?
             pass
 
         return 0
 
-
+    # XXX so ugly...
     # get/calculate the infomation we need from the designated tries
     def aggregate(self, rel_dt):
-
         for dt in rel_dt:
+            print 'aggregating dt:'
+            cmlib.print_dt(dt)
+
             trie = self.pfx_trie[dt]
             self.dv_distribution[dt] = dict() # DV: count
 
@@ -426,6 +428,7 @@ class Alarm():
 
         return 0
 
+    # XXX ugly
     def output(self):
         for dt in self.pfxcount[0].keys():
             self.all_pcount_lzero += self.pfxcount[0][dt]
@@ -827,12 +830,10 @@ class Alarm():
 
     #-----------------------------------------------------------------
     # Set the datetime flag of every collector for synchronization
-    # TODO: combine the following two
 
     def set_now(self, cl, line):
         #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
-        self.cl_dt[cl][1] = int(line.split('|')[1]) # WHY not -8H any more?
-        self.cl_dt[cl] = dt_int
+        self.cl_dt[cl] = int(line.split('|')[1]) # WHY not -8H any more?
         return 0
     
     '''

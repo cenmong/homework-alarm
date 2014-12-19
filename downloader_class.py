@@ -107,7 +107,7 @@ def get_parse_one_rib(co, sdate):
     return full_loc+'.txt.gz'
 
 
-def delete_reset(rib_full_loc, tmp_full_listfile):
+def delete_reset(co, rib_full_loc, tmp_full_listfile):
     peers = cmlib.get_peer_list_from_rib(rib_full_loc)
     print 'peers: ', peers
 
@@ -137,14 +137,14 @@ def delete_reset(rib_full_loc, tmp_full_listfile):
             continue
         
         # delete the corresponding updates
-        del_tabletran_updates(peer, reset_info_file, tmp_full_listfile)
+        del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile)
 
     subprocess.call('rm '+datadir+'tmp/*', shell=True)
                         
     return 0
 
 # XXX this function is highly ineffective. But I seem cannot improve it
-def del_tabletran_updates(peer, reset_info_file, tmp_full_listfile):
+def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
     f_results = open(reset_info_file, 'r')
     for line in f_results: 
         print line
@@ -153,6 +153,8 @@ def del_tabletran_updates(peer, reset_info_file, tmp_full_listfile):
         if attr[0] == '#START':
             continue
 
+        #---------------------------------------------------------------------
+        # Get the reset transmission start and end time (objects)
         stime_unix, endtime_unix= int(attr[0]), int(attr[1])
         start_datetime = datetime.datetime.fromtimestamp(stime_unix) +\
                 datetime.timedelta(hours=-8) # XXX note the time shift
@@ -160,50 +162,55 @@ def del_tabletran_updates(peer, reset_info_file, tmp_full_listfile):
                 datetime.timedelta(hours=-8)
         print 'session reset from ', start_datetime, ' to ', end_datetime
 
+        #---------------------------------------------------------------------
+        # Read the temproary full-path file list (original list is relative path)
         f = open(tmp_full_listfile, 'r')
         for updatefile in f:  
-            updatefile = updatefile.split('|')[0]
+            updatefile = updatefile.rstrip('\n')
             file_attr = updatefile.split('.')
 
-            if self.co.startswith('rrc'): # note the difference in file name formats
+            if co.startswith('rrc'): # note the difference in file name formats
                 fattr_date, fattr_time = file_attr[5], file_attr[6]
             else:
                 fattr_date, fattr_time = file_attr[3], file_attr[4]
 
+            # Get datetime from the file name
             dt = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
             
-            # filename not OK
-            if not start_datetime + datetime.timedelta(minutes=-15) <= dt <= end_datetime:
+            # Check whether the file is our target
+            if not start_datetime + datetime.timedelta(minutes=-30) <= dt <= end_datetime:
                 continue
 
-            print 'session reset exists in: ', updatefile
+            print 'session reset probably exists in: ', updatefile
             size_before = os.path.getsize(updatefile)
             myfilename = updatefile.replace('txt.gz', 'txt')
             subprocess.call('gunzip -c '+updatefile+' > '+myfilename, shell=True)
             old_f = open(myfilename, 'r')
             new_f = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
 
+            # record the prefix whose update has already been deleted (for once)
             counted_pfx = patricia.trie(None)
-            for updt in old_f:  # loop over each update
+
+            # find and delete the reset updates
+            for updt in old_f:
                 attr = updt.rstrip('\n').split('|')
-                # culprit update confirmed
                 if cmp(attr[3], peer) == 0 and (stime_unix<int(attr[1])<endtime_unix):
                     pfx = attr[5]
-                    try:  # Test whether the trie has the pfx
+                    try: # Test whether the trie has the pfx
                         test = counted_pfx[pfx]
-                        new_f.write(updt+'\n')  # pfx exists
-                    except:  # Node does not exist
+                        new_f.write(updt+'\n') # pfx exists
+                    except: # pfx does not exist
                         counted_pfx[pfx] = True
-                else:  # not culprit update
+                else: # not culprit update
                     new_f.write(updt+'\n')
 
             old_f.close()
             new_f.close()
 
-            os.remove(updatefile)  # remove old .gz file
-            # compress .txt into txt.gz to replace the old file
+            # use the new file to replace the old file
+            os.remove(updatefile)
             subprocess.call('gzip -c '+datadir+'tmp/'+myfilename.split('/')[-1]+\
                     ' > '+updatefile, shell=True)
             size_after = os.path.getsize(updatefile)
@@ -440,12 +447,12 @@ if __name__ == '__main__':
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list:
-            # XXX download a RIB every one or two months, cannot be too long
+            # XXX download a RIB every two months for long duration
             rib_full_loc = get_parse_one_rib(co, sdate)
 
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
             full_list = get_tmp_full_list(dl)
 
-            delete_reset(rib_full_loc, full_list)
+            delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)

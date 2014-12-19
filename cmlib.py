@@ -125,6 +125,7 @@ def print_dt(dt):
         print dt
     return 0
 
+# TODO: peer=>protocol
 def ip_to_binary(content, peer):  # can deal with ip addr and pfx
     length = None
     pfx = content.split('/')[0]
