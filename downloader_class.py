@@ -439,7 +439,7 @@ if __name__ == '__main__':
             listfiles.append(listf)
 
 
-    # parse all the update files into readable ones TODO under test
+    # parse all the update files into readable ones
     for listf in listfiles:
         parse_update_files(listf)
 

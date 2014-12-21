@@ -3,5 +3,10 @@ Never ctrl+Z when packing, unpacking and parsing files
 ----------------------------------------------------------------
 2014-12-20
 BUG: a strange situation: a few .gz.txt among all .gz.txt.gz files 
+work-arounds: check whether this file exists before packing
 BUG: a few files are not downloaded
 solve: download all files twice to minimize the possibility of missed files
+---------------------------------------------------------------
+The time cost of testing whether the updates are normal is less than half the time of unpacking and packing the update files.
+---------------------------------------------------------------
+There are some update files where there is a blank line between two successive updates

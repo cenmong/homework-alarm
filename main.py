@@ -7,7 +7,6 @@ scanner.dump_all_objects('memory.json')
 import os
 import subprocess
 import string
-import cmlib
 import logging
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 logging.info('Program starts!')
@@ -15,38 +14,50 @@ logging.info('Program starts!')
 #----------------------------------------------------------------
 # Check whether an update contains ilegal char (Note: this happens rather rarely)
 
+allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
 def update_is_normal(update):
-    #XXX do not check every update; use 'try except' when analyzing the update
-    allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
     if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
         return True
     else:
-        logging.info('abnormal update:%s',update)
+        #logging.info('abnormal update:%s',update)
         return False
 
 
 #-----------------------------------------------------------------
-# The major task for our applications
+# From now on we deal with each application separately
+# Note: 
+# different applications may require different monitor and prefix sets!
+# Some applications may use sliding window rather than fixed window
+# Microscopic analysis (e.g., case studies) should be in other .py
 
 for i in [27]:
+
     # TODO decide the monitors/collectors to use, consider time duration length
+    # TODO how to deal with long duration?
     cl_list = []
     # TODO create a combined update file list according to the corresponding collectors
-    filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
+    #filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
+    filelist = '/media/usb/update_list/20141130_20141201/_list.txt'
 
     granu = 10 # granularity in minutes
-    sdate = daterange[i][0]
-    alarm = Alarm(granu, sdate, cl_list)
+    #alarm = Alarm(granu, i, cl_list)
 
-    #---------------------------------------------------------------------
-    # Read and analyze updates
+
+    #----------------------
+    # Define an class that gets and *stores* all information about a duration, given requirements
+    # stores: collectors monitors prefixes filelist outputDir granularity...
+    # Define other classes that use the previous one as input
+    # Get_prefix_info, analyze_middle, plot
 
     f = open(filelist, 'r')
     for fline in f:
         fline = datadir + fline.split('|')[0]
         print 'Reading ' + fline + '...'
 
-        subprocess.call('gunzip '+fline, shell=True) # unpack
+        if os.path.exists(fline.replace('txt.gz', 'txt')): # This happens occassionally
+            pass
+        else:
+            subprocess.call('gunzip '+fline, shell=True) # unpack
 
         #------------------------------------------------------------------------
         # get current file's collector
@@ -71,22 +82,22 @@ for i in [27]:
         for line in fu:
             line = line.rstrip('\n')
             if not update_is_normal(line):
+                print line
                 continue
-            alarm.add(line)
+            #alarm.add(line)
             #lastline = line
 
         fu.close()
         # pack again
         subprocess.call('gzip '+fline.replace('txt.gz', 'txt'), shell=True) # unpack
         #alarm.set_now(cl, lastline)  # set the current collector's current dt
-        alarm.set_now(cl, line)  # set the current collector's current dt
-        alarm.check_memo(False) # not the ending check
+        #alarm.set_now(cl, line)  # set the current collector's current dt
+        #alarm.check_memo()
 
-    alarm.check_memo(True) # the ending check
     f.close()
     
-    alarm.output()
-    alarmplot(sdate, granu)
+    #alarm.output()
+    #alarmplot(sdate, granu)
 
     ''' This is the ideal way, totally automatic
     try:

@@ -12,6 +12,7 @@ from netaddr import *
 from env import *
 from supporter_class import *
 
+
 # TODO put plotting somewhere else. de-couple plotting and logic
 def alarmplot(sdate, granu):
     print 'Plotting form output file...'
@@ -56,77 +57,24 @@ def alarmplot(sdate, granu):
         print 'Cannot plot comparison!'
     return 0
 
+
+
 class Alarm():
 
-    def __init__(self, granu, sdate, cl_list):
-        #-----------------------------------------------------
-        # Note: assume all collectors exist after sdate + 1 hour
-
+    def __init__(self, granu, index, cl_list):
+        self.sdate = daterange[index][0] 
+        self.edate = daterange[index][1] 
+        self.granu = granu
         self.cl_list = cl_list
-        self.cl_dt = {}  # The current datetime of every collector, for getting ceiling
-        for cl in self.cl_list:
-            self.cl_dt[cl] = 0
 
-        tmp_dt = datetime.datetime(int(sdate[0:4]),int(sdate[4:6]),int(sdate[6:8]),0,0)
-        tmp_dt = tmp_dt + datetime.timedelta(minutes=58)
-        tmp_dt = time_lib.mktime(tmp_dt.timetuple())
+        #-------------------------------------------------------------
+        # dir for final and middle output files
+        self.output_dir = datadir+'output/'+self.sdate+'_'+self.edate+'/'
+        cmlib.make_dir(self.output_dir)
 
-        # floor is only for ignoring anything before sdate + 1 hour
-        self.floor = tmp_dt
-        self.ceiling = self.floor  # we aggregate everything below ceiling and above floor
-
-        tmp_dt = datetime.datetime(int(edate[0:4]),int(edate[4:6]),int(edate[6:8]),23,59)
-        tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
-        tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
-        self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
-
-        #-----------------------------------------------------
-        # DV distribution in every time slot
-
-        self.dv_distribution = dict() # dt: DV: count
-        self.dv_cdf = dict() # dt: DV: cumulative count
-
-
-        #------------------------------------------------------
-        # Basic values assignment
-        self.sdate = sdate # Starting date
-        self.granu = granu  # Time granularity in minutes
-        
-        self.dt_list = list() # the list of datetime
-        self.peerlist = dict() # dt: monitor list
-        self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
-        self.ucount = dict() # dt: update count
-        self.acount = dict() # dt: announcement count
-        self.wcount = dict() # dt: withdrawal count
-        self.wpctg = dict() # dt: withdrawal percentage 
-
-        spt = Supporter(sdate)
-        self.pfx2as = spt.get_pfx2as_trie() # all prefixes mappingg to AS
-        self.as2nation = spt.get_as2nation_dict() # all ASes mapping to nation (latest info)
-
-        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS quantity
-        self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix quantity
-        self.all_pcount_lzero = 0 # quantity of prefixes having DV > 0
-        self.as2cc = spt.get_as2cc_dict()  # all ASes mapped to sizes of customer cones
-
-        self.as2rank = dict() # All ASes mapped to rank (according to customer cone size)
-        pre_value = 999999
-        rank = 0 # number (of ASes whose CC is larger) + 1
-        buffer = 0 # number (of ASes having the same CC size) - 1
-        for item in sorted(self.as2cc.iteritems(), key=operator.itemgetter(1), reverse=True):
-            if item[1] < pre_value:
-                rank = rank + buffer + 1
-                pre_value = item[1]
-                self.as2rank[item[0]] = rank
-                buffer = 0
-            else: # item[1] (cc size) == pre_value
-                buffer += 1
-                self.as2rank[item[0]] = rank
-
-
-        ###########################################
-        # Get data about monitors
-        ######################################
+        #-------------------------------------------------------------
+        # Get the *details* about monitors
+        # XXX put it here or in the main?
         '''
         self.monitors = cmlib.get_monitors(self.sdate) # monitors ip: AS number
         self.mcount = len(self.monitors.keys())
@@ -159,12 +107,76 @@ class Alarm():
         print 'monitor nation count:', self.m_nationcount
         print 'monitor nations:', self.m_nation_as.keys()
 
+        #-----------------------------------------------------
+        # For synchronization among collectors and conducting timely aggregation
+        # Note: assume all collectors will exist after self.sdate + 1 hour
 
-        # TODO not flexible
+        self.cl_dt = {}  # The current datetime of every collector, for getting ceiling
+        for cl in self.cl_list:
+            self.cl_dt[cl] = 0
+
+        tmp_dt = datetime.datetime(int(self.sdate[0:4]),\
+                int(self.sdate[4:6]),int(self.sdate[6:8]),0,0)
+        # do not fill up the hour to allow for the edge value being analyzed
+        tmp_dt = tmp_dt + datetime.timedelta(minutes=58)
+        tmp_dt = time_lib.mktime(tmp_dt.timetuple())
+
+        # floor is only for ignoring anything before self.sdate + 1 hour
+        self.floor = tmp_dt
+        # we aggregate everything below ceiling and above floor
+        self.ceiling = self.floor  
+
+        tmp_dt = datetime.datetime(int(self.edate[0:4]),\
+                int(self.edate[4:6]),int(self.edate[6:8]),23,59)
+        tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
+        tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
+        self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
+
+        #------------------------------------------------------
+        # Basic values assignment
+        
+        self.dt_list = list() # the list of datetime
+        self.peerlist = dict() # dt: monitor list
+        self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
+        self.ucount = dict() # dt: update count
+        self.acount = dict() # dt: announcement count
+        self.wcount = dict() # dt: withdrawal count
+        self.wpctg = dict() # dt: withdrawal percentage 
+
+        # XXX put the download of support files in main.py
+        # Take special care when the duration is long
+        spt = Supporter(self.sdate)
+        self.pfx2as = spt.get_pfx2as_trie() # all prefixes mappingg to AS
+        self.as2nation = spt.get_as2nation_dict() # all ASes mapping to nation (latest info)
+
+        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS quantity
+        self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix quantity
+        self.all_pcount_lzero = 0 # quantity of prefixes having DV > 0
+        self.as2cc = spt.get_as2cc_dict()  # all ASes mapped to sizes of customer cones
+
+        '''
+        self.as2rank = dict() # All ASes mapped to rank (according to customer cone size)
+        pre_value = 999999
+        rank = 0 # number (of ASes whose CC is larger) + 1
+        buffer = 0 # number (of ASes having the same CC size) - 1
+        for item in sorted(self.as2cc.iteritems(), key=operator.itemgetter(1), reverse=True):
+            if item[1] < pre_value:
+                rank = rank + buffer + 1
+                pre_value = item[1]
+                self.as2rank[item[0]] = rank
+                buffer = 0
+            else: # item[1] (cc size) == pre_value
+                buffer += 1
+                self.as2rank[item[0]] = rank
+        '''
+    
+
+        #---------------------------------------------------------------------
+        # FIXME
+        # For each dt create a middle file that stores prefix|update quantity|DV value|(DV list)
+        # Analyze these middle files in the end
         self.dv_level = [0, 0.05, 0.1, 0.15, 0.2]
-        ###################################################
         # Coarser DV values
-        ######################################################
         self.dvrange_dt_pfx = dict() # DV level range: dt: pfx count
         self.dvrange_len_pfx = dict() # DV level range: prefix length: existence
         self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
@@ -183,9 +195,15 @@ class Alarm():
         # only record DV > 0.15
         self.dup_trie = patricia.trie(None) # TODO Enough memory for this?
 
-        ###################################################
+        # DV distribution in every time slot
+        self.dv_distribution = dict() # dt: DV: count
+        self.dv_cdf = dict() # dt: DV: cumulative count
+
+
+        #----------------------------------------------------------------------
         # CDFs for the slot before and after the cdfbound (HDVP peak)
-        ##################################################
+        # FIXME do this when analyzing the middle files
+        '''
         #TODO obtain cdfbound
         self.compare = False
         if cdfbound != None:
@@ -202,43 +220,36 @@ class Alarm():
             for dl in self.dv_level:
                 self.as_bfr[dl] = dict() # dv: ASN: count
                 self.as_aft[dl] = dict()
+        '''
 
-        ###########################################
-        # Output
-        #############################################
-        self.output_dir = datadir+'output/'+self.sdate+'_'+str(self.granu)+'/'
-        cmlib.make_dir(self.output_dir)
-
-    def check_memo(self, is_end):
-        print 'Checking memory to see if it is time to aggregate and release...'
-        # Obtain the lowest 'current datetime' among all collectors
+    def check_memo(self):
+        print 'Checking memory to see if it is appropriate to aggregate and release...'
+        # Obtain the ceiling: lowest 'current datetime' among all collectors
+        # Aggregate everything before ceiling - granulirity
+        # Because aggregating 10:10 means aggregating 10:10~10:10+granularity
         new_ceil = 9999999999
         for cl in self.cl_list:
             if self.cl_dt[cl] < new_ceil:
                 new_ceil = self.cl_dt[cl]
 
-        if is_end == False:
-            if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # frequent
-                # e.g., aggregate everything <= 10:50 only when everyone > 11:00
-                self.ceiling = new_ceil - 60 * self.granu
-                self.release_memo()
-        # XXX Is this else really necessary and correct?
-        else:
+        if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # Minimum gap; granu in minutes
             self.ceiling = new_ceil - 60 * self.granu
+            if self.ceiling > self.top_ceiling:
+                self.ceiling = self.top_ceiling
             self.release_memo()
+
         return 0
 
     # aggregate everything before ceiling and remove garbage
     def release_memo(self):
-        print 'Releasing memory...'
-        rel_dt = []  # target dt list
+        rel_dt = []  # dt list for releasing
         for dt in self.pfx_trie.keys():
             if self.floor <= dt <= self.ceiling:
                 rel_dt.append(dt)
 
         self.aggregate(rel_dt)
-
         self.del_garbage()
+
         return 0
 
     # delete the tires that have already been used
@@ -249,7 +260,6 @@ class Alarm():
         return 0
 
     # XXX simply record here. put any costly analysis in 'aggregate' ???
-    # XXX occasionally we need to analyze the update content, e.g., AS path
     # XXX maybe I should not put everything into tries. Just read and process each line ???
     def add(self, update):
         attr = update.split('|')[0:6]  # Get only 0~5 attributes
@@ -304,7 +314,7 @@ class Alarm():
         return 0
 
     # XXX so ugly...
-    # get/calculate the infomation we need from the designated tries
+    # get/calculate the infomation we need from the designated tries and write into a middle file
     def aggregate(self, rel_dt):
         for dt in rel_dt:
             print 'aggregating dt:'
@@ -429,6 +439,7 @@ class Alarm():
         return 0
 
     # XXX ugly
+    # TODO: do not consider the format of plots (e.g. CDF, time-series) when outputing
     def output(self):
         for dt in self.pfxcount[0].keys():
             self.all_pcount_lzero += self.pfxcount[0][dt]
@@ -836,20 +847,3 @@ class Alarm():
         self.cl_dt[cl] = int(line.split('|')[1]) # WHY not -8H any more?
         return 0
     
-    '''
-    def set_start(self, cl, first_line):
-        #self.cl_dt[cl][0] = int(first_line.split('|')[1]) - 28800
-        self.cl_dt[cl][0] = int(first_line.split('|')[1])
-        non_zero = True # True if all collectors have started
-        for cl in self.cl_list:
-            if self.cl_dt[cl][0] == 0:
-                non_zero = False
-        if non_zero == True:
-            for cl in self.cl_list:
-                if self.cl_dt[cl][0] > self.ceiling:
-                    self.ceiling = self.cl_dt[cl][0]
-                    self.floor = self.shang_qu_zheng(self.ceiling, 's')
-            # delete everything before floor
-            self.del_garbage()
-        return 0
-    '''
