@@ -118,28 +118,29 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
         print '\ndeleting reset updates caused by peer: ', peer
         peer = peer.rstrip()
 
-        ## record reset info into a temp file
-        reset_info_file = peer+'_resets.txt'
-
+        ## record reset info for this peer into a temp file
+        reset_info_file = 'peer_resets.txt'
+        reset_info_file = datadir+'tmp/'+reset_info_file
         cmlib.make_dir(datadir+'tmp/')
-        #FIXME create a temprory list (do not hard code the full path in the original list!)
-        #TODO add 2 hours' redundant update files before and after the duration
-        # Note: the list has to store XXX.txt.gz full path file names
+        if os.path.exists(reset_info_file):
+            os.remove(reset_info_file)
+
         subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
-                tmp_full_listfile+' -p '+peer+' > '+ datadir+'tmp/'+reset_info_file, shell=True)
+                tmp_full_listfile+' -p '+peer+' > '+reset_info_file, shell=True)
 
         # No reset for this peer    
         reset_info_file = datadir+'tmp/'+reset_info_file
         if os.path.exists(reset_info_file): 
             if os.path.getsize(reset_info_file) == 0:
+                print 'no reset for this peer'
                 continue
         else:
             continue
+            print 'no reset for this peer'
         
         # delete the corresponding updates
         del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile)
-
-    subprocess.call('rm '+datadir+'tmp/*', shell=True)
+        subprocess.call('rm '+datadir+'tmp/*', shell=True)
                         
     return 0
 
@@ -147,7 +148,7 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
 def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
     f_results = open(reset_info_file, 'r')
     for line in f_results: 
-        print line
+        logging.info('%s', line)
 
         attr = line.replace('\n', '').split(',')
         if attr[0] == '#START':
@@ -336,6 +337,7 @@ class Downloader():
                 web_location = 'routeviews.org/' + self.co + '/bgpdata/' + month + '/UPDATES/'
                 web_location = web_location.replace('//', '/')  # when name is ''
 
+            print 'Getting update list: http://' + web_location
             webraw = cmlib.get_weblist('http://' + web_location)
             cmlib.make_dir(datadir+web_location)
 
@@ -399,8 +401,7 @@ class Downloader():
                     os.remove(full_path)
 
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
-            print 'Downloading ' + 'http://'+web_location + filename
-            logging.info('Downloading ' + 'http://'+web_location + filename)
+            logging.info('Downloaded ' + 'http://'+web_location + filename)
 
             if TEST: # XXX only download 5 files when testing
                 testcount += 1
@@ -415,6 +416,8 @@ class Downloader():
             if tmp_flag == -1: # fail to create
                 logging.info('collector start date too late')
                 return -1
+            # XXX Do it twice to make sure everything is downloaded
+            self.download_updates()
             self.download_updates()
 
 
@@ -425,7 +428,6 @@ if __name__ == '__main__':
     collector_list = ['', 'rrc00']
 
     listfiles = []
-    '''
     # download update files
     for order in order_list:
         sdate = daterange[order][0]
@@ -440,7 +442,6 @@ if __name__ == '__main__':
     # parse all the update files into readable ones TODO under test
     for listf in listfiles:
         parse_update_files(listf)
-    '''
 
     # Deleting updates caused by reset
     for order in order_list:

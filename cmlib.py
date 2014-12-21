@@ -1,4 +1,5 @@
 import os
+# XXX should use urllib2 instead of urllib
 import urllib
 import subprocess
 import re
@@ -38,6 +39,7 @@ def get_peer_list_from_rib(rib_full_loc): # file name end with .bz2/gz.txt.gz
     return peers
 
 def download_file(url, save_loc, filename):
+    print 'Downloading '+url+filename
     make_dir(save_loc)
     if os.path.exists(save_loc+filename):
         return
