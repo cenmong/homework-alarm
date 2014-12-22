@@ -26,13 +26,13 @@ def parse_update_files(listfile): # all update files from one collectors/list
     flist = open(listfile, 'r')
     for line in flist:
         line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
-        logging.info('Parsing:%s', line)
+        print 'Parsing ', line
         if not os.path.exists(datadir+line+'.txt.gz'):
             cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
             cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
             os.remove(datadir+line)  # remove the original .bz2/.gz file
         else:
-            logging.info('Parsed file exists')
+            print 'Parsed file exists'
             pass
     flist.close()
     return 0
@@ -43,9 +43,9 @@ def parse_update_files(listfile): # all update files from one collectors/list
 def get_parse_one_rib(co, sdate):
     tmp_month = sdate[0:4] + '.' + sdate[4:6]
     if co.startswith('rrc'):
-        web_location = 'data.ris.ripe.net/' + co + '/' + tmp_month + '/' 
+        web_location = rrc_root + co + '/' + tmp_month + '/' 
     else:
-        web_location = 'routeviews.org/' + co + '/bgpdata/' + tmp_month + '/RIBS/'
+        web_location = rv_root + co + '/bgpdata/' + tmp_month + '/RIBS/'
         web_location = web_location.replace('//', '/')
     webraw = cmlib.get_weblist('http://' + web_location)
 
@@ -56,7 +56,7 @@ def get_parse_one_rib(co, sdate):
     filter(lambda a: a != '\n', rib_list)
     rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
 
-    # XXX avoid the RIB having strange size
+    # FIXME avoid the RIB having strange size
     target_line = '' # the RIB file for downloading
     closest = 99999
     for line in rib_list:
@@ -79,36 +79,32 @@ def get_parse_one_rib(co, sdate):
     if os.path.exists(full_loc+'.txt'):
         os.remove(full_loc+'.txt')
 
-    print 'full location of the RIB:', full_loc
+    print 'Supposed full location of the RIB:', full_loc
     if os.path.exists(full_loc+'.txt.gz'): 
         print 'existed file size:%f;original size:%f',os.path.getsize(full_loc+'.txt.gz'),fsize
-        if os.path.getsize(full_loc+'.txt.gz') > 0.95 * fsize:
-            if os.path.exists(full_loc):  # .bz2/.gz useless anymore
-                os.remove(full_loc)
+        if os.path.getsize(full_loc+'.txt.gz') > 0.95 * fsize: # Good!
             return full_loc+'.txt.gz'
         else:
             os.remove(full_loc+'.txt.gz') # too small to be complete
-            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
 
     if os.path.exists(full_loc): 
         if os.path.getsize(full_loc) <= 0.95 * fsize:
             os.remove(full_loc)
-            cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-        else:
-            pass
+        else: # Good!
+            cmlib.parse_mrt(full_loc, full_loc+'.txt')
+            cmlib.pack_gz(full_loc+'.txt')
+            return full_loc+'.txt.gz'
 
+
+    cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
     cmlib.parse_mrt(full_loc, full_loc+'.txt')
-    try:
-        os.remove(full_loc)  # then remove .bz2/.gz
-    except: # XXX I do not know why file not exist
-        pass
     cmlib.pack_gz(full_loc+'.txt')
 
     return full_loc+'.txt.gz'
 
 
 def delete_reset(co, rib_full_loc, tmp_full_listfile):
-    peers = cmlib.get_peer_list_from_rib(rib_full_loc)
+    peers = cmlib.get_peer_list(rib_full_loc)
     print 'peers: ', peers
 
     if TEST:
@@ -148,7 +144,7 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
 def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
     f_results = open(reset_info_file, 'r')
     for line in f_results: 
-        logging.info('%s', line)
+        print line
 
         attr = line.replace('\n', '').split(',')
         if attr[0] == '#START':
@@ -288,18 +284,13 @@ class Downloader():
 
     def get_listfile_dir(self):
         tmp_filename = self.listfile.split('/')[-1]
-        tmp_dir = self.listfile.replace(tmp_filename, '') + '/'
+        tmp_dir = self.listfile.replace(tmp_filename, '')
         return tmp_dir
 
     #-----------------------------------------------------------------------
     # Get a list of the update files before downloading them
     def get_update_list(self):
-        if int(self.sdate) < int(all_collectors[self.co]):
-            print 'error: this collector started too late'
-            logging.error('collector\' start date too late')
-            return -1
-
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #---------------------------------------------------------------------
         # Get a list of the target monthes for forming the target urls 
         smonth = int(sdate[0:4])*12 + int(sdate[4:6])
         emonth = int(edate[0:4])*12 + int(edate[4:6])
@@ -331,10 +322,9 @@ class Downloader():
         for month in month_list:
             web_location = ''
             if self.co.startswith('rrc'):
-                web_location = 'data.ris.ripe.net/'+self.co+'/'+month+'/' 
+                web_location = rrc_root + self.co + '/' + month + '/' 
             else:
-                #web_location = 'archive.routeviews.org/' +\ # XXX I don't know why change
-                web_location = 'routeviews.org/' + self.co + '/bgpdata/' + month + '/UPDATES/'
+                web_location = rrc_root + self.co + '/bgpdata/' + month + '/UPDATES/'
                 web_location = web_location.replace('//', '/')  # when name is ''
 
             print 'Getting update list: http://' + web_location
@@ -401,7 +391,6 @@ class Downloader():
                     os.remove(full_path)
 
             cmlib.force_download_file('http://'+web_location, datadir+web_location, filename) 
-            logging.info('Downloaded ' + 'http://'+web_location + filename)
 
             if TEST: # XXX only download 5 files when testing
                 testcount += 1
@@ -412,48 +401,58 @@ class Downloader():
 
 
     def get_all_updates(self):
-            tmp_flag = self.get_update_list()
-            if tmp_flag == -1: # fail to create
-                logging.info('collector start date too late')
-                return -1
-            # XXX Do it twice to make sure everything is downloaded
-            self.download_updates()
-            self.download_updates()
+        self.get_update_list()
+        # Do it twice to make sure everything is downloaded
+        self.download_updates()
+        self.download_updates()
 
 
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
     order_list = [27]
-    collector_list = ['', 'rrc00']
+    # collector_list = all_collectors.keys()
+    # collector_list = {27:('','rrc00')} # For TEST
 
+    collector_list = dict()
+    for i in order_list:
+        collector_list[i] = list()
+        for co in all_collectors.keys():
+            if int(all_collectors[co]) <= int(daterange[i][0]):
+                collector_list[i].append(co)
+        print i,':',collector_list[i]
+    '''
     listfiles = []
     # download update files
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]
-        for co in collector_list:
+        for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
             dl.get_all_updates()
             listf = dl.get_listfile()
             listfiles.append(listf)
 
-
     # parse all the update files into readable ones
     for listf in listfiles:
         parse_update_files(listf)
+    '''
 
     # Deleting updates caused by reset
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]
-        for co in collector_list:
-            # XXX download a RIB every two months for long duration
+        for co in collector_list[order]:
+            # FIXME download a RIB every two months for long duration
+            # XXX No! just download one RIB: we accept that the monitor set decreases
+            # XXX But the RIB size is increasing: the delete reset becomes inaccurate
             rib_full_loc = get_parse_one_rib(co, sdate)
 
+            '''
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
             full_list = get_tmp_full_list(dl)
 
             delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)
+            '''

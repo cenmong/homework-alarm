@@ -3,11 +3,17 @@ from os.path import expanduser
 datadir = '/media/usb/'
 homedir = expanduser('~') + '/'
 
-# 0: routeviews; 1: ripe ris
-# TODO rank them so I can easily choose part of them
-# FIXME name changed
+rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
+rrc_root = 'data.ris.ripe.net/'
+
 all_collectors = {
     '': '20011101', 
+    'route-views4': '20081201',
+    'route-views.eqix': '20040601',
+    'route-views.isc': '20031201',
+    'route-views.kixp': '20051101',
+    'route-views.linx': '20040401',
+    'route-views.wide': '20030801',
     'rrc00': '19991101', 
     'rrc01': '20000801', 
     'rrc03': '20010201',
@@ -15,6 +21,12 @@ all_collectors = {
     'rrc05': '20010701', 
     'rrc06': '20010901', 
     'rrc07': '20020501',
+    'rrc10': '20031201',
+    'rrc11': '20040301',
+    'rrc12': '20040801',
+    'rrc13': '20050501',
+    'rrc14': '20050101',
+    'rrc15': '20060101',
 }
 
 # [4th parm] order (for easier coding)
@@ -32,6 +44,7 @@ daterange = {
     5:('20080129','20080201'), #mediterranean cable cut 1 | 11
     # TODO add other date ranges
     27:('20141130','20141201'), # XXX test only
+    28:('20130101','20131231')
 }
 
 old_daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\

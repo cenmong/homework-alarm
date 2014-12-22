@@ -2,6 +2,7 @@ from env import *
 from alarm_class import *
 from meliae import scanner
 from netaddr import *
+from cStringIO import StringIO
 scanner.dump_all_objects('memory.json')
 
 import os
@@ -14,6 +15,7 @@ logging.info('Program starts!')
 #----------------------------------------------------------------
 # Check whether an update contains ilegal char (Note: this happens rather rarely)
 
+# FIXME: this costs too much time. Use try-except instead.
 allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
 def update_is_normal(update):
     if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
@@ -49,15 +51,10 @@ for i in [27]:
     # Define other classes that use the previous one as input
     # Get_prefix_info, analyze_middle, plot
 
-    f = open(filelist, 'r')
-    for fline in f:
+    fl = open(filelist, 'r')
+    for fline in fl:
         fline = datadir + fline.split('|')[0]
         print 'Reading ' + fline + '...'
-
-        if os.path.exists(fline.replace('txt.gz', 'txt')): # This happens occassionally
-            pass
-        else:
-            subprocess.call('gunzip '+fline, shell=True) # unpack
 
         #------------------------------------------------------------------------
         # get current file's collector
@@ -76,26 +73,26 @@ for i in [27]:
         #--------------------------------------------------------------------------
         # Process the updates one by one
 
+        #if os.path.exists(fline.replace('txt.gz', 'txt')): # This happens occassionally
+        p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE)
+        f = StringIO(p.communicate()[0])
+        assert p.returncode == 0
+
         #lastline = 'Do not delete me!'
-        fu = open(fline.replace('txt.gz', 'txt'), 'r')
-        
-        for line in fu:
+        for line in f:
             line = line.rstrip('\n')
-            if not update_is_normal(line):
-                print line
-                continue
+            #if not update_is_normal(line):
+            #    print line
+            #    continue
             #alarm.add(line)
             #lastline = line
 
-        fu.close()
-        # pack again
-        subprocess.call('gzip '+fline.replace('txt.gz', 'txt'), shell=True) # unpack
+        f.close()
         #alarm.set_now(cl, lastline)  # set the current collector's current dt
         #alarm.set_now(cl, line)  # set the current collector's current dt
         #alarm.check_memo()
 
-    f.close()
-    
+    fl.close()
     #alarm.output()
     #alarmplot(sdate, granu)
 

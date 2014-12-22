@@ -13,23 +13,24 @@ import patricia
 import gzip
 import time as time_lib
 import operator
+from cStringIO import StringIO
 
 from netaddr import *
 from env import *
 
-def get_peer_list_from_rib(rib_full_loc): # file name end with .bz2/gz.txt.gz
+def get_peer_list(rib_full_loc): # file name end with .bz2/gz.txt.gz
     print 'Getting peers from RIB...'
     peers = []
     txtfile = rib_full_loc.replace('txt.gz', 'txt')
     subprocess.call('gunzip '+rib_full_loc, shell=True)
-    with open(txtfile, 'r') as f:  # get peers from RIB
-        for line in f:
-            try:
-                addr = line.split('|')[3]
-                if addr not in peers:
-                    peers.append(addr)
-            except:
-                pass
+    f = open(txtfile, 'r')
+    for line in f:
+        try:
+            peer = line.split('|')[3]
+            if peer not in peers:
+                peers.append(peer)
+        except:
+            pass
     f.close()
 
     # compress RIB into .gz
@@ -37,6 +38,55 @@ def get_peer_list_from_rib(rib_full_loc): # file name end with .bz2/gz.txt.gz
         pack_gz(txtfile)
 
     return peers
+
+def get_peer_info(rib_full_loc):
+    print 'Getting FIB size of each peer from RIB...'
+
+    peer_pfx_count = dict()
+    peer2as = dict()
+
+    p = subprocess.Popen(['zcat', rib_full_loc],stdout=subprocess.PIPE)
+    f = StringIO(p.communicate()[0])
+    assert p.returncode == 0
+    for line in f:
+        try:
+            peer = line.split('|')[3]
+            peer = ip_to_binary(peer)
+            try:
+                peer_pfx_count[peer] += 1
+            except:
+                peer_pfx_count[peer] = 1
+
+            asn = line.split('|')[4]
+            peer2as[peer] = asn
+        except: # strange line
+            pass
+    f.close()
+
+    output = get_file_dir(rib_full_loc) + 'peers_' +\
+        get_file_name(rib_full_loc).replace('txt.gz','txt')
+    fo = open(output, 'w')
+    for peer in my_t:
+        if peer == '':
+            continue
+        peer = binary_to_ip4(peer)
+        # peer IP: pfx count|ASN
+        fo.write(peer+':'+str(peer_pfx_count[peer])+'|'+peer2as[peer]+'\n')
+
+    fo.close()
+
+    del my_t
+
+    return output
+
+def get_file_dir(file_full_loc):
+    tmp_filename = file_full_loc.split('/')[-1]
+    tmp_dir = file_full_loc.replace(tmp_filename, '')
+    return tmp_dir
+
+def get_file_name(file_full_loc):
+    tmp_filename = file_full_loc.split('/')[-1]
+    return tmp_filename
 
 def download_file(url, save_loc, filename):
     print 'Downloading '+url+filename
@@ -127,29 +177,31 @@ def print_dt(dt):
         print dt
     return 0
 
-# TODO: peer=>protocol
-def ip_to_binary(content, peer):  # can deal with ip addr and pfx
+def ip_to_binary(content):  # can deal with ip addr and pfx
     length = None
     pfx = content.split('/')[0]
     try:
         length = int(content.split('/')[1])
     except:  # an addr, not a pfx
         pass
-    if '.' in peer:  # IPv4
-        addr = IPAddress(pfx).bits()
-        addr = addr.replace('.', '')
-        if length:
-            addr = addr[:length]
-        return addr
-    elif ':' in peer:
-        addr = IPAddress(pfx).bits()
-        addr = addr.replace(':', '')
-        if length:
-            addr = addr[:length]
+
+    addr = IPAddress(pfx).bits()
+    addr = addr.replace('.', '').replace(':', '')
+    if length:
+        addr = addr[:length]
+
+    return addr
+
+# TODO need testing
+def binary_to_ip4(content):
+    decimal = int(content, 2)
+    addr = str(IPAddress(decimal))
+    if len(content) == 32:
         return addr
     else:
-        print 'Protocol false!'
-        return 0
+        return addr + '/' + str(len(content))
+
+#def binary_to_ip6():
 
 def get_collector(sdate):
     clist = []

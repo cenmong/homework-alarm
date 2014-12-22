@@ -7,6 +7,13 @@ work-arounds: check whether this file exists before packing
 BUG: a few files are not downloaded
 solve: download all files twice to minimize the possibility of missed files
 ---------------------------------------------------------------
-The time cost of testing whether the updates are normal is less than half the time of unpacking and packing the update files.
----------------------------------------------------------------
 There are some update files where there is a blank line between two successive updates
+---------------------------------------------------------------
+Note: do not put everything into log, which makes the log file extremely large
+---------------------------------------------------------------
+Problem: RV2 peers' prefix quantity quite small
+--------------------------------------------------------------
+Once apon a time, archive.routeviews.org fail to work, while routeviews.org can
+However now the latter fail in IPv6 but the former can in both
+--------------------------------------------------------------
+FIXME should download a RIB of resonable size: not too big & small
