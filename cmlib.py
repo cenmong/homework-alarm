@@ -6,7 +6,7 @@ import re
 import nltk
 import numpy as np
 import matplotlib
-# This is useful. I can render figures thourgh ssh. VNC viewer in unnecessary.
+# This is useful. I can render figures thourgh ssh. (VNC viewer is unnecessary.)
 matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
 import datetime
 import patricia
@@ -18,6 +18,7 @@ from cStringIO import StringIO
 from netaddr import *
 from env import *
 
+'''
 def get_peer_list(rib_full_loc): # file name end with .bz2/gz.txt.gz
     print 'Getting peers from RIB...'
     peers = []
@@ -38,9 +39,20 @@ def get_peer_list(rib_full_loc): # file name end with .bz2/gz.txt.gz
         pack_gz(txtfile)
 
     return peers
+'''
 
+
+# Get all the info once and forever, store in a well-known place
+# (Actually when pre-processing)
+# Note: we should read RIB as less as possible because it costs too much time
+# TODO get LVP
 def get_peer_info(rib_full_loc):
-    print 'Getting FIB size of each peer from RIB...'
+
+    output = peer_path_by_rib_path(rib_full_loc)
+    if os.path.exists(output):
+        return output
+
+    print 'Getting info of peers from:', rib_full_loc
 
     peer_pfx_count = dict()
     peer2as = dict()
@@ -63,21 +75,22 @@ def get_peer_info(rib_full_loc):
             pass
     f.close()
 
-    output = get_file_dir(rib_full_loc) + 'peers_' +\
-        get_file_name(rib_full_loc).replace('txt.gz','txt')
     fo = open(output, 'w')
-    for peer in my_t:
+    for peer in peer_pfx_count:
         if peer == '':
             continue
-        peer = binary_to_ip4(peer)
+        peer_str = binary_to_ip4(peer)
         # peer IP: pfx count|ASN
-        fo.write(peer+':'+str(peer_pfx_count[peer])+'|'+peer2as[peer]+'\n')
+        fo.write(peer_str+':'+str(peer_pfx_count[peer])+'|'+peer2as[peer]+'\n')
 
     fo.close()
 
-    del my_t
-
     return output
+
+def peer_path_by_rib_path(rib_full_loc):
+    path = get_file_dir(rib_full_loc) + 'peers_' +\
+        get_file_name(rib_full_loc).replace('txt.gz','txt')
+    return path
 
 def get_file_dir(file_full_loc):
     tmp_filename = file_full_loc.split('/')[-1]
@@ -227,6 +240,13 @@ def size_u2v(unit):
         return 1048576
     if unit in ['g', 'G']:
         return 1073741824
+
+def parse_size(size):
+    if size.isdigit():
+        return float(size)
+    else:
+        return float(size[:-1]) * size_u2v(size[-1])
+
 
 def get_all_length(sdate):
     print 'Getting all prefix lengthes from RIB...'

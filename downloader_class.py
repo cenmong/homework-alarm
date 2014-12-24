@@ -13,6 +13,7 @@ import patricia
 import subprocess
 import os
 import logging
+import numpy as np
 logging.basicConfig(filename='download.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from env import *
@@ -56,7 +57,14 @@ def get_parse_one_rib(co, sdate):
     filter(lambda a: a != '\n', rib_list)
     rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
 
-    # FIXME avoid the RIB having strange size
+    sizelist = list()
+    for line in rib_list:
+        size = line.split()[-1]
+        fsize = cmlib.parse_size(size)
+        sizelist.append(fsize)
+
+    avg = np.mean(sizelist) 
+
     target_line = '' # the RIB file for downloading
     closest = 99999
     for line in rib_list:
@@ -64,14 +72,14 @@ def get_parse_one_rib(co, sdate):
         diff = abs(int(fdate)-int(sdate)) # >0
         if diff < closest:
             closest = diff
-            target_line = line
+            size = line.split()[-1]
+            fsize = cmlib.parse_size(size)
+            if fsize > 0.8 * avg:
+                target_line = line
 
     print 'Selected RIB:', target_line
     size = target_line.split()[-1] # claimed RIB file size
-    if size.isdigit():
-        fsize = float(size)
-    else:
-        fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+    fsize = cmlib.parse_size(size)
 
     filename = target_line.split()[0]
     full_loc = datadir + web_location + filename # .bz2/.gz
@@ -82,7 +90,7 @@ def get_parse_one_rib(co, sdate):
     print 'Supposed full location of the RIB:', full_loc
     if os.path.exists(full_loc+'.txt.gz'): 
         print 'existed file size:%f;original size:%f',os.path.getsize(full_loc+'.txt.gz'),fsize
-        if os.path.getsize(full_loc+'.txt.gz') > 0.95 * fsize: # Good!
+        if os.path.getsize(full_loc+'.txt.gz') > 0.6 * fsize: # Good!
             return full_loc+'.txt.gz'
         else:
             os.remove(full_loc+'.txt.gz') # too small to be complete
@@ -104,6 +112,7 @@ def get_parse_one_rib(co, sdate):
 
 
 def delete_reset(co, rib_full_loc, tmp_full_listfile):
+    # FIXME read the peer file and get the peers
     peers = cmlib.get_peer_list(rib_full_loc)
     print 'peers: ', peers
 
@@ -336,10 +345,7 @@ class Downloader():
                     continue
 
                 size = line.split()[-1]
-                if size.isdigit():
-                    fsize = float(size)
-                else: # E.g., 155 K
-                    fsize = float(size[:-1]) * cmlib.size_u2v(size[-1])
+                fsize = cmlib.parse_size(size)
                 filename = line.split()[0]  # omit uninteresting info
                 filedate = filename.split('.')[-3]
 
@@ -411,9 +417,9 @@ class Downloader():
 # The main function of this py file
 if __name__ == '__main__':
     order_list = [27]
-    # collector_list = all_collectors.keys()
     # collector_list = {27:('','rrc00')} # For TEST
 
+    # download from all co that has appropriate date
     collector_list = dict()
     for i in order_list:
         collector_list[i] = list()
@@ -421,6 +427,7 @@ if __name__ == '__main__':
             if int(all_collectors[co]) <= int(daterange[i][0]):
                 collector_list[i].append(co)
         print i,':',collector_list[i]
+
     '''
     listfiles = []
     # download update files
@@ -438,8 +445,12 @@ if __name__ == '__main__':
         parse_update_files(listf)
     '''
 
+    # When we need to read RIB, we check this file first
+    
     # Deleting updates caused by reset
     for order in order_list:
+        co_rib = dict() # co: rib full path
+
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list[order]:
@@ -447,12 +458,30 @@ if __name__ == '__main__':
             # XXX No! just download one RIB: we accept that the monitor set decreases
             # XXX But the RIB size is increasing: the delete reset becomes inaccurate
             rib_full_loc = get_parse_one_rib(co, sdate)
+            cmlib.get_peer_info(rib_full_loc) 
+            co_rib[co] = rib_full_loc
+
+            # must do this before deleting updates because peer list will be required
+            # cmlib.get_peer_info(rib_full_loc)
 
             '''
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
             full_list = get_tmp_full_list(dl)
 
+            # XXX delete multiple times for long period
             delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)
             '''
+
+        # for each period, maintain a file that record its related RIBs
+        cmlib.make_dir(rib_info_dir)
+        rib_info = rib_info_dir + sdate + '_' + edate + '.txt'
+        f = open(rib_info, 'w')
+        for co in co_rib:
+            f.write(co+':'+co_rib[co]+'\n')
+        f.close()
+
+
+
+

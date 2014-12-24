@@ -12,25 +12,6 @@ class Supporter():
         self.sdate = sdate
         cmlib.make_dir(datadir+'support/')
 
-    def get_as2nation_file(self):
-        print 'Calculating AS to nation file...'
-        if os.path.exists(datadir+'support/as2nation.txt'):
-            return 0
-
-        # get the latest AS to nation mapping
-        # this mapping seems stable across years
-        rows = cmlib.get_weblist('http://bgp.potaroo.net/cidr/autnums.html')
-        f = open(datadir+'support/as2nation.txt', 'w')
-        for line in rows.split('\n'):
-            if 'AS' not in line:
-                continue
-            nation = line.split(',')[-1] 
-            ASN = line.split()[0].strip('AS')
-            f.write(ASN+' '+nation+'\n')
-        f.close()
-
-        return 0
-
     def get_as2cc_file(self): # AS to customer cone
         location = datadir + 'support/' + self.sdate + '/'
         cmlib.make_dir(location)
@@ -67,6 +48,7 @@ class Supporter():
 
         return 0
 
+    # XXX should we get this from the last hop of AS path?
     def get_pfx2as_file(self):
         location = datadir + 'support/' + self.sdate + '/'
         cmlib.make_dir(location)

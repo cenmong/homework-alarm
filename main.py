@@ -1,3 +1,4 @@
+from period_class import *
 from env import *
 from alarm_class import *
 from meliae import scanner
@@ -34,8 +35,8 @@ def update_is_normal(update):
 
 for i in [27]:
 
+    my_period = Period(i)
     # TODO decide the monitors/collectors to use, consider time duration length
-    # TODO how to deal with long duration?
     cl_list = []
     # TODO create a combined update file list according to the corresponding collectors
     #filelist = datadir+'metadata/' + daterange[i][0] + '/updt_filelist_comb'
@@ -51,6 +52,7 @@ for i in [27]:
     # Define other classes that use the previous one as input
     # Get_prefix_info, analyze_middle, plot
 
+    # FIXME put *Reading Lines* into alarm class
     fl = open(filelist, 'r')
     for fline in fl:
         fline = datadir + fline.split('|')[0]

@@ -6,12 +6,15 @@ homedir = expanduser('~') + '/'
 rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
 
+pub_spt_dir = datadir + 'support/public/'
+rib_info_dir = datadir+'rib_info/'
+
 all_collectors = {
     '': '20011101', 
     'route-views4': '20081201',
     'route-views.eqix': '20040601',
     'route-views.isc': '20031201',
-    'route-views.kixp': '20051101',
+    #'route-views.kixp': '20051101', # size too small
     'route-views.linx': '20040401',
     'route-views.wide': '20030801',
     'rrc00': '19991101', 
