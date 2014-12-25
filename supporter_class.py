@@ -150,17 +150,6 @@ class Supporter():
 
         return pfx2as
 
-    def get_as2nation_dict(self):
-        print 'Calculating AS to nation dict...'
-        as2nation = {}
-
-        f = open(datadir+'support/as2nation.txt')
-        for line in f:
-            as2nation[int(line.split()[0])] = line.split()[1]
-        f.close()
-
-        return as2nation
-
     def get_as2type_dict(self):
         as2type = {}
 

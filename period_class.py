@@ -1,6 +1,9 @@
 from env import *
-
+import cmlib
 import patricia
+import os
+import datetime
+import time as time_lib
 
 # Work as input to update analysis functions
 class Period():
@@ -20,20 +23,66 @@ class Period():
         self.spt_dir = datadir + 'support/' + str(index) + '/'
 
         # Note: do not change this
-        self.rib_info_file = rib_info_dir + sdate + '_' + edate + '.txt'
+        self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
         self.monitors = list() # Or use a trie?
         self.prefixes = patricia.trie(None)
 
+        self.as2nation = self.get_as2nation_dict()
+
+        # Occassionally run it to get the latest data. (Now up to 20141225)
+        #self.get_fib_size_file()
+
+    def get_fib_size_file(self):
+        url = 'http://bgp.potaroo.net/as2.0/'
+        cmlib.force_download_file(url, pub_spt_dir, 'bgp-active.txt')
+        return 0
+
+    def get_fib_size(self):
+        objdt = datetime.datetime.strptime(self.sdate, '%Y%m%d') 
+        intdt = time_lib.mktime(objdt.timetuple())
+
+        dtlist = []
+        pclist = []
+        fibsize_f = pub_spt_dir + 'bgp-active.txt'
+        f = open(fibsize_f, 'r')
+        for line in f:
+            dt = line.split()[0]
+            pcount = line.split()[1]
+            dtlist.append(int(dt))
+            pclist.append(int(pcount))
+        f.close()
+
+        least = 9999999999
+        loc = 0
+        for i in xrange(0, len(dtlist)):
+            if abs(dtlist[i]-intdt) < least:
+                least = abs(dtlist[i]-intdt)
+                loc = i
+
+        goal = 0
+        for j in xrange(loc, len(dtlist)-1):
+            prev = pclist[j-1]
+            goal = pclist[j]
+            nex = pclist[j+1]
+            if abs(goal-prev) > prev/7 or abs(goal-nex) > nex/7: # outlier
+                continue
+            else:
+                break
+
+        return goal
+        
+
+    # Run it once will be enough
     # Note: we can only get the *latest* AS to nation mapping
     def get_as2nation_file(self):
-        print 'Calculating AS to nation file...'
+        print 'Downloading AS to nation file...'
         if os.path.exists(pub_spt_dir+'as2nation.txt'):
             return 0
 
         the_url = 'http://bgp.potaroo.net/cidr/autnums.html'
-        rows = cmlib.get_weblist(the_url)
-        rows = rows.split('\n')
+        rows = cmlib.get_weblist(the_url).split('\n')
+
         f = open(pub_spt_dir+'as2nation.txt', 'w')
         for line in rows:
             if 'AS' not in line:
@@ -45,11 +94,58 @@ class Period():
 
         return 0
 
+    def get_as2nation_dict(self):
+        print 'Constructing AS to nation dict...'
+        as2nation = {}
+
+        f = open(datadir+'support/as2nation.txt')
+        for line in f:
+            as2nation[int(line.split()[0])] = line.split()[1]
+        f.close()
+
+        return as2nation
+
     def get_global_monitor(self):
-        # The monitor info has already been stored when pre-processing the data
-        # jusy read the existent files
-        # filter out the ones with limited view
-        # TODO get the file's location according to the name and location of the RIB file
+        norm_size = self.get_fib_size()
+        print 'norm_size=', norm_size
+
+        f = open(self.rib_info_file, 'r')
+        totalc = 0
+        totalok = 0
+        nationc = dict() # nation: count
+        for line in f:
+            co = line.split(':')[0]
+            print 'co=', co
+            ribfile = line.split(':')[1]
+            peerfile = cmlib.peer_path_by_rib_path(ribfile).rstrip('\n')
+
+            count = 0
+            ok = 0
+            fp = open(peerfile, 'r')
+            for line in fp:
+                if len(line.split(':')) > 2:
+                    continue
+                print line
+                fibsize = int(line.split(':')[1].split('|')[0])
+                if fibsize > 0.9*norm_size:
+                    ok += 1
+                    asn = int(line.split(':')[1].split('|')[1])
+                    try:
+                        nation = self.as2nation[asn]
+                    except:
+                        nation = 'unknown'
+                    try:
+                        nationc[nation] += 1
+                    except:
+                        nationc[nation] = 1
+                count += 1
+            fp.close()
+            print 'Total:',ok,'/',count
+            totalc += count
+            totalok += ok
+        f.close()
+        print 'All:',totalok,'/',totalc
+        print nationc
         return 0
 
     def get_prefix(self):

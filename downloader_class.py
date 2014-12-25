@@ -409,8 +409,8 @@ class Downloader():
     def get_all_updates(self):
         self.get_update_list()
         # Do it twice to make sure everything is downloaded
-        self.download_updates()
-        self.download_updates()
+        #self.download_updates()
+        #self.download_updates()
 
 
 #----------------------------------------------------------------------------
@@ -419,7 +419,7 @@ if __name__ == '__main__':
     order_list = [27]
     # collector_list = {27:('','rrc00')} # For TEST
 
-    # download from all co that has appropriate date
+    # all co that has appropriate date
     collector_list = dict()
     for i in order_list:
         collector_list[i] = list()
@@ -428,8 +428,8 @@ if __name__ == '__main__':
                 collector_list[i].append(co)
         print i,':',collector_list[i]
 
-    '''
     listfiles = []
+    '''
     # download update files
     for order in order_list:
         sdate = daterange[order][0]
@@ -443,10 +443,10 @@ if __name__ == '__main__':
     # parse all the update files into readable ones
     for listf in listfiles:
         parse_update_files(listf)
-    '''
 
     # When we need to read RIB, we check this file first
     
+    '''
     # Deleting updates caused by reset
     for order in order_list:
         co_rib = dict() # co: rib full path
@@ -463,7 +463,6 @@ if __name__ == '__main__':
 
             # must do this before deleting updates because peer list will be required
             # cmlib.get_peer_info(rib_full_loc)
-
             '''
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
@@ -473,15 +472,13 @@ if __name__ == '__main__':
             delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)
             '''
-
         # for each period, maintain a file that record its related RIBs
         cmlib.make_dir(rib_info_dir)
+        # Do not change this
         rib_info = rib_info_dir + sdate + '_' + edate + '.txt'
         f = open(rib_info, 'w')
         for co in co_rib:
             f.write(co+':'+co_rib[co]+'\n')
         f.close()
-
-
 
 

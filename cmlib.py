@@ -116,6 +116,8 @@ def download_file(url, save_loc, filename):
 def force_download_file(url, save_loc, filename):
     print 'Downloading '+url+filename
     make_dir(save_loc)
+    if os.path.exists(save_loc+filename):
+        os.remove(save_loc+filename)
     while 1:
         try:
             urllib.urlretrieve(url+filename, save_loc+filename)

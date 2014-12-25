@@ -14,7 +14,7 @@ all_collectors = {
     'route-views4': '20081201',
     'route-views.eqix': '20040601',
     'route-views.isc': '20031201',
-    #'route-views.kixp': '20051101', # size too small
+    #'route-views.kixp': '20051101', # RIB size too small
     'route-views.linx': '20040401',
     'route-views.wide': '20030801',
     'rrc00': '19991101', 
@@ -22,8 +22,8 @@ all_collectors = {
     'rrc03': '20010201',
     'rrc04': '20010501', 
     'rrc05': '20010701', 
-    'rrc06': '20010901', 
-    'rrc07': '20020501',
+    #'rrc06': '20010901', # too few peers with global table
+    #'rrc07': '20020501', # too few peers with global table
     'rrc10': '20031201',
     'rrc11': '20040301',
     'rrc12': '20040801',

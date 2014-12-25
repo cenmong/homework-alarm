@@ -6,7 +6,6 @@ from netaddr import *
 from cStringIO import StringIO
 scanner.dump_all_objects('memory.json')
 
-import os
 import subprocess
 import string
 import logging
@@ -36,6 +35,8 @@ def update_is_normal(update):
 for i in [27]:
 
     my_period = Period(i)
+    my_period.get_global_monitor()
+    
     # TODO decide the monitors/collectors to use, consider time duration length
     cl_list = []
     # TODO create a combined update file list according to the corresponding collectors
