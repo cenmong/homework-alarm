@@ -12,22 +12,16 @@ class Period():
         self.sdate = daterange[index][0] 
         self.edate = daterange[index][1] 
         
-        # XXX this is no good. should depends on the monitor list
-        # XXX should be flexible cause we may change the co set future
-        self.co_list = list()
-        for co in all_collectors.keys():
-            if int(all_collectors[co]) <= int(self.sdate):
-                self.co_list.append(co)
-
         # location to store supporting files
         self.spt_dir = datadir + 'support/' + str(index) + '/'
 
-        # Note: do not change this
+        # Store the rib information of every collector (Note: do not change this)
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
-        self.monitors = list() # Or use a trie?
-        self.prefixes = patricia.trie(None)
+        self.co_mo = dict() # collector: monitor list
+        self.no_prefixes = patricia.trie(None) # prefixes that should be ignored TODO
 
+        # XXX Get this only when necessary
         self.as2nation = self.get_as2nation_dict()
 
         # Occassionally run it to get the latest data. (Now up to 20141225)
@@ -73,8 +67,7 @@ class Period():
         return goal
         
 
-    # Run it once will be enough
-    # Note: we can only get the *latest* AS to nation mapping
+    # Run it once will be enough. (Note: we can only get the *latest* AS to nation mapping)
     def get_as2nation_file(self):
         print 'Downloading AS to nation file...'
         if os.path.exists(pub_spt_dir+'as2nation.txt'):
@@ -105,9 +98,8 @@ class Period():
 
         return as2nation
 
-    def get_global_monitor(self):
+    def get_global_monitors(self):
         norm_size = self.get_fib_size()
-        print 'norm_size=', norm_size
 
         f = open(self.rib_info_file, 'r')
         totalc = 0
@@ -126,8 +118,15 @@ class Period():
                 if len(line.split(':')) > 2:
                     continue
                 print line
+                mo_ip = line.split(':')[0]
                 fibsize = int(line.split(':')[1].split('|')[0])
                 if fibsize > 0.9*norm_size:
+                    try: 
+                        test = self.co_mo[co]
+                    except:
+                        self.co_mo[co] = list()
+                    if mo_ip not in self.co_mo[co]:
+                        self.co_mo[co].append(mo_ip)
                     ok += 1
                     asn = int(line.split(':')[1].split('|')[1])
                     try:
@@ -146,6 +145,7 @@ class Period():
         f.close()
         print 'All:',totalok,'/',totalc
         print nationc
+        print self.co_mo
         return 0
 
     def get_prefix(self):

@@ -11,6 +11,7 @@ logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, form
 from netaddr import *
 from env import *
 from supporter_class import *
+from cStringIO import StringIO
 
 
 # TODO put plotting somewhere else. de-couple plotting and logic
@@ -61,7 +62,9 @@ def alarmplot(sdate, granu):
 
 class Alarm():
 
-    def __init__(self, granu, index, cl_list):
+    def __init__(period, granu):
+        self.filelist = period.get_filelist()
+
         self.sdate = daterange[index][0] 
         self.edate = daterange[index][1] 
         self.granu = granu
@@ -221,6 +224,61 @@ class Alarm():
                 self.as_bfr[dl] = dict() # dv: ASN: count
                 self.as_aft[dl] = dict()
         '''
+
+    #----------------------------------------------------------------
+    # FIXME: this costs too much time. Use try-except instead.
+    def update_is_normal(update):
+        allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
+        if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
+            return True
+        else:
+            #logging.info('abnormal update:%s',update)
+            return False
+
+    def readfiles(self):
+        fl = open(self.filelist, 'r')
+        for fline in fl:
+            fline = datadir + fline.split('|')[0]
+            print 'Reading ' + fline + '...'
+
+            #------------------------------------------------------------------------
+            # get current file's collector
+
+            attributes = fline.split('/') 
+            j = -1
+            for a in attributes:
+                j += 1
+                if a.startswith('data.ris') or a.startswith('routeviews'):
+                    break
+
+            cl = fline.split('/')[j + 1]
+            if cl == 'bgpdata':  # route-views2, the special case
+                cl = ''
+
+            #--------------------------------------------------------------------------
+            # Process the updates one by one
+
+            #if os.path.exists(fline.replace('txt.gz', 'txt')): # This happens occassionally
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE)
+            f = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+
+            #lastline = 'Do not delete me!'
+            for line in f:
+                line = line.rstrip('\n')
+                #if not self.update_is_normal(line):
+                #    print line
+                #    continue
+                #self.add(line)
+                #lastline = line
+
+            f.close()
+            print 'last line = ', line
+            #self.set_now(cl, lastline)  # set the current collector's current dt
+            #self.set_now(cl, line)  # set the current collector's current dt
+            #self.check_memo()
+
+        fl.close()
 
     def check_memo(self):
         print 'Checking memory to see if it is appropriate to aggregate and release...'
