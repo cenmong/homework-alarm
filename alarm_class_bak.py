@@ -3,6 +3,7 @@ import datetime
 import time as time_lib
 import numpy as np
 import cmlib
+import myplot
 import operator
 import logging
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
@@ -11,6 +12,53 @@ from netaddr import *
 from env import *
 from supporter_class import *
 from cStringIO import StringIO
+
+
+# TODO put plotting somewhere else. de-couple plotting and logic
+def alarmplot(sdate, granu):
+    print 'Plotting form output file...'
+    out_dir = datadir+'output/'+sdate+'_'+str(granu)+'/'
+
+    # For DV > 0
+    myplot.mean_cdf(out_dir+'dv_distribution.txt', 'Dynamic Visibility (%)',\
+            '% of prefix (DV > 0)')
+    # Not range
+    myplot.mean_cdfs_multi(out_dir+'as_distribution.txt',\
+            'AS count', 'prefix ratio (DV > x)') # in multiple figures
+    # Range
+    myplot.cdfs_one(out_dir+'prefix_length_cdf.txt', 'prefix length',\
+            '% of prefix (DV in range)') # CDF curves in one figure
+    # Number
+    myplot.boxes(out_dir+'high_dv.txt', 'DV range', 'prefix quantity') # boxes in one figure (range)
+    # Number
+    myplot.time_values_one(out_dir+'HDVP.txt', 'time', 'prefix quantity')
+    myplot.time_values_one(out_dir+'high_dv.txt', 'time', 'prefix quantity')
+    '''
+    myplot.time_value(out_dir+'announce_count.txt')
+    myplot.time_value(out_dir+'withdraw_count.txt')
+    myplot.time_value(out_dir+'update_count.txt')
+    myplot.time_value(out_dir+'prefix_count.txt')
+    '''
+    dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
+    #myplot.cdfs_one(out_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+            #'prefix ratio (DV > 0)')
+    #for dl in dv_level:
+        #myplot.cdfs_one(out_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                #'AS count', 'prefix count')
+    try:
+        # For DV > 0
+        myplot.cdfs_one(out_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+                'prefix ratio (DV > 0)')
+
+        for dl in dv_level:
+            # Number!(?)
+            myplot.cdfs_one(out_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                    'AS count', 'prefix quantity (DV>20%)')
+    except:
+        print 'Cannot plot comparison!'
+    return 0
+
+
 
 class Alarm():
 
@@ -21,9 +69,12 @@ class Alarm():
         self.edate = period.edate 
         self.granu = granu
 
-        self.cl_list = period.co_mo.keys()
+        self.cl_list = cl_list #XXX
+
         self.max_dt = -1
 
+        #-------------------------------------------------------------
+        # dir for final and middle output files
         self.output_dir = datadir+'output/'+self.sdate+'_'+self.edate+'/'
         cmlib.make_dir(self.output_dir)
 
@@ -41,9 +92,34 @@ class Alarm():
             self.mo2index[mo] = index
             index += 1
     
-        self.no_prefixes = period.no_prefixes # a trie TODO
 
-        self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
+        self.no_prefixes = period.no_prefixes # a trie
+
+
+        # FIXME not here! in period class
+        '''
+        self.m_as_m = dict() # AS number: monitor count
+        self.m_nation_as = dict() # nation: AS (of monitors) count
+        for m in self.monitors.keys():
+            asn = self.monitors[m]
+            try:
+                self.m_as_m[asn] += 1
+            except:
+                self.m_as_m[asn] = 1
+        for asn in self.m_as_m.keys():
+            nation = self.as_to_nation(asn)
+            if nation == -1:
+                continue
+            try:
+                self.m_nation_as[nation] += 1
+            except:
+                self.m_nation_as[nation] = 1
+        self.m_ascount = len(self.m_as_m.keys())
+        print 'monitor AS count:', self.m_ascount
+        self.m_nationcount = len(self.m_nation_as.keys())
+        print 'monitor nation count:', self.m_nationcount
+        print 'monitor nations:', self.m_nation_as.keys()
+        '''
 
         #-----------------------------------------------------
         # For synchronization among collectors and conducting timely aggregation
@@ -70,7 +146,17 @@ class Alarm():
         tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
         self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
 
-        '''
+        #------------------------------------------------------
+        # Basic values assignment
+        
+        self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
+        #self.dt_list = list() # the list of datetime
+        #self.peerlist = dict() # dt: monitor list XXX no need any more
+        #self.ucount = dict() # dt: update count
+        #self.acount = dict() # dt: announcement count
+        #self.wcount = dict() # dt: withdrawal count
+        #self.wpctg = dict() # dt: withdrawal percentage XXX get this only when analyzing output
+
         # FIXME put the download of support files in period class
         # Take special care when the duration is long
         spt = Supporter(self.sdate)
@@ -82,7 +168,7 @@ class Alarm():
         self.all_pcount_lzero = 0 # quantity of prefixes having DV > 0
         self.as2cc = spt.get_as2cc_dict()  # all ASes mapped to sizes of customer cones
 
-        # XXX no need any more or in period class
+        # XXX no need any more
         self.as2rank = dict() # All ASes mapped to rank (according to customer cone size)
         pre_value = 999999
         rank = 0 # number (of ASes whose CC is larger) + 1
@@ -96,7 +182,56 @@ class Alarm():
             else: # item[1] (cc size) == pre_value
                 buffer += 1
                 self.as2rank[item[0]] = rank
-        '''
+    
+
+        #---------------------------------------------------------------------
+        # FIXME
+        # For each dt create a middle file that stores prefix|update quantity|DV value|(DV list)
+        # Analyze these middle files in the end
+        self.dv_level = [0, 0.05, 0.1, 0.15, 0.2]
+        # Coarser DV values
+        self.dvrange_dt_pfx = dict() # DV level range: dt: pfx count
+        self.dvrange_len_pfx = dict() # DV level range: prefix length: existence
+        self.dv_dt_asn_pfx = dict() # DV levels: dt: AS: prefix count
+        self.pfxcount = dict() # dv: dt: prefix (in updates) count
+        self.pfxcount_range = dict() # dv range: dt: prefix (in updates) count
+        self.dv_dt_hdvp = dict() # DV levels: dt: hdvp count
+        for dl in self.dv_level:
+            self.dvrange_dt_pfx[dl] = dict()
+            self.dvrange_len_pfx[dl] = dict()
+            self.dv_dt_asn_pfx[dl] = dict()
+            self.pfxcount[dl] = dict()
+            self.pfxcount_range[dl] = dict()
+            self.dv_dt_hdvp[dl] = dict()
+
+        
+        # only record DV > 0.15 #XXX delete
+        self.dup_trie = patricia.trie(None) # TODO Enough memory for this?
+
+        # DV distribution in every time slot
+        self.dv_distribution = dict() # dt: DV: count
+        self.dv_cdf = dict() # dt: DV: cumulative count
+
+
+        #----------------------------------------------------------------------
+        # CDFs for the slot before and after the cdfbound (HDVP peak)
+        # FIXME do this when analyzing the middle files
+        #TODO obtain cdfbound
+        self.compare = False
+        if cdfbound != None:
+            self.compare = True
+            self.cdfbfr = dict()
+            self.cdfaft = dict()
+            self.as_bfr = dict()
+            self.as_aft = dict()
+            self.cdfbound = datetime.datetime.strptime(cdfbound, '%Y-%m-%d %H:%M:%S')
+            self.bfr_start = time_lib.mktime((self.cdfbound +\
+                    datetime.timedelta(minutes=-(self.granu*2))).timetuple())
+            self.cdfbound = time_lib.mktime(self.cdfbound.timetuple())
+
+            for dl in self.dv_level:
+                self.as_bfr[dl] = dict() # dv: ASN: count
+                self.as_aft[dl] = dict()
 
     #----------------------------------------------------------------
     # FIXME: this costs too much time. Use try-except instead.

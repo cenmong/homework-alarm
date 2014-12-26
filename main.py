@@ -9,7 +9,6 @@ logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, form
 logging.info('Program starts!')
 
 #-----------------------------------------------------------------
-# From now on we deal with each application separately
 # Note: different applications may require different monitor and prefix sets!
 # Some applications may use sliding window rather than fixed window
 # Microscopic analysis (e.g., case studies) should be in other .py
@@ -17,18 +16,21 @@ logging.info('Program starts!')
 for i in [27]:
 
     # stores: collectors monitors prefixes filelist outputDir granularity...
+    # does not care about output dir
     my_period = Period(i)
-    # different actions according to specific needs
     my_period.get_global_monitors() # decide my_period.monitors
     
     # filelist = my_period.get_file_list()
     filelist = '/media/usb/update_list/20141130_20141201/_list.txt' # Test
 
     alarm = Alarm(period, 10) # this class does not care about index. granularity in minutes
-    #####alarm = Alarm(granu, i, cl_list)
-    # output = alarm.output() # info about all output files
+    alarm.analyze()
 
-    # Analyze the output files
-    # Plot
+    # TODO about the location and content of all output files
+    info_file = alarm.get_output_info()
+
+    # TODO Analyze the output files
+
+    # TODO Plot
 
 logging.info('Program ends!')

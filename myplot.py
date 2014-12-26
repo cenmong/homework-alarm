@@ -897,3 +897,49 @@ def combine_cdf(fdict, xlabel, ylabel): # fdict {filename: legend}
     ax.tick_params(axis='y', pad=10)
     plt.savefig(datadir+'output/combine_cdf_'+flist[0]+'.pdf', bbox_inches='tight')
     plt.close()
+
+
+# XXX de-couple plotting and logic
+def alarmplot(sdate, granu):
+    print 'Plotting form output file...'
+    out_dir = datadir+'output/'+sdate+'_'+str(granu)+'/'
+
+    # For DV > 0
+    myplot.mean_cdf(out_dir+'dv_distribution.txt', 'Dynamic Visibility (%)',\
+            '% of prefix (DV > 0)')
+    # Not range
+    myplot.mean_cdfs_multi(out_dir+'as_distribution.txt',\
+            'AS count', 'prefix ratio (DV > x)') # in multiple figures
+    # Range
+    myplot.cdfs_one(out_dir+'prefix_length_cdf.txt', 'prefix length',\
+            '% of prefix (DV in range)') # CDF curves in one figure
+    # Number
+    myplot.boxes(out_dir+'high_dv.txt', 'DV range', 'prefix quantity') # boxes in one figure (range)
+    # Number
+    myplot.time_values_one(out_dir+'HDVP.txt', 'time', 'prefix quantity')
+    myplot.time_values_one(out_dir+'high_dv.txt', 'time', 'prefix quantity')
+    '''
+    myplot.time_value(out_dir+'announce_count.txt')
+    myplot.time_value(out_dir+'withdraw_count.txt')
+    myplot.time_value(out_dir+'update_count.txt')
+    myplot.time_value(out_dir+'prefix_count.txt')
+    '''
+    dv_level = [0, 0.05, 0.1, 0.15, 0.2] # same as self.dv_level
+    #myplot.cdfs_one(out_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+            #'prefix ratio (DV > 0)')
+    #for dl in dv_level:
+        #myplot.cdfs_one(out_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                #'AS count', 'prefix count')
+    try:
+        # For DV > 0
+        myplot.cdfs_one(out_dir+'dv_cdf_bfr_aft.txt', 'Dynamic Visibililty',\
+                'prefix ratio (DV > 0)')
+
+        for dl in dv_level:
+            # Number!(?)
+            myplot.cdfs_one(out_dir+'event_as_cdfs_'+str(dl)+'.txt',\
+                    'AS count', 'prefix quantity (DV>20%)')
+    except:
+        print 'Cannot plot comparison!'
+    return 0
+

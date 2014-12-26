@@ -192,22 +192,20 @@ def print_dt(dt):
         print dt
     return 0
 
-def ip_to_binary(content):  # can deal with ip addr and pfx
-    length = None
+def ip4_to_binary(content):  # can deal with ip addr and pfx
     pfx = content.split('/')[0]
     try:
         length = int(content.split('/')[1])
     except:  # an addr, not a pfx
-        pass
+        length = None
 
     addr = IPAddress(pfx).bits()
-    addr = addr.replace('.', '').replace(':', '')
+    addr = addr.replace('.', '')
     if length:
         addr = addr[:length]
 
     return addr
 
-# TODO need testing
 def binary_to_ip4(content):
     decimal = int(content, 2)
     addr = str(IPAddress(decimal))

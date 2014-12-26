@@ -18,11 +18,12 @@ class Period():
         # Store the rib information of every collector (Note: do not change this)
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
+        # TODO only one monitor in each AS
         self.co_mo = dict() # collector: monitor list
         self.no_prefixes = patricia.trie(None) # prefixes that should be ignored TODO
 
-        # XXX Get this only when necessary
-        self.as2nation = self.get_as2nation_dict()
+        # Get this only when necessary
+        #self.as2nation = self.get_as2nation_dict()
 
         # Occassionally run it to get the latest data. (Now up to 20141225)
         #self.get_fib_size_file()
@@ -120,7 +121,7 @@ class Period():
                 print line
                 mo_ip = line.split(':')[0]
                 fibsize = int(line.split(':')[1].split('|')[0])
-                if fibsize > 0.9*norm_size:
+                if fibsize > 0.9 * norm_size:
                     try: 
                         test = self.co_mo[co]
                     except:
