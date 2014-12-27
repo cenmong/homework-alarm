@@ -21,13 +21,13 @@ for i in [27]:
     my_period.get_global_monitors() # decide my_period.monitors
     
     # filelist = my_period.get_file_list()
-    filelist = '/media/usb/update_list/20141130_20141201/_list.txt' # Test
+    my_period.filelist = '/media/usb/update_list/20141130_20141201/_list.txt' # Test
 
-    alarm = Alarm(period, 10) # this class does not care about index. granularity in minutes
+    alarm = Alarm(my_period, 10) # this class does not care about index. granularity in minutes
     alarm.analyze()
 
     # TODO about the location and content of all output files
-    info_file = alarm.get_output_info()
+    #info_file = alarm.get_output_info()
 
     # TODO Analyze the output files
 

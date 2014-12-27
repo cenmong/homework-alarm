@@ -32,24 +32,27 @@ all_collectors = {
     'rrc15': '20060101',
 }
 
-# [4th parm] order (for easier coding)
-# [5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
-# [6th parm] event start date time
-# [7th parm] (opt) event end date time
-# [8th parm] event discription (for plotting)
-# [9th parm] curve peak date time (for plotting)
 daterange = {
-    0:('20061225','20061228'), #taiwan cable cut | 11
-    1:('20081218','20081221'), #mediterranean cable cut 2 | 11
-    2:('20030813','20030816'), #east coast blackout | 11
-    3:('20050911','20050914'), #LA blackout | 11
-    4:('20050828','20050831'), #Hurricane Katrina | 11
-    5:('20080129','20080201'), #mediterranean cable cut 1 | 11
-    # TODO add other date ranges
-    27:('20141130','20141201'), # XXX test only
-    28:('20130101','20131231')
+    0:('20061225','20061228'), #taiwan cable cut | both
+    1:('20081218','20081221'), #mediterranean cable cut 2 | both
+    2:('20030813','20030816'), #east coast blackout | both
+    3:('20050911','20050914'), #LA blackout | both
+    4:('20050828','20050831'), #Hurricane Katrina | both
+    5:('20080129','20080201'), #mediterranean cable cut 1 | both
+    6:('20100226','20100301'), #Chile earthquake | both
+    7:('20110310','20110313'), #Japan Tsunami | WD
+    8:('20121021','20121024'), #Hurricane Sandy | WD TODO duration too short
+    9:('20130317','20130320'), # Spamhaus DDoS attack | WD TODO longer XXX downloading in WD
+    10:('',''),
+    11:('',''),
+    12:('20130207','20130210'), #Northeastern US blackout | SG downloading in WD
+    27:('20141130','20141201'), # test only
+    28:('20130101','20131231'), # downloading in WD
 }
 
+# [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
+# [6th parm] event start date time,[7th parm] (opt) event end date time
+# [8th parm] event discription (for plotting),[9th parm] curve peak date time (for plotting)
 old_daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
                 '2006-12-26 12:25:00', '', 'Earthquake\nhappened'),
             ('20081218', 4, 181, '2008 mediterranean cable cut 2', 1, 11,\

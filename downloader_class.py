@@ -333,7 +333,7 @@ class Downloader():
             if self.co.startswith('rrc'):
                 web_location = rrc_root + self.co + '/' + month + '/' 
             else:
-                web_location = rrc_root + self.co + '/bgpdata/' + month + '/UPDATES/'
+                web_location = rv_root + self.co + '/bgpdata/' + month + '/UPDATES/'
                 web_location = web_location.replace('//', '/')  # when name is ''
 
             print 'Getting update list: http://' + web_location
@@ -429,7 +429,6 @@ if __name__ == '__main__':
         print i,':',collector_list[i]
 
     listfiles = []
-    '''
     # download update files
     for order in order_list:
         sdate = daterange[order][0]
@@ -440,13 +439,13 @@ if __name__ == '__main__':
             listf = dl.get_listfile()
             listfiles.append(listf)
 
+    '''
     # parse all the update files into readable ones
     for listf in listfiles:
         parse_update_files(listf)
 
     # When we need to read RIB, we check this file first
     
-    '''
     # Deleting updates caused by reset
     for order in order_list:
         co_rib = dict() # co: rib full path
@@ -463,7 +462,6 @@ if __name__ == '__main__':
 
             # must do this before deleting updates because peer list will be required
             # cmlib.get_peer_info(rib_full_loc)
-            '''
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
             full_list = get_tmp_full_list(dl)
@@ -471,7 +469,7 @@ if __name__ == '__main__':
             # XXX delete multiple times for long period
             delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)
-            '''
+
         # for each period, maintain a file that record its related RIBs
         cmlib.make_dir(rib_info_dir)
         # Do not change this
@@ -481,4 +479,4 @@ if __name__ == '__main__':
             f.write(co+':'+co_rib[co]+'\n')
         f.close()
 
-
+    '''

@@ -1,9 +1,11 @@
+import radix # takes 1/4 the time as patricia
 import patricia
 import datetime
 import time as time_lib
 import numpy as np
 import cmlib
 import operator
+import string
 import logging
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
@@ -14,8 +16,11 @@ from cStringIO import StringIO
 
 class Alarm():
 
-    def __init__(period, granu):
-        self.filelist = period.get_filelist()
+    def __init__(self, period, granu):
+        self.period = period
+
+        self.filelist = period.filelist
+        print self.filelist
 
         self.sdate = period.sdate
         self.edate = period.edate 
@@ -70,37 +75,9 @@ class Alarm():
         tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
         self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
 
-        '''
-        # FIXME put the download of support files in period class
-        # Take special care when the duration is long
-        spt = Supporter(self.sdate)
-        self.pfx2as = spt.get_pfx2as_trie() # all prefixes mappingg to AS
-        self.as2nation = spt.get_as2nation_dict() # all ASes mapping to nation (latest info)
-
-        self.all_ascount = cmlib.get_all_ascount(self.sdate) # Get total AS quantity
-        self.all_pcount = cmlib.get_all_pcount(self.sdate) # Get total prefix quantity
-        self.all_pcount_lzero = 0 # quantity of prefixes having DV > 0
-        self.as2cc = spt.get_as2cc_dict()  # all ASes mapped to sizes of customer cones
-
-        # XXX no need any more or in period class
-        self.as2rank = dict() # All ASes mapped to rank (according to customer cone size)
-        pre_value = 999999
-        rank = 0 # number (of ASes whose CC is larger) + 1
-        buffer = 0 # number (of ASes having the same CC size) - 1
-        for item in sorted(self.as2cc.iteritems(), key=operator.itemgetter(1), reverse=True):
-            if item[1] < pre_value:
-                rank = rank + buffer + 1
-                pre_value = item[1]
-                self.as2rank[item[0]] = rank
-                buffer = 0
-            else: # item[1] (cc size) == pre_value
-                buffer += 1
-                self.as2rank[item[0]] = rank
-        '''
-
     #----------------------------------------------------------------
     # FIXME: this costs too much time. Use try-except instead.
-    def update_is_normal(update):
+    def update_is_normal(self, update):
         allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
         if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
             return True
@@ -112,6 +89,7 @@ class Alarm():
         fl = open(self.filelist, 'r')
         for fline in fl:
             fline = datadir + fline.split('|')[0]
+            print datetime.datetime.now()
             print 'Reading ' + fline + '...'
 
             # get current file's collector
@@ -119,7 +97,8 @@ class Alarm():
             j = -1
             for a in attributes:
                 j += 1
-                if a.startswith('data.ris') or a.startswith('routeviews'):
+                # XXX be careful when changing RV URL
+                if a.startswith('data.ris') or a.startswith('archi'):
                     break
 
             cl = fline.split('/')[j + 1]
@@ -132,18 +111,14 @@ class Alarm():
             f = StringIO(p.communicate()[0])
             assert p.returncode == 0
 
-            #lastline = 'Do not delete me!'
             for line in f:
                 line = line.rstrip('\n')
-                if not self.update_is_normal(line):
-                    print line
-                    continue
+                #if not self.update_is_normal(line):
+                #   print line
+                #    continue
                 self.add(line)
-                #lastline = line
 
             f.close()
-            print 'last line = ', line
-            #self.set_now(cl, lastline)  # set the current collector's current dt
             self.set_now(cl, line)  # set the current collector's current dt
             self.check_memo()
 
@@ -187,57 +162,48 @@ class Alarm():
         return 0
 
     def add(self, update):
-        attr = update.split('|')[0:6]  # Get only 0~5 attributes
-        if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
-            return -1
-
-        # FIXME time manipulation inefficient
-        intdt = int(attr[1])
-        objdt = datetime.datetime.fromtimestamp(intdt).replace(second=0, microsecond=0) +\
-                datetime.timedelta(hours=-0) # no need for 8H shift. WHY???  TODO
-                #datetime.timedelta(hours=-8) # note the 8H shift
-
-        # Reset date time to fit granularity
-        # e.g., 10:12 => 10:10
-        min = self.xia_qu_zheng(objdt.minute, 'm')
-        objdt = objdt.replace(minute = min)
-        dt = time_lib.mktime(objdt.timetuple())  # Change datetime into UNIX seconds
-
-        # run into a brand new dt!
-        if dt > self.max_dt:
-            self.max_dt = dt
-            #self.dt_list.append(dt)
-            #self.peerlist[dt] = []
-            self.pfx_trie[dt] = patricia.trie(None)
-            #self.ucount[dt] = 0
-            #self.acount[dt] = 0
-            #self.wcount[dt] = 0
-
-        # XXX should we record update type?
-        # Or do it only in microscopic analysis?
-        '''
-        if attr[2] == 'A':  # announcement
-            self.acount[dt] += 1
-        else:  # withdrawal
-            self.wcount[dt] += 1
-        self.ucount[dt] += 1
-        '''
-
+        attr = update.split('|') 
+        # TODO use try-except to filter out illegal updates
+        
         mo = attr[3]
         try:
             index = self.mo2index[mo]
         except: # not a monitor that we have interest in
-            pass
+            return -1
 
-        pfx = cmlib.ip4_to_binary(attr[5])
+        # change datetime to fit granularity
+        intdt = int(attr[1])
+        dt = intdt / (60 * self.granu) * 60 * self.granu # -28800 or not?
+
+        # run into a brand new dt!
+        if dt > self.max_dt:
+            print 'new dt!'
+            self.max_dt = dt
+            ##self.pfx_trie[dt] = patricia.trie(None)
+            self.pfx_trie[dt] = radix.Radix()
+
+        # TODO check illegal prefix
+        ##pfx = cmlib.pfx4_to_binary(attr[5])
+        ##try:
         try:
-            try:
-                self.pfx_trie[dt][pfx][index] += 1
-            except: # prefix node does not exist
-                self.pfx_trie[dt][pfx] = [0] * self.mcount
-                self.pfx_trie[dt][pfx][index] = 1
-        except: # self.pfx_trie[dt] has already been deleted. rarely happen 
-            pass
+            ##self.pfx_trie[dt][pfx][index] += 1
+            rnode = self.pfx_trie[dt].search_exact(attr[5])
+            rnode.data[0][index] += 1
+            if rnode.prefix == '31.13.195.0/24':
+                print rnode.data
+        except: # prefix node does not exist
+            ##self.pfx_trie[dt][pfx] = [0] * self.mcount
+            ##self.pfx_trie[dt][pfx][index] = 1
+            rnode = self.pfx_trie[dt].add(attr[5])
+            rnode.data[0] = [0] * self.mcount
+            rnode.data[0][index] = 1
+        ##except: # self.pfx_trie[dt] has already been deleted. rarely happen 
+        ##    return -1
+
+        if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
+            return -1
+
+        # XXX should we record update type?
 
         return 0
 
@@ -248,120 +214,17 @@ class Alarm():
             cmlib.print_dt(dt)
 
             trie = self.pfx_trie[dt]
-            self.dv_distribution[dt] = dict() # DV: count
-
-            for dl in self.dv_level:
-                self.dv_dt_asn_pfx[dl][dt] = dict()
-
+            outfile = self.output_dir + str(dt) + '.txt'
+            f.open(outfile, 'w')
             for pfx in trie:
                 if pfx == '': # the root node (the source of a potential bug)
                     continue
-
-                plen = len(pfx) # get prefix length
-                asn = self.pfx_to_as(pfx) # get origin AS number
-                ratio = float(len(trie[pfx]))/float(self.mcount)
-
-                try:
-                    self.dv_distribution[dt][ratio] += 1
-                except:
-                    self.dv_distribution[dt][ratio] = 1
-
-                if ratio > 0.15:
-                    try:
-                        self.dup_trie[pfx] += 1
-                    except:  # Node does not exist, then we create a new node
-                        self.dup_trie[pfx] = 1
-
-                for j in xrange(0, len(self.dv_level)):
-                    dv_now = self.dv_level[j]
-                    if ratio > dv_now:
-                        try:
-                            self.pfxcount[dv_now][dt] += 1
-                        except:
-                            self.pfxcount[dv_now][dt] = 1
-
-                        if j != len(self.dv_level)-1: # not the last one
-                            if ratio <= self.dv_level[j+1]:
-                                try:
-                                    self.dvrange_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
-                                except:
-                                    self.dvrange_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
-                                try:
-                                    self.dvrange_len_pfx[dv_now][plen] += 1
-                                except:
-                                    self.dvrange_len_pfx[dv_now][plen] = 1
-                                try:
-                                    self.pfxcount_range[dv_now][dt] += 1
-                                except:
-                                    self.pfxcount_range[dv_now][dt] = 1
-                        else: # the last one
-                            try:
-                                self.dvrange_dt_pfx[dv_now][dt] += 1  # DV range: dt: pfx count
-                            except:
-                                self.dvrange_dt_pfx[dv_now][dt] = 1  # DV range: dt: pfx count
-                            try:
-                                self.dvrange_len_pfx[dv_now][plen] += 1
-                            except:
-                                self.dvrange_len_pfx[dv_now][plen] = 1
-                            try:
-                                self.pfxcount_range[dv_now][dt] += 1
-                            except:
-                                self.pfxcount_range[dv_now][dt] = 1
-
-                        try:
-                            self.dv_dt_hdvp[dv_now][dt] += 1 
-                        except:
-                            self.dv_dt_hdvp[dv_now][dt] = 1
-
-                        if asn != -1:
-                            try:
-                                self.dv_dt_asn_pfx[dv_now][dt][asn] += 1
-                            except:
-                                self.dv_dt_asn_pfx[dv_now][dt][asn] = 1
-
-                            if self.compare and dt == self.bfr_start:
-                                try:
-                                    self.as_bfr[dv_now][asn] += 1
-                                except:
-                                    self.as_bfr[dv_now][asn] = 1
-
-                            if self.compare and dt == self.cdfbound:
-                                try:
-                                    self.as_aft[dv_now][asn] += 1
-                                except:
-                                    self.as_aft[dv_now][asn] = 1
-
-
-                if self.compare:
-                    ### CDF comparison before and after event
-                    if dt == self.bfr_start:
-                        try:
-                            self.cdfbfr[ratio] += 1
-                        except:
-                            self.cdfbfr[ratio] = 1
-                    if dt == self.cdfbound:
-                        try:
-                            self.cdfaft[ratio] += 1
-                        except:
-                            self.cdfaft[ratio] = 1
-
-
-            # Only get top 500 ASes
-            for dl in self.dv_level:
-                tmp_dict = self.dv_dt_asn_pfx[dl][dt]
-                tmp_list = sorted(tmp_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
-                try:
-                    tmp_list = tmp_list[0:500]
-                except: # item number < 500 or empty
-                    pass
-                self.dv_dt_asn_pfx[dl][dt] = {}
-                for item in tmp_list:
-                    # value is the ratio of "prefixes in updates"
-                    self.dv_dt_asn_pfx[dl][dt][item[0]] =\
-                            float(item[1])/float(self.pfxcount[dl][dt])
-
-            # get withdrawal/(W+A) value
-            self.wpctg[dt] = float(self.wcount[dt]) / float(self.ucount[dt])
+                mylist = trie[pfx]
+                f.write(pfx+':')
+                for i in xrange(0, len(my_list)):
+                    f.write(str(mylist[i]) + '|')
+                f.write('\n')
+            f.close()
 
         return 0
 
