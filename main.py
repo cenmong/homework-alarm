@@ -5,32 +5,29 @@ from meliae import scanner
 scanner.dump_all_objects('memory.json')
 
 import logging
-logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 logging.info('Program starts!')
 
-#-----------------------------------------------------------------
-# Note: different applications may require different monitor and prefix sets!
-# Some applications may use sliding window rather than fixed window
-# Microscopic analysis (e.g., case studies) should be in other .py
+# TODO Microscopic analysis (e.g., case studies, update content) should be in another logic
 
 for i in [27]:
 
-    # stores: collectors monitors prefixes filelist outputDir granularity...
-    # does not care about output dir
+    # stores: collectors monitors prefixes filelists...
+    # XXX different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
-    
-    # filelist = my_period.get_file_list()
-    my_period.filelist = '/media/usb/update_list/20141130_20141201/_list.txt' # Test
 
-    alarm = Alarm(my_period, 10) # this class does not care about index. granularity in minutes
-    alarm.analyze()
+    # XXX Some applications may use sliding window rather than fixed window
+    alarm = Alarm(my_period, 10) # granularity in minutes
+    alarm.analyze() # analyze all updates and store all middle output files
+    middle_dir = alarm.middle_dir # where the middle files stored
 
-    # TODO about the location and content of all output files
-    #info_file = alarm.get_output_info()
-
-    # TODO Analyze the output files
-
-    # TODO Plot
+    # TODO Analyze the middle files for tabling, plotting and analysis...
+    '''
+    reaper = Reaper(middle_dir)
+    reaper.get_XXX
+    reaper.get_XXX
+    final_dir = reaper.final_dir
+    '''
+    # TODO Plotting
 
 logging.info('Program ends!')

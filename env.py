@@ -33,21 +33,31 @@ all_collectors = {
 }
 
 daterange = {
-    0:('20061225','20061228'), #taiwan cable cut | both
-    1:('20081218','20081221'), #mediterranean cable cut 2 | both
-    2:('20030813','20030816'), #east coast blackout | both
-    3:('20050911','20050914'), #LA blackout | both
-    4:('20050828','20050831'), #Hurricane Katrina | both
-    5:('20080129','20080201'), #mediterranean cable cut 1 | both
+    0:('20061224','20061230'), #taiwan cable cut | SG
+    1:('20081217','20081223'), #mediterranean cable cut 2 | SG
+    2:('20030812','20030818'), #east coast blackout | Fail to parse one file!
+    3:('20050910','20050916'), #LA blackout | SG
+    4:('20050823','20050905'), #Hurricane Katrina | SG
+    5:('20080128','20080203'), #mediterranean cable cut 1 | both
     6:('20100226','20100301'), #Chile earthquake | both
     7:('20110310','20110313'), #Japan Tsunami | WD
     8:('20121021','20121024'), #Hurricane Sandy | WD TODO duration too short
     9:('20130317','20130320'), # Spamhaus DDoS attack | WD TODO longer XXX downloading in WD
-    10:('',''),
-    11:('',''),
-    12:('20130207','20130210'), #Northeastern US blackout | SG downloading in WD
+    10:('20080510','20080513'), #Sichuan Earthquake | SG
+    11:('20110824','20110827'), #Hurricane Irene | both
+    12:('20130207','20130210'), #Northeastern US blackout | SG XXX downloading in WD
+    13:('20100413','20100416'), #Sea-Me undersea cable cut | both
+    14:('20120221','20120224'), #Australia route leakage | WD
+    15:('20120807','20120810'), #Canada route leakage | WD
+    16:('20030124','20030127'), #Slammer worm |WD
+    17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX downloading in WD
+    18:('20130213','20130216'), #SEACOM outage | WD XXX downloading in WD
+    19:('20110327','20110330'), #Caucasus cable cut | WD
+    20:('20121222','20121225'), #Georgia-Russia cable cut | SG
+    21:('20120224','20120227'), #TEAMS cable cut in east Africa | SG
+    22:('20120425','20120428'), #TEAMS cable cut in east Africa again | SG
     27:('20141130','20141201'), # test only
-    28:('20130101','20131231'), # downloading in WD
+    28:('20130101','20131231'), # XXX downloading in WD
 }
 
 # [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
@@ -72,20 +82,14 @@ old_daterange = [('20061225', 4, 177, '2006 taiwan cable cut', 0, 11,\
             ('20121021', 4, 173, '2012 Hurricane Sandy', 8, 10,\
                 '2012-10-24 19:00:00', '', 'Landfall\non\nJamaica'),
             ('20130317', 4, 190, '2013 Spamhaus DDoS', 9, 10,\
-                '2013-03-18 00:00:00', '2013-03-19 00:00:00', 'Attack\nbegan',\
-                '2013-03-20 09:00:00'),
-            ('20140601', 14, 186, 'Reference 2014', 10, 01,\
-                '', '', ''),
-            ('20060601', 7, 152, 'for CDF in intro 2006', 11, 01,\
-                '', '', ''),
+                '2013-03-18 00:00:00', '2013-03-19 00:00:00', 'Attack\nbegan', '2013-03-20 09:00:00'),
+            ('20140601', 14, 186, 'Reference 2014', 10, 01, '', '', ''),
+            ('20060601', 7, 152, 'for CDF in intro 2006', 11, 01, '', '', ''),
             ('20130207', 4, 191, '2013 Northeastern U.S. Blackout', 12, 01,\
                 '2013-02-08 21:15:00', '2013-02-09 23:59:59', 'Several\nregions\nblackouts'),
-            ('20100413', 4, 180, '2010 Sea-Me undersea cable cut', 13, 11,\
-                '', '', ''),
-            ('20120221', 4, -1, 'Australia route leakage', 14, 10,\
-                '', '', ''),
-            ('20120807', 4, -1, 'Canada route leakage', 15, 10,\
-                '', '', ''),
+            ('20100413', 4, 180, '2010 Sea-Me undersea cable cut', 13, 11, '', '', ''),
+            ('20120221', 4, -1, 'Australia route leakage', 14, 10, '', '', ''),
+            ('20120807', 4, -1, 'Canada route leakage', 15, 10, '', '', ''),
             ('20030124', 4, 168, '2003 Slammer worm', 16, 10,\
                 '2003-01-25 05:30:00', '', 'Worm\nstarted', '2003-01-25 05:30:00'),
             ('20130321', 4, 185, '20130322 EASSy/SEACOM Outages', 17, 10,\

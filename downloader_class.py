@@ -14,7 +14,7 @@ import subprocess
 import os
 import logging
 import numpy as np
-logging.basicConfig(filename='download.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from env import *
 
@@ -149,7 +149,6 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
                         
     return 0
 
-# XXX this function is highly ineffective. But I seem cannot improve it
 def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
     f_results = open(reset_info_file, 'r')
     for line in f_results: 
@@ -226,58 +225,8 @@ def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
     f_results.close()
     return 0
 
-# FIXME not flexible
-def combine_flist(self, order):
-    sdate = daterange[order][0]
-    fnames = {}
-    clist = cmlib.get_collector(sdate)
-    for cl_name in clist:
-        if cl_name.startswith('rrc'):
-            cl_type = 1 # collector type
-        else:
-            cl_type = 0
-        # .bz2.txt.gz file name
-        flist = open(datadir+'metadata/'+sdate+'/updt_filelist_'+cl_name, 'r')
-        for filename in flist:
-            filename = filename.replace('\n', '')
-            file_attr = filename.split('.')
-            if cl_type == 0:
-                file_dt = file_attr[3] + file_attr[4]
-            else:
-                file_dt = file_attr[5] + file_attr[6]
-            dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
-            fnames[filename] = dt_obj
-        flist.close()
-    fnlist = sorted(fnames, key=fnames.get)
-
-    if os.path.exists(datadir+'metadata/'+sdate+'/updt_filelist_comb'):
-        os.remove(datadir+'metadata/'+sdate+'/updt_filelist_comb')
-    fcomb = open(datadir+'metadata/'+sdate+'/updt_filelist_comb', 'w')  # .bz2.txt.gz file name
-    for fn in fnlist:
-        fcomb.write(fn+'\n')
-    fcomb.close()
-    return 0
-
-
-def get_tmp_full_list(dlder):
-    listfile = dlder.get_listfile()
-    list_dir = dlder.get_listfile_dir()
-    tmp_file = list_dir + 'tmp_full_list'
-
-    fr = open(listfile, 'r')
-    fw = open(tmp_file, 'w')
-
-    for line in fr:
-        line = line.split('|')[0]
-        fw.write(datadir+line+'\n')
-
-    fr.close()
-    fw.close()
-
-    return tmp_file
-
 TEST = False
-# XXX: change file name for RV when time < Feb, 2003.
+# TODO: change file name for RV when time < Feb, 2003.
 #--------------------------------------------------------------------------
 class Downloader():
 
@@ -295,6 +244,22 @@ class Downloader():
         tmp_filename = self.listfile.split('/')[-1]
         tmp_dir = self.listfile.replace(tmp_filename, '')
         return tmp_dir
+
+    def get_tmp_full_list(self):
+        list_dir = dlder.get_listfile_dir()
+        tmp_file = list_dir + 'tmp_full_list'
+
+        fr = open(self.listfile, 'r')
+        fw = open(tmp_file, 'w')
+
+        for line in fr:
+            line = line.split('|')[0]
+            fw.write(datadir+line+'\n')
+
+        fr.close()
+        fw.close()
+
+        return tmp_file
 
     #-----------------------------------------------------------------------
     # Get a list of the update files before downloading them
@@ -409,14 +374,14 @@ class Downloader():
     def get_all_updates(self):
         self.get_update_list()
         # Do it twice to make sure everything is downloaded
-        #self.download_updates()
-        #self.download_updates()
+        self.download_updates()
+        self.download_updates()
 
 
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [27]
+    order_list = [28]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date
@@ -464,7 +429,7 @@ if __name__ == '__main__':
             # cmlib.get_peer_info(rib_full_loc)
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
-            full_list = get_tmp_full_list(dl)
+            full_list = dl.get_tmp_full_list()
 
             # XXX delete multiple times for long period
             delete_reset(co, rib_full_loc, full_list)

@@ -1,9 +1,13 @@
 from env import *
+from downloader_class import *
 import cmlib
 import patricia
 import os
 import datetime
 import time as time_lib
+
+import logging
+logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 # Work as input to update analysis functions
 class Period():
@@ -15,15 +19,14 @@ class Period():
         # location to store supporting files
         self.spt_dir = datadir + 'support/' + str(index) + '/'
 
-        # Store the rib information of every collector (Note: do not change this)
+        # Store the rib information of every collector (Note: do not change this) XXX really need?
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
         # TODO select only one monitor in each AS
-        self.co_mo = dict() # collector: monitor list
+        self.co_mo = dict() # collector: monitor list (does not store empty list)
         self.no_prefixes = patricia.trie(None) # prefixes that should be ignored TODO
 
-        self.filelist = ''
-        # Get this only when necessary
+        # XXX Get this only when necessary
         self.as2nation = self.get_as2nation_dict()
 
         # Occassionally run it to get the latest data. (Now up to 20141225)
@@ -144,9 +147,46 @@ class Period():
             totalok += ok
         f.close()
         print 'All:',totalok,'/',totalc
+        logging.info('Feasible monitors:%d/%d', totalok, totalc)
         print nationc
         print self.co_mo
+        
         return 0
+
+    def get_filelist(self):
+        listdir = ''
+
+        co_list = self.co_mo.keys()
+        print 'collectors:',self.co_mo
+        listfiles = list()
+        for co in co_list:
+            dl = Downloader(self.sdate, self.edate, co)
+            listfiles.append(dl.get_listfile())
+            listdir = dl.get_listfile_dir()
+
+        fnames = dict()
+        for lf in listfiles:
+            f = open(lf, 'r')
+            for name in f:
+                name = name.replace('\n', '')
+                file_attr = name.split('.')
+                try:
+                    file_dt = file_attr[5] + file_attr[6]
+                    dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
+                except:
+                    file_dt = file_attr[4] + file_attr[5]
+                    dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
+                fnames[name] = dt_obj
+            f.close()
+        tmpdict = sorted(fnames, key=fnames.get)
+
+        filelist = listdir + 'combined_list.txt'
+        f = open(filelist, 'w')
+        for name in tmpdict:
+            f.write(name+'\n')
+        f.close()
+
+        return filelist
 
     def get_prefix(self):
         return 0

@@ -1,6 +1,7 @@
 import os
 # XXX should use urllib2 instead of urllib
 import urllib
+import urllib2 # use this instead of urllib
 import subprocess
 import re
 import nltk
@@ -48,11 +49,12 @@ def get_peer_list(rib_full_loc): # file name end with .bz2/gz.txt.gz
 # TODO get LVP
 def get_peer_info(rib_full_loc):
 
+    print 'Getting info of peers from:', rib_full_loc
+
     output = peer_path_by_rib_path(rib_full_loc)
     if os.path.exists(output):
+        print 'Already exists!'
         return output
-
-    print 'Getting info of peers from:', rib_full_loc
 
     peer_pfx_count = dict()
     peer2as = dict()
@@ -114,13 +116,13 @@ def download_file(url, save_loc, filename):
             pass
 
 def force_download_file(url, save_loc, filename):
-    print 'Downloading '+url+filename
     make_dir(save_loc)
-    if os.path.exists(save_loc+filename):
-        os.remove(save_loc+filename)
     while 1:
+        print 'Downloading '+url+filename
         try:
-            urllib.urlretrieve(url+filename, save_loc+filename)
+            f = urllib2.urlopen(url+filename)
+            with open(save_loc+filename,'wb') as code:
+                code.write(f.read())
             break
         except:
             pass
@@ -164,7 +166,7 @@ def get_weblist(url):
 def parse_mrt(old_loc_fname, new_loc_fname):
     print 'Parsing: '+old_loc_fname
     if not os.path.exists(new_loc_fname):
-        subprocess.call('~/tool/libbgpdump-1.4.99.11/bgpdump -m '+\
+        subprocess.call('~/tool/libbgpdump-1.4.99.13/bgpdump -m '+\
                 old_loc_fname+' > '+new_loc_fname, shell=True)
     else:  # file already exists
         pass

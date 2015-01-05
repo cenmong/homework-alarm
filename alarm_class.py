@@ -1,13 +1,13 @@
 import radix # takes 1/4 the time as patricia
-import patricia
 import datetime
 import time as time_lib
 import numpy as np
 import cmlib
 import operator
 import string
+import gzip
+import traceback
 import logging
-logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from netaddr import *
 from env import *
@@ -19,8 +19,8 @@ class Alarm():
     def __init__(self, period, granu):
         self.period = period
 
-        self.filelist = period.filelist
-        print self.filelist
+        self.filelist = period.get_filelist()
+        print 'filelist:', self.filelist
 
         self.sdate = period.sdate
         self.edate = period.edate 
@@ -29,9 +29,9 @@ class Alarm():
         self.cl_list = period.co_mo.keys()
         self.max_dt = -1
 
-        self.output_dir = datadir+'output/'+self.sdate+'_'+self.edate+'/'
-        cmlib.make_dir(self.output_dir)
-
+        # Store all middle files here
+        self.middle_dir = datadir+'output/'+self.sdate+'_'+self.edate+'/'
+        cmlib.make_dir(self.middle_dir)
 
         self.monitors = []
         tmp_co_mo = period.co_mo
@@ -46,9 +46,9 @@ class Alarm():
             self.mo2index[mo] = index
             index += 1
     
-        self.no_prefixes = period.no_prefixes # a trie TODO
+        self.no_prefixes = period.no_prefixes # a trie TODO excluded prefixes
 
-        self.pfx_trie = dict() # every dt has a corresponding trie, deleted periodically
+        self.pfx_radix = dict() # every dt has a corresponding trie, deleted periodically
 
         #-----------------------------------------------------
         # For synchronization among collectors and conducting timely aggregation
@@ -76,7 +76,7 @@ class Alarm():
         self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
 
     #----------------------------------------------------------------
-    # FIXME: this costs too much time. Use try-except instead.
+    # this function costs too much time. Use try-except instead.
     def update_is_normal(self, update):
         allowed_char = set(string.ascii_letters+string.digits+'.'+':'+'|'+'/'+' '+'{'+'}'+','+'-')
         if set(update).issubset(allowed_char) and len(update.split('|')) > 5:
@@ -89,7 +89,6 @@ class Alarm():
         fl = open(self.filelist, 'r')
         for fline in fl:
             fline = datadir + fline.split('|')[0]
-            print datetime.datetime.now()
             print 'Reading ' + fline + '...'
 
             # get current file's collector
@@ -97,14 +96,13 @@ class Alarm():
             j = -1
             for a in attributes:
                 j += 1
-                # XXX be careful when changing RV URL
+                # XXX  modify this after changing RV URL
                 if a.startswith('data.ris') or a.startswith('archi'):
                     break
 
             cl = fline.split('/')[j + 1]
             if cl == 'bgpdata':  # route-views2, the special case
                 cl = ''
-
 
             #if os.path.exists(fline.replace('txt.gz', 'txt')): # This happens occassionally
             p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE)
@@ -113,9 +111,6 @@ class Alarm():
 
             for line in f:
                 line = line.rstrip('\n')
-                #if not self.update_is_normal(line):
-                #   print line
-                #    continue
                 self.add(line)
 
             f.close()
@@ -125,7 +120,6 @@ class Alarm():
         fl.close()
 
     def check_memo(self):
-        print 'Checking memory to see if it is appropriate to output and release...'
         # Obtain the ceiling: lowest 'current datetime' among all collectors
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity
@@ -145,7 +139,7 @@ class Alarm():
     # output everything before ceiling and remove garbage
     def release_memo(self):
         rel_dt = []  # dt list for releasing
-        for dt in self.pfx_trie.keys():
+        for dt in self.pfx_radix.keys():
             if self.floor <= dt <= self.ceiling:
                 rel_dt.append(dt)
 
@@ -156,54 +150,54 @@ class Alarm():
 
     # delete the tires that have already been used
     def del_garbage(self):
-        for dt in self.pfx_trie.keys():  # all dt that exists
+        for dt in self.pfx_radix.keys():  # all dt that exists
             if dt <= self.ceiling:
-                del self.pfx_trie[dt]
+                del self.pfx_radix[dt]
         return 0
 
     def add(self, update):
-        attr = update.split('|') 
-        # TODO use try-except to filter out illegal updates
-        
-        mo = attr[3]
         try:
-            index = self.mo2index[mo]
-        except: # not a monitor that we have interest in
-            return -1
+            attr = update.split('|') 
+            
+            mo = attr[3]
+            try:
+                index = self.mo2index[mo]
+            #except: # not a monitor that we have interest in
+            #    return -1
+            except Exception, err:
+                logging.info(traceback.format_exc())
+                logging.info(update)
+                return -1
 
-        # change datetime to fit granularity
-        intdt = int(attr[1])
-        dt = intdt / (60 * self.granu) * 60 * self.granu # -28800 or not?
+            # change datetime to fit granularity
+            intdt = int(attr[1])
+            dt = intdt / (60 * self.granu) * 60 * self.granu # -28800 or not?
 
-        # run into a brand new dt!
-        if dt > self.max_dt:
-            print 'new dt!'
-            self.max_dt = dt
-            ##self.pfx_trie[dt] = patricia.trie(None)
-            self.pfx_trie[dt] = radix.Radix()
+            # run into a brand new dt!
+            if dt > self.max_dt:
+                print 'new dt!'
+                self.max_dt = dt
+                ##self.pfx_radix[dt] = patricia.trie(None)
+                self.pfx_radix[dt] = radix.Radix()
 
-        # TODO check illegal prefix
-        ##pfx = cmlib.pfx4_to_binary(attr[5])
-        ##try:
-        try:
-            ##self.pfx_trie[dt][pfx][index] += 1
-            rnode = self.pfx_trie[dt].search_exact(attr[5])
-            rnode.data[0][index] += 1
-            if rnode.prefix == '31.13.195.0/24':
-                print rnode.data
-        except: # prefix node does not exist
-            ##self.pfx_trie[dt][pfx] = [0] * self.mcount
-            ##self.pfx_trie[dt][pfx][index] = 1
-            rnode = self.pfx_trie[dt].add(attr[5])
-            rnode.data[0] = [0] * self.mcount
-            rnode.data[0][index] = 1
-        ##except: # self.pfx_trie[dt] has already been deleted. rarely happen 
-        ##    return -1
+            # TODO check illegal prefix
+            ##pfx = cmlib.pfx4_to_binary(attr[5])
+            ##try:
+            try:
+                rnode = self.pfx_radix[dt].search_exact(attr[5])
+                rnode.data[0][index] += 1
+            except: # prefix node does not exist
+                rnode = self.pfx_radix[dt].add(attr[5])
+                rnode.data[0] = [0] * self.mcount
+                rnode.data[0][index] = 1
+            ##except: # self.pfx_radix[dt] has already been deleted. rarely happen 
+            ##    return -1
 
-        if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
-            return -1
-
-        # XXX should we record update type?
+            if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
+                return -1
+        except Exception, err:
+            logging.info(traceback.format_exc())
+            logging.info(update)
 
         return 0
 
@@ -213,17 +207,14 @@ class Alarm():
             print 'outputting info in dt:'
             cmlib.print_dt(dt)
 
-            trie = self.pfx_trie[dt]
-            outfile = self.output_dir + str(dt) + '.txt'
-            f.open(outfile, 'w')
-            for pfx in trie:
-                if pfx == '': # the root node (the source of a potential bug)
-                    continue
-                mylist = trie[pfx]
-                f.write(pfx+':')
-                for i in xrange(0, len(my_list)):
-                    f.write(str(mylist[i]) + '|')
-                f.write('\n')
+            rtree = self.pfx_radix[dt]
+            outfile = self.middle_dir + str(dt) + '.txt.gz'
+            
+            f = gzip.open(outfile, 'wb')
+            for node in rtree.nodes():
+                mylist = node.data[0]
+                f.write(node.prefix+':')
+                f.write(str(mylist)+'\n')
             f.close()
 
         return 0
@@ -231,8 +222,14 @@ class Alarm():
     def analyze(self):
         self.readfiles()
 
-    # XXX ugly
-    # TODO: do not consider the format of plots (e.g. CDF, time-series) when outputing
+    def set_now(self, cl, line):
+        #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
+        self.cl_dt[cl] = int(line.split('|')[1]) # WHY not -8H any more?
+        return 0
+    
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
+
     def output(self):
         for dt in self.pfxcount[0].keys():
             self.all_pcount_lzero += self.pfxcount[0][dt]
@@ -632,11 +629,3 @@ class Alarm():
         else:
             return False
 
-    #-----------------------------------------------------------------
-    # Set the datetime flag of every collector for synchronization
-
-    def set_now(self, cl, line):
-        #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
-        self.cl_dt[cl] = int(line.split('|')[1]) # WHY not -8H any more?
-        return 0
-    
