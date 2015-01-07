@@ -1,7 +1,7 @@
 import radix # takes 1/4 the time as patricia
 import datetime
-import time as time_lib
 import numpy as np
+import calendar # do not use the time module
 import cmlib
 import operator
 import string
@@ -9,6 +9,8 @@ import gzip
 import traceback
 import logging
 
+
+from pytz import timezone
 from netaddr import *
 from env import *
 from supporter_class import *
@@ -20,7 +22,6 @@ class Alarm():
         self.period = period
 
         self.filelist = period.get_filelist()
-        print 'filelist:', self.filelist
 
         self.sdate = period.sdate
         self.edate = period.edate 
@@ -59,10 +60,10 @@ class Alarm():
             self.cl_dt[cl] = 0
 
         tmp_dt = datetime.datetime(int(self.sdate[0:4]),\
-                int(self.sdate[4:6]),int(self.sdate[6:8]),0,0)
+                int(self.sdate[4:6]),int(self.sdate[6:8]),0,0) # is UTC
         # do not fill up the hour to allow for the edge value being analyzed
-        tmp_dt = tmp_dt + datetime.timedelta(minutes=58)
-        tmp_dt = time_lib.mktime(tmp_dt.timetuple())
+        tmp_dt = tmp_dt + datetime.timedelta(minutes=58) # is UTC
+        tmp_dt = calendar.timegm(tmp_dt.timetuple()) # is UTC
 
         # floor is only for ignoring anything before self.sdate + 1 hour
         self.floor = tmp_dt
@@ -72,7 +73,7 @@ class Alarm():
         tmp_dt = datetime.datetime(int(self.edate[0:4]),\
                 int(self.edate[4:6]),int(self.edate[6:8]),23,59)
         tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
-        tmp_dt = time_lib.mktime(tmp_dt.timetuple())  # Change into seconds int
+        tmp_dt = calendar.timegm(tmp_dt.timetuple())
         self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
 
     #----------------------------------------------------------------
@@ -114,7 +115,10 @@ class Alarm():
                 self.add(line)
 
             f.close()
-            self.set_now(cl, line)  # set the current collector's current dt
+            try:
+                self.set_now(cl, line)  # set the current collector's current dt
+            except:
+                pass # skip a round if line is '' or is strange
             self.check_memo()
 
         fl.close()
@@ -128,7 +132,7 @@ class Alarm():
             if self.cl_dt[cl] < new_ceil:
                 new_ceil = self.cl_dt[cl]
 
-        if new_ceil - self.ceiling >= 4 * 60 * self.granu:  # Minimum is 2 *
+        if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # Minimum is 2 *
             self.ceiling = new_ceil - 60 * self.granu
             if self.ceiling > self.top_ceiling:
                 self.ceiling = self.top_ceiling
@@ -162,11 +166,7 @@ class Alarm():
             mo = attr[3]
             try:
                 index = self.mo2index[mo]
-            #except: # not a monitor that we have interest in
-            #    return -1
-            except Exception, err:
-                logging.info(traceback.format_exc())
-                logging.info(update)
+            except: # not a monitor that we have interest in
                 return -1
 
             # change datetime to fit granularity
@@ -196,8 +196,9 @@ class Alarm():
             if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
                 return -1
         except Exception, err:
-            logging.info(traceback.format_exc())
-            logging.info(update)
+            if update != '':
+                logging.info(traceback.format_exc())
+                logging.info(update)
 
         return 0
 

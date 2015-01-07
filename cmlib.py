@@ -19,30 +19,6 @@ from cStringIO import StringIO
 from netaddr import *
 from env import *
 
-'''
-def get_peer_list(rib_full_loc): # file name end with .bz2/gz.txt.gz
-    print 'Getting peers from RIB...'
-    peers = []
-    txtfile = rib_full_loc.replace('txt.gz', 'txt')
-    subprocess.call('gunzip '+rib_full_loc, shell=True)
-    f = open(txtfile, 'r')
-    for line in f:
-        try:
-            peer = line.split('|')[3]
-            if peer not in peers:
-                peers.append(peer)
-        except:
-            pass
-    f.close()
-
-    # compress RIB into .gz
-    if not os.path.exists(rib_full_loc):
-        pack_gz(txtfile)
-
-    return peers
-'''
-
-
 # Get all the info once and forever, store in a well-known place
 # (Actually when pre-processing)
 # Note: we should read RIB as less as possible because it costs too much time
@@ -189,7 +165,7 @@ def store_symbol_count(granu, my_dict, describe):
 
 def print_dt(dt):
     try:
-        print datetime.datetime.fromtimestamp(dt)
+        print datetime.datetime.utcfromtimestamp(dt)
     except:
         print dt
     return 0
@@ -223,25 +199,6 @@ def binary_to_ip4(content):
     else:
         return addr + '/' + str(len(content))
 
-#def binary_to_ip6():
-
-def get_collector(sdate):
-    clist = []
-    dir_list = os.listdir(datadir+'metadata/'+sdate+'/')
-    for f in dir_list:
-        if not 'filelist' in f:
-            continue
-        if 'test' in f:
-            continue
-        
-        cl = f.split('_')[-1]
-        if cl == 'comb':
-            continue
-        if cl.endswith('~'):
-            continue
-        clist.append(cl)
-    return clist
-
 def size_u2v(unit):
     if unit in ['k', 'K']:
         return 1024
@@ -255,7 +212,6 @@ def parse_size(size):
         return float(size)
     else:
         return float(size[:-1]) * size_u2v(size[-1])
-
 
 def get_all_length(sdate):
     print 'Getting all prefix lengthes from RIB...'

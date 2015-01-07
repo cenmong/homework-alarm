@@ -19,7 +19,7 @@ class Period():
         # location to store supporting files
         self.spt_dir = datadir + 'support/' + str(index) + '/'
 
-        # Store the rib information of every collector (Note: do not change this) XXX really need?
+        # Store the rib information of every collector (Note: do not change this!)
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
         # TODO select only one monitor in each AS
@@ -112,6 +112,7 @@ class Period():
         nationc = dict() # nation: count
         for line in f:
             co = line.split(':')[0]
+            logging.info('collector:%s', co)
             ribfile = line.split(':')[1]
             peerfile = cmlib.peer_path_by_rib_path(ribfile).rstrip('\n')
 
@@ -142,22 +143,34 @@ class Period():
                         nationc[nation] = 1
                 count += 1
             fp.close()
-            print 'Total:',ok,'/',count
+            logging.info('This collector Feasible monitor %d/%d', ok, count)
             totalc += count
             totalok += ok
         f.close()
-        print 'All:',totalok,'/',totalc
         logging.info('Feasible monitors:%d/%d', totalok, totalc)
-        print nationc
-        print self.co_mo
+        logging.info('%s', str(nationc))
         
         return 0
+
+    def mo_delete_same_as(self): # choose only one monitor from each AS
+        f = open(self.rib_info_file, 'r')
+        for line in f:
+            co = line.split(':')[0]
+            ribfile = line.split(':')[1]
+            peerfile = cmlib.peer_path_by_rib_path(ribfile).rstrip('\n')
+            fp = open(peerfile, 'r')
+            for line in fp:
+                if len(line.split(':')) > 2:
+                    continue
+                mo_ip = line.split(':')[0]
+                asn = int(line.split(':')[1].split('|')[1])
+            fp.close()
+        f.close()
 
     def get_filelist(self):
         listdir = ''
 
         co_list = self.co_mo.keys()
-        print 'collectors:',self.co_mo
         listfiles = list()
         for co in co_list:
             dl = Downloader(self.sdate, self.edate, co)

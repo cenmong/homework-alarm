@@ -236,7 +236,6 @@ class Downloader():
         self.co = co
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
 
-    #----------------------------------------------------------------------
     def get_listfile(self):
         return self.listfile
 
@@ -246,23 +245,18 @@ class Downloader():
         return tmp_dir
 
     def get_tmp_full_list(self):
-        list_dir = dlder.get_listfile_dir()
-        tmp_file = list_dir + 'tmp_full_list'
+        tmp_file = self.get_listfile_dir() + 'tmp_full_list'
 
         fr = open(self.listfile, 'r')
         fw = open(tmp_file, 'w')
-
         for line in fr:
             line = line.split('|')[0]
             fw.write(datadir+line+'\n')
-
         fr.close()
         fw.close()
 
         return tmp_file
 
-    #-----------------------------------------------------------------------
-    # Get a list of the update files before downloading them
     def get_update_list(self):
         #---------------------------------------------------------------------
         # Get a list of the target monthes for forming the target urls 
@@ -381,7 +375,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [28]
+    order_list = [5]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date
@@ -404,11 +398,11 @@ if __name__ == '__main__':
             listf = dl.get_listfile()
             listfiles.append(listf)
 
-    '''
     # parse all the update files into readable ones
     for listf in listfiles:
         parse_update_files(listf)
 
+    '''
     # When we need to read RIB, we check this file first
     
     # Deleting updates caused by reset

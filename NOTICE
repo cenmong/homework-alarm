@@ -5,11 +5,10 @@ Never ctrl+Z when packing, unpacking and parsing files
 BUG: a strange situation: a few .gz.txt among all .gz.txt.gz files 
 work-arounds: check whether this file exists before packing
 BUG: a few files are not downloaded
-solve: download all files twice to minimize the possibility of missed files
-however, problem remains
 question: we didn't download it or it is deleted when comparing sizes
 ---------------------------------------------------------------
-There are some update files where there are blank lines between two successive updates
+There are few files where there are blank lines between two successive updates
+solve: try-except
 ---------------------------------------------------------------
 Note: do not put everything into log, which makes the log file extremely large
 Besides, logging costs much time! do not log frequently!
@@ -20,5 +19,7 @@ Once apon a time, archive.routeviews.org fail to work, while routeviews.org can
 However now the latter fails in IPv6 but the former can in both
 --------------------------------------------------------------
 BUG: sometimes when downloading an update file, the program looks like has stoped
+inspect: this may due to connection cut off while downloading
 -------------------------------------------------------------
 BUG: cannot parse a certain file (program cannot stop)
+------------------------------------------------------------------
