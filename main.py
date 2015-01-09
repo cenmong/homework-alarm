@@ -15,6 +15,7 @@ for i in [27]:
     # XXX different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
+    my_period.mo_filter_same_as() # FIXME still under test
 
     # XXX Some applications may use sliding window rather than fixed window
     alarm = Alarm(my_period, 10) # granularity in minutes

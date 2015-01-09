@@ -38,10 +38,10 @@ daterange = {
     2:('20030812','20030818'), #east coast blackout | Fail to parse one file!
     3:('20050910','20050916'), #LA blackout | SG
     4:('20050823','20050905'), #Hurricane Katrina | SG
-    5:('20080128','20080203'), #mediterranean cable cut 1 | both
-    6:('20100226','20100301'), #Chile earthquake | both
-    7:('20110310','20110313'), #Japan Tsunami | WD
-    8:('20121021','20121024'), #Hurricane Sandy | WD TODO duration too short
+    5:('20080128','20080203'), #mediterranean cable cut 1 | SG
+    6:('20100225','20100303'), #Chile earthquake | SG
+    7:('20110309','20110315'), #Japan Tsunami |
+    8:('20121020','20121102'), #Hurricane Sandy |
     9:('20130317','20130320'), # Spamhaus DDoS attack | WD TODO longer XXX downloading in WD
     10:('20080510','20080513'), #Sichuan Earthquake | SG
     11:('20110824','20110827'), #Hurricane Irene | both

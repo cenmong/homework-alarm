@@ -41,12 +41,14 @@ class Alarm():
 
         self.mcount = len(self.monitors)
 
+        # FIXME write this mapping to a file in period class
         self.mo2index = {} # map monitor ip to an index
         index = 0
         for mo in self.monitors:
             self.mo2index[mo] = index
             index += 1
     
+        # FIXME map all prefixes in RIB to integers for easy plotting
         self.no_prefixes = period.no_prefixes # a trie TODO excluded prefixes
 
         self.pfx_radix = dict() # every dt has a corresponding trie, deleted periodically
@@ -171,7 +173,7 @@ class Alarm():
 
             # change datetime to fit granularity
             intdt = int(attr[1])
-            dt = intdt / (60 * self.granu) * 60 * self.granu # -28800 or not?
+            dt = intdt / (60 * self.granu) * 60 * self.granu
 
             # run into a brand new dt!
             if dt > self.max_dt:
@@ -224,8 +226,7 @@ class Alarm():
         self.readfiles()
 
     def set_now(self, cl, line):
-        #self.cl_dt[cl][1] = int(line.split('|')[1]) - 28800 # must -8 Hours
-        self.cl_dt[cl] = int(line.split('|')[1]) # WHY not -8H any more?
+        self.cl_dt[cl] = int(line.split('|')[1])
         return 0
     
 #--------------------------------------------------------------------------------------------

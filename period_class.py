@@ -1,11 +1,12 @@
 from env import *
 from downloader_class import *
+
+import traceback
 import cmlib
 import patricia
 import os
 import datetime
 import time as time_lib
-
 import logging
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
@@ -152,7 +153,19 @@ class Period():
         
         return 0
 
-    def mo_delete_same_as(self): # choose only one monitor from each AS
+    # choose only one monitor from each AS
+    # Note: the choice should be consistent (e.g., choose the one with the largest prefix integer)
+    def mo_filter_same_as(self):
+        print 'Selecting only one monitor in each AS...'
+        mo_co = dict()
+        for co in self.co_mo.keys():
+            for mo in self.co_mo[co]:
+                mo_co[mo] = co
+
+        mo_list = mo_co.keys()
+
+        asn_mo = dict() # ASN: monitor list
+
         f = open(self.rib_info_file, 'r')
         for line in f:
             co = line.split(':')[0]
@@ -164,8 +177,50 @@ class Period():
                     continue
                 mo_ip = line.split(':')[0]
                 asn = int(line.split(':')[1].split('|')[1])
+                if mo_ip in mo_list:
+                    try:
+                        asn_mo[asn].append(mo_ip)
+                    except:
+                        asn_mo[asn] = list()
+                        asn_mo[asn].append(mo_ip)
+                else:
+                    pass
             fp.close()
         f.close()
+
+        remove_mo = list() # monitors to remove
+
+        for asn in asn_mo.keys(): 
+            tmp_list = asn_mo[asn]
+            if len(tmp_list) <= 1:
+                continue
+
+            max = 0
+            selected = ''
+            for mo in tmp_list:
+                if cmlib.ip_to_integer(mo) > max:
+                    selected = mo
+            tmp_list.remove(selected)
+            remove_mo.extend(tmp_list)
+
+        for rmo in remove_mo:
+            try:
+                co = mo_co[rmo]
+            except: # no such monitor in self.co_mo
+                continue
+            
+            try:
+                self.co_mo[co].remove(rmo)
+            except:
+                pass
+
+            if self.co_mo[co] == []: # empty list
+                del self.co_mo[co]
+
+        count = 0
+        for co in self.co_mo.keys():
+            count += len(self.co_mo[co])
+        logging.info('Filtered out same-AS-monitors, # now:%d', count)
 
     def get_filelist(self):
         listdir = ''

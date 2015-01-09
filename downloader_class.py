@@ -1,11 +1,10 @@
-# The downloading work should be de-coupled from other works, and should run alone.
 # While this code is mainly for downloading updates, we also download a RIB for 
 # 1) deleting reset; 2) get the monitors' info
 # TODO: when downloading multiple RIBs, use another mechanism other than this
 #--------------------------------------------------------------------------------
 # Note: when analyzing updates, ignore the first and last hours because the 
 # reset-updates in it may have not been completely deleted
-# This desicino also makes the synchronization much easier
+# This decision also makes the synchronization much easier
 
 import cmlib
 import datetime
@@ -27,7 +26,6 @@ def parse_update_files(listfile): # all update files from one collectors/list
     flist = open(listfile, 'r')
     for line in flist:
         line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
-        print 'Parsing ', line
         if not os.path.exists(datadir+line+'.txt.gz'):
             cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
             cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
@@ -161,10 +159,8 @@ def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
         #---------------------------------------------------------------------
         # Get the reset transmission start and end time (objects)
         stime_unix, endtime_unix= int(attr[0]), int(attr[1])
-        start_datetime = datetime.datetime.fromtimestamp(stime_unix) +\
-                datetime.timedelta(hours=-8) # XXX note the time shift
-        end_datetime = datetime.datetime.fromtimestamp(endtime_unix) +\
-                datetime.timedelta(hours=-8)
+        start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
+        end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
         print 'session reset from ', start_datetime, ' to ', end_datetime
 
         #---------------------------------------------------------------------
@@ -176,19 +172,29 @@ def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
 
             if co.startswith('rrc'): # note the difference in file name formats
                 fattr_date, fattr_time = file_attr[5], file_attr[6]
-            else:
-                fattr_date, fattr_time = file_attr[3], file_attr[4]
+            else: #XXX change this when changing between 'rv.org' and 'archive.rv.org'
+                # TODO put these positions info into env
+                fattr_date, fattr_time = file_attr[4], file_attr[5]
 
             # Get datetime from the file name
             dt = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
-            
+
+            # XXX no such problem for RRC?
+            dt_anchor1 = datetime.datetime(2003,2,3,19,0)
+            dt_anchor2 = datetime.datetime(2006,2,1,21,0)
+            if co == 'route-views.eqix' and dt <= dt_anchor2: # now dt is PST time
+                dt = dt + datetime.timedelta(hours=8)
+            elif not co.startswith('rrc') and dt <= dt_anchor1: # PST time
+                dt = dt + datetime.timedelta(hours=8)
+
             # Check whether the file is our target
             if not start_datetime + datetime.timedelta(minutes=-30) <= dt <= end_datetime:
                 continue
 
             print 'session reset probably exists in: ', updatefile
+            # FIXME assert whether reset updates have been deleted; exception if cannot find time
             size_before = os.path.getsize(updatefile)
             myfilename = updatefile.replace('txt.gz', 'txt')
             subprocess.call('gunzip -c '+updatefile+' > '+myfilename, shell=True)
@@ -225,9 +231,10 @@ def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
     f_results.close()
     return 0
 
-TEST = False
-# TODO: change file name for RV when time < Feb, 2003.
+
 #--------------------------------------------------------------------------
+TEST = False
+
 class Downloader():
 
     def __init__(self, sdate, edate, co):
@@ -339,7 +346,7 @@ class Downloader():
                 os.remove(full_path+'.txt')
 
             if os.path.exists(full_path+'.txt.gz'): # parsed file exists
-                if os.path.getsize(full_path+'.txt.gz') > 2 * fsize: # size OK
+                if os.path.getsize(full_path+'.txt.gz') > 0.8 * fsize: # size OK
                     logging.info('file exists:%s', full_path+'.txt.gz')
                     if os.path.exists(full_path):  # .bz2/.gz useless anymore
                         os.remove(full_path)
@@ -375,7 +382,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [5]
+    order_list = [7]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date

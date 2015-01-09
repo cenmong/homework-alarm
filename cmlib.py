@@ -199,6 +199,10 @@ def binary_to_ip4(content):
     else:
         return addr + '/' + str(len(content))
 
+def ip_to_integer(ip):
+    tmp = IPAddress(ip)
+    return int(tmp)
+
 def size_u2v(unit):
     if unit in ['k', 'K']:
         return 1024
