@@ -239,10 +239,10 @@ class Period():
                 name = name.replace('\n', '')
                 file_attr = name.split('.')
                 try:
-                    file_dt = file_attr[5] + file_attr[6]
+                    file_dt = file_attr[rrc_date_fpos] + file_attr[rrc_time_fpos]
                     dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
                 except:
-                    file_dt = file_attr[4] + file_attr[5]
+                    file_dt = file_attr[rv_date_fpos] + file_attr[rv_time_fpos]
                     dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
                 fnames[name] = dt_obj
             f.close()

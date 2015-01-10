@@ -59,6 +59,6 @@ if __name__ == '__main__':
     #matrixes.append('/media/usb/output/20141130_20141201/1417308000.txt.gz') # add matrix file
     #for m in matrixes:
     #    plot_matrix(m)
-    plot_matrix('/media/usb/output/20141130_20141201/1417372800.txt.gz')
+    plot_matrix('/media/usb/output/20141130_20141201/1417420800.txt.gz')
 
 

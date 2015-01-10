@@ -13,7 +13,7 @@ import logging
 from pytz import timezone
 from netaddr import *
 from env import *
-from supporter_class import *
+#from supporter_class import *
 from cStringIO import StringIO
 
 class Alarm():

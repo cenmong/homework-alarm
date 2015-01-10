@@ -171,10 +171,9 @@ def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
             file_attr = updatefile.split('.')
 
             if co.startswith('rrc'): # note the difference in file name formats
-                fattr_date, fattr_time = file_attr[5], file_attr[6]
-            else: #XXX change this when changing between 'rv.org' and 'archive.rv.org'
-                # TODO put these positions info into env
-                fattr_date, fattr_time = file_attr[4], file_attr[5]
+                fattr_date, fattr_time = file_attr[rrc_date_fpos], file_attr[rrc_time_fpos]
+            else:
+                fattr_date, fattr_time = file_attr[rv_date_fpos], file_attr[rv_time_fpos]
 
             # Get datetime from the file name
             dt = datetime.datetime(int(fattr_date[0:4]),\
@@ -382,7 +381,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [7]
+    order_list = [8,10,13,16]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date

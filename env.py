@@ -3,18 +3,30 @@ from os.path import expanduser
 datadir = '/media/usb/'
 homedir = expanduser('~') + '/'
 
+#---------------------------------------------------------
 rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
 
+#--------------------------------------------------------
+rrc_date_fpos = 5
+rrc_time_fpos = 6
+if rv_root.startswith('archive'):
+    rv_date_fpos = 4
+    rv_time_fpos = 5
+else:
+    rv_date_fpos = 3
+    rv_time_fpos = 4
+
+#--------------------------------------------------------
 pub_spt_dir = datadir + 'support/public/'
 rib_info_dir = datadir+'rib_info/'
 
-all_collectors = {
+#-------------------------------------------------------
+all_collectors = { # 17 in total
     '': '20011101', 
     'route-views4': '20081201',
     'route-views.eqix': '20040601',
     'route-views.isc': '20031201',
-    #'route-views.kixp': '20051101', # RIB size too small
     'route-views.linx': '20040401',
     'route-views.wide': '20030801',
     'rrc00': '19991101', 
@@ -22,16 +34,18 @@ all_collectors = {
     'rrc03': '20010201',
     'rrc04': '20010501', 
     'rrc05': '20010701', 
-    #'rrc06': '20010901', # too few peers with global table
-    #'rrc07': '20020501', # too few peers with global table
     'rrc10': '20031201',
     'rrc11': '20040301',
     'rrc12': '20040801',
     'rrc13': '20050501',
     'rrc14': '20050101',
     'rrc15': '20060101',
+    #'route-views.kixp': '20051101', # RIB size too small
+    #'rrc06': '20010901', # too few peers with global table
+    #'rrc07': '20020501', # too few peers with global table
 }
 
+#-------------------------------------------------------
 daterange = {
     0:('20061224','20061230'), #taiwan cable cut | SG
     1:('20081217','20081223'), #mediterranean cable cut 2 | SG
@@ -40,18 +54,18 @@ daterange = {
     4:('20050823','20050905'), #Hurricane Katrina | SG
     5:('20080128','20080203'), #mediterranean cable cut 1 | SG
     6:('20100225','20100303'), #Chile earthquake | SG
-    7:('20110309','20110315'), #Japan Tsunami |
+    7:('20110309','20110315'), #Japan Tsunami | SG
     8:('20121020','20121102'), #Hurricane Sandy |
-    9:('20130317','20130320'), # Spamhaus DDoS attack | WD TODO longer XXX downloading in WD
-    10:('20080510','20080513'), #Sichuan Earthquake | SG
-    11:('20110824','20110827'), #Hurricane Irene | both
-    12:('20130207','20130210'), #Northeastern US blackout | SG XXX downloading in WD
-    13:('20100413','20100416'), #Sea-Me undersea cable cut | both
-    14:('20120221','20120224'), #Australia route leakage | WD
-    15:('20120807','20120810'), #Canada route leakage | WD
-    16:('20030124','20030127'), #Slammer worm |WD
-    17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX downloading in WD
-    18:('20130213','20130216'), #SEACOM outage | WD XXX downloading in WD
+    9:('20130316','20130329'), # Spamhaus DDoS attack | XXX contained in 28
+    10:('20080510','20080516'), #Sichuan Earthquake |
+    #11:('20110824','20110827'), #Hurricane Irene |
+    12:('20130206','20130212'), #Northeastern US blackout | XXX contained in 28
+    13:('20100412','20100418'), #Sea-Me undersea cable cut |
+    #14:('20120221','20120224'), #Australia route leakage | WD
+    #15:('20120807','20120810'), #Canada route leakage | WD
+    16:('20030123','20030129'), #Slammer worm |
+    17:('20130321','20130324'), #EASSy/SEACOM outages | XXX contained in 28
+    18:('20130213','20130216'), #SEACOM outage | XXX contained in 28
     19:('20110327','20110330'), #Caucasus cable cut | WD
     20:('20121222','20121225'), #Georgia-Russia cable cut | SG
     21:('20120224','20120227'), #TEAMS cable cut in east Africa | SG
