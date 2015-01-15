@@ -26,3 +26,5 @@ BUG: cannot parse a certain file (program cannot stop)
 when viewing a long line, vim can become very slow...
 ----------------------------------------------------------------
 Never press ctrl+Z, use ctrl+C instead
+-----------------------------------------------
+There is a monitor 12.0.1.63 that exists in both rv2 and rrc00

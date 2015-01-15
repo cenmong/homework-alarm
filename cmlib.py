@@ -58,7 +58,8 @@ def get_peer_info(rib_full_loc):
         if peer == '':
             continue
         peer_str = binary_to_ip4(peer)
-        # peer IP: pfx count|ASN
+        # peer IP:pfx count|ASN
+        # FIXME remove ipv6 peer
         fo.write(peer_str+':'+str(peer_pfx_count[peer])+'|'+peer2as[peer]+'\n')
 
     fo.close()
@@ -142,7 +143,7 @@ def get_weblist(url):
 def parse_mrt(old_loc_fname, new_loc_fname):
     print 'Parsing: '+old_loc_fname
     if not os.path.exists(new_loc_fname):
-        subprocess.call('~/tool/libbgpdump-1.4.99.13/bgpdump -m '+\
+        subprocess.call(projectdir + 'tool/libbgpdump-1.4.99.13/bgpdump -m '+\
                 old_loc_fname+' > '+new_loc_fname, shell=True)
     else:  # file already exists
         pass

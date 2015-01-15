@@ -2,6 +2,7 @@ from os.path import expanduser
 
 datadir = '/media/usb/'
 homedir = expanduser('~') + '/'
+projectdir = expanduser('~') + '/alarm/'
 
 #---------------------------------------------------------
 rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
@@ -49,25 +50,25 @@ all_collectors = { # 17 in total
 daterange = {
     0:('20061224','20061230'), #taiwan cable cut | SG
     1:('20081217','20081223'), #mediterranean cable cut 2 | SG
-    2:('20030812','20030818'), #east coast blackout | Fail to parse one file!
+    2:('20030812','20030818'), #east coast blackout | FIXME Fail to parse one file! SG
     3:('20050910','20050916'), #LA blackout | SG
     4:('20050823','20050905'), #Hurricane Katrina | SG
     5:('20080128','20080203'), #mediterranean cable cut 1 | SG
     6:('20100225','20100303'), #Chile earthquake | SG
     7:('20110309','20110315'), #Japan Tsunami | SG
-    8:('20121020','20121102'), #Hurricane Sandy |
+    8:('20121020','20121102'), #Hurricane Sandy | SG
     9:('20130316','20130329'), # Spamhaus DDoS attack | XXX contained in 28
-    10:('20080510','20080516'), #Sichuan Earthquake |
+    10:('20080510','20080516'), #Sichuan Earthquake | SG
     #11:('20110824','20110827'), #Hurricane Irene |
     12:('20130206','20130212'), #Northeastern US blackout | XXX contained in 28
-    13:('20100412','20100418'), #Sea-Me undersea cable cut |
+    13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
     #14:('20120221','20120224'), #Australia route leakage | WD
     #15:('20120807','20120810'), #Canada route leakage | WD
-    16:('20030123','20030129'), #Slammer worm |
+    16:('20030123','20030129'), #Slammer worm | SG
     17:('20130321','20130324'), #EASSy/SEACOM outages | XXX contained in 28
     18:('20130213','20130216'), #SEACOM outage | XXX contained in 28
-    19:('20110327','20110330'), #Caucasus cable cut | WD
-    20:('20121222','20121225'), #Georgia-Russia cable cut | SG
+    #19:('20110327','20110330'), #Caucasus cable cut | WD
+    20:('20121221','20121227'), #Georgia-Russia cable cut |
     21:('20120224','20120227'), #TEAMS cable cut in east Africa | SG
     22:('20120425','20120428'), #TEAMS cable cut in east Africa again | SG
     27:('20141130','20141201'), # test only

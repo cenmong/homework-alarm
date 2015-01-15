@@ -6,6 +6,9 @@
 # reset-updates in it may have not been completely deleted
 # This decision also makes the synchronization much easier
 
+import radix # takes 1/4 the time as patricia
+import gzip
+import traceback
 import cmlib
 import datetime
 import patricia
@@ -16,6 +19,7 @@ import numpy as np
 logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 from env import *
+from cStringIO import StringIO
 
 #--------------------------------------------------------------------
 # Stand-alone functions
@@ -110,126 +114,139 @@ def get_parse_one_rib(co, sdate):
 
 
 def delete_reset(co, rib_full_loc, tmp_full_listfile):
-    # FIXME read the peer file and get the peers
-    peers = cmlib.get_peer_list(rib_full_loc)
-    print 'peers: ', peers
+    peerlistfile = datadir+'tmp_peers.txt'
 
-    if TEST:
-        peers = peers[0:2]
+    # read the peer info file and get the peers and write into a tmp file
+    peerpath = cmlib.peer_path_by_rib_path(rib_full_loc)
+    pf = open(peerpath, 'r')
+    tmp_f = open(peerlistfile, 'w')
+    for line in pf:
+        pfx = line.split(':')[0]
+        tmp_f.write(pfx+'\n')
+    pf.close()
+    tmp_f.close()
 
-    for peer in peers:
-        print '\ndeleting reset updates caused by peer: ', peer
-        peer = peer.rstrip()
+    ## record reset info into a temp file
+    reset_info_file = datadir + 'peer_resets.txt'
 
-        ## record reset info for this peer into a temp file
-        reset_info_file = 'peer_resets.txt'
-        reset_info_file = datadir+'tmp/'+reset_info_file
-        cmlib.make_dir(datadir+'tmp/')
-        if os.path.exists(reset_info_file):
-            os.remove(reset_info_file)
+    subprocess.call('perl '+projectdir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
+            tmp_full_listfile+' -p '+peerlistfile+' > '+reset_info_file, shell=True)
 
-        subprocess.call('perl '+homedir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
-                tmp_full_listfile+' -p '+peer+' > '+reset_info_file, shell=True)
-
-        # No reset for this peer    
-        reset_info_file = datadir+'tmp/'+reset_info_file
-        if os.path.exists(reset_info_file): 
-            if os.path.getsize(reset_info_file) == 0:
-                print 'no reset for this peer'
-                continue
-        else:
+    if os.path.exists(reset_info_file): 
+        if os.path.getsize(reset_info_file) == 0:
+            print 'no reset at all!'
+            return
+    else:
+        print 'no reset at all!'
+        return 
+    
+    peer_resettime = dict() # peer: list of [reset start, reset end]
+    resetf = open(reset_info_file, 'r')
+    for line in resetf:
+        if line.startswith('run') or line.startswith('/') or '#' in line:
             continue
-            print 'no reset for this peer'
-        
-        # delete the corresponding updates
-        del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile)
-        subprocess.call('rm '+datadir+'tmp/*', shell=True)
+        if ':' in line:
+            now_peer = line.split(':')[0]
+            continue
+
+        stime_unix, endtime_unix= int(line.split(',')[0]), int(line.split(',')[1])
+        try:
+            peer_resettime[now_peer].append([stime_unix, endtime_unix])
+        except:
+            peer_resettime[now_peer] = [[stime_unix, endtime_unix], ]
+
+    resetf.close()
+
+    print peer_resettime
+
+    for p in peer_resettime:
+        for l in peer_resettime[p]:
+            #delete_reset_updates(co, peer, l[0], l[1], tmp_full_listfile)
+            pass
+    #del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile)
                         
+
+    os.remove(peerlistfile)
+    os.remove(reset_info_file)
     return 0
 
-def del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile):
-    f_results = open(reset_info_file, 'r')
-    for line in f_results: 
-        print line
+def delete_reset_updates(co, peer, stime_unix, endtime_unix, tmp_full_listfile):
+    start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
+    end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
+    print 'session reset from ', start_datetime, ' to ', end_datetime
 
-        attr = line.replace('\n', '').split(',')
-        if attr[0] == '#START':
+    #---------------------------------------------------------------------
+    # Read the temproary full-path file list (original list is relative path)
+    f = open(tmp_full_listfile, 'r')
+    for line in f:  
+        updatefile = line.rstrip('\n')
+        file_attr = updatefile.split('.')
+
+        if co.startswith('rrc'): # note the difference in file name formats
+            fattr_date, fattr_time = file_attr[rrc_date_fpos], file_attr[rrc_time_fpos]
+        else:
+            fattr_date, fattr_time = file_attr[rv_date_fpos], file_attr[rv_time_fpos]
+
+        # Get datetime from the file name
+        dt = datetime.datetime(int(fattr_date[0:4]),\
+                int(fattr_date[4:6]), int(fattr_date[6:8]),\
+                int(fattr_time[0:2]), int(fattr_time[2:4]))
+
+        # Deal with several special time zone problems
+        dt_anchor1 = datetime.datetime(2003,2,3,19,0)
+        dt_anchor2 = datetime.datetime(2006,2,1,21,0)
+        if co == 'route-views.eqix' and dt <= dt_anchor2: # now dt is PST time
+            dt = dt + datetime.timedelta(hours=8)
+        elif not co.startswith('rrc') and dt <= dt_anchor1: # PST time
+            dt = dt + datetime.timedelta(hours=8)
+
+        # Check whether the file is our target
+        if not start_datetime + datetime.timedelta(minutes=-30) <= dt <= end_datetime:
             continue
 
-        #---------------------------------------------------------------------
-        # Get the reset transmission start and end time (objects)
-        stime_unix, endtime_unix= int(attr[0]), int(attr[1])
-        start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
-        end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
-        print 'session reset from ', start_datetime, ' to ', end_datetime
+        print 'Processing (session reset probably exists): ', updatefile
+        # FIXME assert whether reset updates have been deleted; exception if cannot find time
+        # record the prefix whose update has already been deleted (for once)
+        size_before = os.path.getsize(updatefile)
+        counted_pfx = radix.Radix()
 
-        #---------------------------------------------------------------------
-        # Read the temproary full-path file list (original list is relative path)
-        f = open(tmp_full_listfile, 'r')
-        for updatefile in f:  
-            updatefile = updatefile.rstrip('\n')
-            file_attr = updatefile.split('.')
+        p = subprocess.Popen(['zcat', updatefile],stdout=subprocess.PIPE)
+        old_f = StringIO(p.communicate()[0])
+        new_f = gzip.open(datadir + updatefile.split('/')[-1], 'wb')
 
-            if co.startswith('rrc'): # note the difference in file name formats
-                fattr_date, fattr_time = file_attr[rrc_date_fpos], file_attr[rrc_time_fpos]
-            else:
-                fattr_date, fattr_time = file_attr[rv_date_fpos], file_attr[rv_time_fpos]
-
-            # Get datetime from the file name
-            dt = datetime.datetime(int(fattr_date[0:4]),\
-                    int(fattr_date[4:6]), int(fattr_date[6:8]),\
-                    int(fattr_time[0:2]), int(fattr_time[2:4]))
-
-            # XXX no such problem for RRC?
-            dt_anchor1 = datetime.datetime(2003,2,3,19,0)
-            dt_anchor2 = datetime.datetime(2006,2,1,21,0)
-            if co == 'route-views.eqix' and dt <= dt_anchor2: # now dt is PST time
-                dt = dt + datetime.timedelta(hours=8)
-            elif not co.startswith('rrc') and dt <= dt_anchor1: # PST time
-                dt = dt + datetime.timedelta(hours=8)
-
-            # Check whether the file is our target
-            if not start_datetime + datetime.timedelta(minutes=-30) <= dt <= end_datetime:
-                continue
-
-            print 'session reset probably exists in: ', updatefile
-            # FIXME assert whether reset updates have been deleted; exception if cannot find time
-            size_before = os.path.getsize(updatefile)
-            myfilename = updatefile.replace('txt.gz', 'txt')
-            subprocess.call('gunzip -c '+updatefile+' > '+myfilename, shell=True)
-            old_f = open(myfilename, 'r')
-            new_f = open(datadir+'tmp/'+myfilename.split('/')[-1], 'w')
-
-            # record the prefix whose update has already been deleted (for once)
-            counted_pfx = patricia.trie(None)
-
-            # find and delete the reset updates
-            for updt in old_f:
+        # find and delete the reset updates
+        for updt in old_f:
+            try:
                 attr = updt.rstrip('\n').split('|')
                 if cmp(attr[3], peer) == 0 and (stime_unix<int(attr[1])<endtime_unix):
                     pfx = attr[5]
                     try: # Test whether the trie has the pfx
-                        test = counted_pfx[pfx]
+                        rnode = counted_pfx.search_exact(pfx)
+                        rnode.data[0] += 1
+                        # pfx has been deleted
                         new_f.write(updt+'\n') # pfx exists
                     except: # pfx does not exist
-                        counted_pfx[pfx] = True
+                        rnode = counted_pfx.add(pfx)
+                        rnode.data[0] = 1
                 else: # not culprit update
                     new_f.write(updt+'\n')
+            except Exception, err:
+                if updt != '':
+                    logging.info(traceback.format_exc())
+                    logging.info(update)
+                    print traceback.format_exc()
 
-            old_f.close()
-            new_f.close()
+        old_f.close()
+        new_f.close()
 
-            # use the new file to replace the old file
-            os.remove(updatefile)
-            subprocess.call('gzip -c '+datadir+'tmp/'+myfilename.split('/')[-1]+\
-                    ' > '+updatefile, shell=True)
-            size_after = os.path.getsize(updatefile)
-            print 'size(b):', size_before, ',size(a):', size_after
-                   
-        f.close()
-    f_results.close()
-    return 0
-
+        # use the new file to replace the old file
+        os.remove(updatefile)
+        subprocess.call('mv '+datadir+updatefile.split('/')[-1]+\
+                        ' '+updatefile.split('/')[:-1], shell=True)
+        size_after = os.path.getsize(updatefile)
+        print 'size(b):', size_before, ',size(a):', size_after
+               
+    f.close()
 
 #--------------------------------------------------------------------------
 TEST = False
@@ -381,7 +398,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [8,10,13,16]
+    order_list = [20]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date
@@ -392,7 +409,7 @@ if __name__ == '__main__':
             if int(all_collectors[co]) <= int(daterange[i][0]):
                 collector_list[i].append(co)
         print i,':',collector_list[i]
-
+    
     listfiles = []
     # download update files
     for order in order_list:
@@ -407,10 +424,9 @@ if __name__ == '__main__':
     # parse all the update files into readable ones
     for listf in listfiles:
         parse_update_files(listf)
-
     '''
-    # When we need to read RIB, we check this file first
-    
+
+    # FIXME de-couple getting reset time and deleting reset updates
     # Deleting updates caused by reset
     for order in order_list:
         co_rib = dict() # co: rib full path
@@ -419,19 +435,14 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list[order]:
             # FIXME download a RIB every two months for long duration
-            # XXX No! just download one RIB: we accept that the monitor set decreases
-            # XXX But the RIB size is increasing: the delete reset becomes inaccurate
             rib_full_loc = get_parse_one_rib(co, sdate)
-            cmlib.get_peer_info(rib_full_loc) 
+            cmlib.get_peer_info(rib_full_loc) # do not delete this line
             co_rib[co] = rib_full_loc
 
-            # must do this before deleting updates because peer list will be required
-            # cmlib.get_peer_info(rib_full_loc)
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
             full_list = dl.get_tmp_full_list()
 
-            # XXX delete multiple times for long period
             delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)
 
