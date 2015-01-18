@@ -71,7 +71,6 @@ my $result = GetOptions(%cmdLOptions);
 pod2usage(1) if $options{'help'};
 pod2usage(2) if !$result or ($#ARGV >= 0);
 pod2usage(2) if !defined($options{'updatefileslist'}) or
-                !defined($options{'peer'})            or
                 ((!defined($options{'ribfile'}))       and
                 (!defined($options{'ribfileslist'})));
 
@@ -215,10 +214,11 @@ while(my($key,$value) = each %ctimes)
     &logError($progname, "Errors occured while getting local minima list");
     exit($error);
   }
-=dop
+=d
     print $key;
     print "\n";
     my $value_num = scalar keys @localMinima;
+    print "localminima:\n";
     #print "value_num: $value_num \n";
     my $count = 0;
     while($count<$value_num)
@@ -260,17 +260,6 @@ while(my($key,$value) = each %ctimes)
       &debug($progname, "$$overlap[0]   $$overlap[1]");
     }
   }
-
-  #sxr#test
-=dop
-  my $det_num = scalar keys @detected;
-  my $count_det =0;
-  while($count_det < $det_num)
-  {
-    print "$detected[$count_det]->[0] $detected[$count_det]->[1]  $detected[$count_det]->[2]\n";
-    $count_det++;
-  }
-=cut
   ## ---------------------------------------------
   ## bottom search: 
   ## bottomsearch[i] ==> ref->[ts, s(t)]
@@ -331,35 +320,14 @@ sub getTableSize {
   my %ribPrefixes;
   my %peer_prefix;
   my $error = -1;
-  our @rfcpeer;
-  ## 3 parameters required
-  if (scalar @_ != 3) {
+  our %rfcpeer;
+  ## 2 parameters required
+  if (scalar @_ != 2) {
     &logError($name, "Expecting 3 arguments, but received (@_) instead");
     return $error;
   }
 
-  my ($ribFile, $peerlist, $rfFieldIndex) = @_;
-  
-  #sxr# open peerlist.txt(one peer address one line)
-  if (!open(PEERLIST,"$peerlist")) 
-  {
-    &logError($name, "Unable to open ribfile: $ribFile for reading: $!");
-    return $error;
-  }
-  my $line_peer = <PEERLIST>;
-  if (!defined($line_peer)) 
-  {
-    &logError($name, "Invalid ribfile $peerlist: ribfile is empty");
-    return $error;
-  }
-  chomp($line_peer);
-  push(@rfcpeer,$line_peer);
-  while($line_peer = <PEERLIST>)
-  {
-   chomp($line_peer);
-   push(@rfcpeer,$line_peer); 
-  }
-
+  my ($ribFile, $rfFieldIndex) = @_;
   if (! -e $ribFile) {
     &logError($name, "Unable to find ribfile $ribFile: file does not exist");
     return $error;
@@ -368,7 +336,6 @@ sub getTableSize {
     &logError($name, "Invalid compressed ribfile $ribFile: ". "0 byte file");
     return $error;
   }
-  print "$ribFile\n";
   &debug($name, "Using ribfile: $ribFile") if $DEBUG_VERBOSE;
   if (!open(RIBFILE, "gzip -dc $ribFile |")) {
     &logError($name, "Unable to open ribfile: $ribFile for reading: $!");
@@ -382,7 +349,6 @@ sub getTableSize {
     return $error;
   }
   chomp($line);
-
   ## we validate the first line of input stream to verify if user supplied
   ## correct input (based on various fields)
   if (!&isValidDataStream($line, $rfFieldIndex)) {
@@ -392,46 +358,23 @@ sub getTableSize {
   }
   &debug($name, "Validate ribfile input stream: success") if $DEBUG_VERBOSE;
   #sxr#get peer and prefix from line of rib
-  my ($peer, $prefix) = (split($options{'fieldsep'}, $line, 7))[$$rfFieldIndex{'PEER'}, $$rfFieldIndex{'PREFIX'}];
-  #sxr#if peer in @rfcpeer, calculate the peer corresponding prefix count 
-  if ($peer ~~ @rfcpeer)
-  {
-   ${$peer_prefix{$peer}}{$prefix}= 0;
-  } 
+  my ($peer, $prefix) = (split('\|', $line, 7))[3, 5];
+  #sxr#calculate the peer corresponding prefix count 
+  ${$peer_prefix{$peer}}{$prefix}= 0;
 
   while($line = <RIBFILE>) {
     chomp($line);
-
-    if ($options{'validate'}) {
-    ## validate entire input stream (on user request)
-      if (!&isValidDataStream($line, $rfFieldIndex)) {
-        &logError($name, "Invalid data found at $. in input stream: ".
-            " ignoring this line");
-        next;
-      }
-    }
-
-    ($peer, $prefix) = (split($options{'fieldsep'}, $line, 7))
-                       [$$rfFieldIndex{'PEER'}, $$rfFieldIndex{'PREFIX'}];
-    if ($peer ~~  @rfcpeer)
-    { 
-      ${$peer_prefix{$peer}}{$prefix}= 0;
-    }
+    ($peer, $prefix) = (split('\|', $line, 7))
+                       [3, 5]; # $options{fieldsep} => '|'  HASH => number
+    ${$peer_prefix{$peer}}{$prefix}= 0;
   }
   close(RIBFILE);
 
-
-  my $peernum = scalar @rfcpeer;
-  my $count = 0;
-  our %tableSize;
-  while ($count<$peernum)
+  my %tableSize;
+  while(my($keys,$values) = each %peer_prefix)
   {
-  $peer = $rfcpeer[$count];
-  $count++;
-  $tableSize{$peer} = scalar keys %{$peer_prefix{$peer}};
-  &debug($name, "Found table size for $peer from $ribFile: $tableSize{$peer}") if $DEBUG_VERBOSE;
+    $tableSize{$keys} = scalar keys %{$values};
   }
-   
   &debug($name, "Success") if $DEBUG_VERBOSE;
   return %tableSize;
 } # end sub getTableSize()
@@ -447,7 +390,6 @@ sub getCollectionTimes {
 ##                    (ref->ctimes[i] ===> ref->[ts, s(t)])
 ##  arg 4: int, representing 'range' seconds (upper bound on s(t) values)
 ##  arg 5: reference to hash, representing Field:Index pairs
-##  arg 6: [optional] string, representing ctimesfile (for debugging)
 ## output:
 ##  implicit return of collection times (via arg2)
 ##  0 on success, positive integer on failure
@@ -461,42 +403,13 @@ sub getCollectionTimes {
   my $name     = "$progname:getCollectionTimes";
   my $success  = 0;
   my $error    = 1;
-  my $ctimesFH = undef;
   my %range_num;
-  my $flag =0;
   ## 7 or 8 parameters required
-  if (scalar @_ < 5 && scalar @_ > 6) {
-    &logError($name, "Expecting 5 or 6 arguments, but received (@_) instead");
+  if (scalar @_ < 5 && scalar @_ > 5) {
+    &logError($name, "Expecting 5 arguments, but received (@_) instead");
     return $error;
   }
-  my ($ribFile, $updateFilesListFile, $rfCtimes, $range, $rfFieldIndex, $ctimeFile);
-  ##----------------------------------------------------------
-  ## Read in parameters
-  ##----------------------------------------------------------
-  if (scalar @_ == 5) {
-    ($ribFile, $updateFilesListFile, $rfCtimes,  $range, $rfFieldIndex,) = @_;
-    $ctimesFH = *STDERR if $DEBUG_CTIME;
-  }
-  else {
-    ($ribFile, $updateFilesListFile, $rfCtimes, $range, $rfFieldIndex, $ctimeFile) = @_;
-    ## user requested for writing to ctimesfile
-    $DEBUG_CTIME = 1;
-    if ($ctimeFile eq "-") {
-      ## requested ctimesfile is stderr
-      $ctimesFH = *STDERR; 
-    }
-    else {
-      if (!open(CTIMES, "> $ctimeFile")) {
-        ## if we fail to open ctimesfile, use stderr instead
-        &debug($name, "Unable to open ctimes file: $ctimeFile for writing; ". "Using STDERR instead") if $DEBUG_VERBOSE;
-        $ctimesFH = *STDERR;
-      }
-      else {
-        &debug($name, "Opened ctimes file: $ctimeFile for writing") if $DEBUG_VERBOSE;
-        $ctimesFH = *CTIMES;
-      }
-    }
-  }
+  my ($ribFile, $updateFilesListFile, $rfCtimes, $range, $rfFieldIndex) = @_;
 
   ##----------------------------------------------------------
   ## Prepare update files list
@@ -537,19 +450,17 @@ sub getCollectionTimes {
   my %updatePrefixes;            # unique update prefixes
   my %queue;                     # temporary FIFO queue (since perl hash
                                  # does not preserve order)
-  my $nRIB = 0;
+  my %nRIB;
   my %ribTableSize; 
-  %ribTableSize = &getTableSize($ribFile, $options{'peer'}, \%fieldIndex);
-  ##test#sxr#
-  #while(my($key,$value) = each %ribTableSize )
-  #{
-  #  print "$key    $value\n";
-  #}	
-  &debug($name, "[ribFile] $ribFile")        if $DEBUG_VERBOSE;   
+  %ribTableSize = &getTableSize($ribFile, \%fieldIndex);
+  while(my($key,$value) = each %ribTableSize)
+  {
+    $nRIB{$key} = $value * $options{'percent'};
+  }
   foreach my $updateFile (@updateFilesList) {
       &debug($name, "[updateFile] $updateFile")  if $DEBUG_VERBOSE;
        
-    if (!open(UPDFILE, "gzip -dc $updateFile |")) {
+    if (!open(UPDFILE, "gzip -dc $updateFile |")) { #TODO c lib read gz file
       &logError($name, "Unable to open updatefile $updateFile: $!");
       return $error;
     }
@@ -563,17 +474,12 @@ sub getCollectionTimes {
     my ($ts, $aws, $peer, $prefix); 
     ## process updates and generate collection times
     while($line = <UPDFILE>) {
-      #my %line_count;
       chomp($line);
-      next if $line eq ''; #TODO CM
-      ($ts, $aws, $peer, $prefix) = (split($options{'fieldsep'}, $line, 7))
-                                    [ $$rfFieldIndex{'TS'},
-                                      $$rfFieldIndex{'AWS'},
-                                      $$rfFieldIndex{'PEER'},
-                                      $$rfFieldIndex{'PREFIX'}
-                                    ];  
+      next if($line eq '');
+      ($ts, $aws, $peer, $prefix) = (split('\|', $line, 7))
+                                    [ 1,2,3,5];  
       # [DEBUG #1]
-
+=dop
       if ($is_firstline)
       ## If first line
       {
@@ -596,7 +502,7 @@ sub getCollectionTimes {
       ## Not first line
       {
         ## For each line
-        if ($options{'validate'}) {
+        if ($options{'validate'}) { ##TODO comment out these lines
           ## validate entire input stream (on user request)
           if (!&isValidDataStream($line, $rfFieldIndex)) {
             &logError($name, "Invalid data found at $. in input stream: ". " ignoring this line");
@@ -604,11 +510,13 @@ sub getCollectionTimes {
           }
         }
       }
-      our @rfcpeer;
-      #sxr#ignore 'STATE' and 'W'ithdraw messages
-      next if $aws eq 'STATE' or $aws eq 'W';
-      #sxr#ignore peers not in peerlist
-      next if(($peer ~~ @rfcpeer)==0);
+=cut
+       #sxr#ignore 'STATE' and 'W'ithdraw messages
+       next if not ($aws eq 'A');
+       #sxr#ignore peers not in peerlist
+       # @rfcpeer => %rfcpeer      peer_ip:0 when reading RIB
+      next if((exists $ribTableSize{$peer})==0);
+
       #sxr#if start{$peer} not intital
       if((exists $start{$peer}) == 0)
       {
@@ -626,46 +534,33 @@ sub getCollectionTimes {
       ## keep processing updates that occur within a single time stamp.
       ## [DEBUG #2]
       ## If $ts > $end, trigger the calculation of collection time
-      if ($timestamp{$peer} > $end{$peer})
+      if ($ts > $end{$peer})
       {
         $uniq_size{$peer} = scalar keys $updatePrefixes{$peer};
-        #next if $uniq_size < $nRIB and ($ts - $start) < $range;
-        $nRIB = $ribTableSize{$peer} * $options{'percent'};
-=hop
-        if ($DEBUG_VERBOSE)
-        {
-          #printf STDERR ("%10.10s %10.10s %2.3f\n", $uniq_size,  $nRIB, $uniq_size / $nRIB);
-          if ($uniq_size >= $nRIB * 0.8)
-          {
-            printf STDERR ("%s  %s %s / %s (%2.3f)\n", 
-                           ${$queue[0]}[0],
-                           $end - $start + 1,
-                           $uniq_size,  $nRIB, $uniq_size / $nRIB); 
-          }
-        }
-=cut
-        #my $flag =0;
-        if ($uniq_size{$peer} >= $nRIB or ($end{$peer} - $start{$peer}) >= $range)
+
+        if ($uniq_size{$peer} >= $nRIB{$peer} or ($end{$peer} - $start{$peer}) >= $range)
         {
           ##
           ## current updatePrefixes > RIB estimate
           ##
-          while(($uniq_size{$peer} >= $nRIB) && (($end{$peer} - $start{$peer}) < $range)) {
+          while(($uniq_size{$peer} >= $nRIB{$peer}) && ($end{$peer} - $start{$peer}) < $range) {
             ## advance "start" marker to the next timestamp in queue
-            while(${$queue{$peer}}[0][0] == $start{$peer}) {
+            while($queue{$peer}->[0][0] == $start{$peer}) {
               my $que_ref = shift(@{$queue{$peer}});
-              ${$updatePrefixes{$peer}}{$$que_ref[1]}--;
-              delete ${$updatePrefixes{$peer}}{$$que_ref[1]} if ${$updatePrefixes{$peer}}{$$que_ref[1]} == 0;
+              my $pfx = $$que_ref[1];
+              ${$updatePrefixes{$peer}}{$pfx}--;
+              delete ${$updatePrefixes{$peer}}{$pfx} if ${$updatePrefixes{$peer}}{$pfx} == 0;
             }
 
             push(@{$$rfCtimes{$peer}}, [$start{$peer},$end{$peer} - $start{$peer} + 1, $uniq_size{$peer}]); ## [DEBUG #0: Time granularity] 
-            print $ctimesFH ("$start{$peer}  ", $end{$peer} - $start{$peer} + 1, "\n") if $DEBUG_CTIME;
-            $flag = 1;
             $range_num{$peer} = 0;
             # Reset $start and exit if @queue is empty
             #sxr#
             #next if (scalar(@{$queue{$peer}}) <=0);
-            if ( scalar(@{$queue{$peer}}) <=0 ) { $start{$peer} = undef; last; }
+            if ( scalar(@{$queue{$peer}}) <=0 ) 
+            { $start{$peer} = undef; 
+              last; 
+            }
             $start{$peer} = ${$queue{$peer}}[0][0];
             $uniq_size{$peer} = scalar keys %{$updatePrefixes{$peer}};
           }
@@ -675,20 +570,18 @@ sub getCollectionTimes {
           ##
           while(($end{$peer} - $start{$peer}) >= $range) {
             ## advance "start" marker to the next timestamp in queue
-            while(${$queue{$peer}}[0][0] == $start{$peer}) {
+            while($queue{$peer}->[0][0] == $start{$peer}) {
               my $que_ref = shift(@{$queue{$peer}});
-              ${$updatePrefixes{$peer}}{$$que_ref[1]}--;
-              delete ${$updatePrefixes{$peer}}{$$que_ref[1]} if ${$updatePrefixes{$peer}}{$$que_ref[1]} == 0;
+              my $pfx = $$que_ref[1];
+              ${$updatePrefixes{$peer}}{$pfx}--;
+              delete ${$updatePrefixes{$peer}}{$pfx} if ${$updatePrefixes{$peer}}{$pfx} == 0;
             }
             #push(@$rfCtimes, [$start,$range]);
-            if((($range_num{$peer} <= 50) and ($flag ==0)) or ($flag ==1))
+            if($range_num{$peer} <= 50)
             {
              push(@{$$rfCtimes{$peer}}, [$start{$peer},$range, $uniq_size{$peer}]);
-             print $ctimesFH ("$start{$peer}  ", $range, "\n") if $DEBUG_CTIME;
-             #$range_num{$peer}++;
             }
             $range_num{$peer}++;
-            $flag = 0; 
             # Reset $start and exit if @queue is empty
             if ( scalar(@{$queue{$peer}}) <=0 ) 
              { $start{$peer} = undef; 
@@ -705,8 +598,8 @@ sub getCollectionTimes {
       ## Advance end time marker
       $end{$peer} = $ts;
 
-      ## initilize start and end time markers
-      if (!defined($start{$peer})) { #TODO CM
+      ## initilize start and end time markers  ##TODO
+      if (!defined($start{$peer})) {
          $start{$peer} = $end{$peer};
       }
     } # end while($line = <UPDFIL..
@@ -756,7 +649,6 @@ sub getLocalMinimaList {
   $prev_ts = $rfCtimes->[0][0]; $prev_st = $rfCtimes->[0][1];
   for (my $i=1; $i <= $#$rfCtimes; $i++) {
     $curr_ts = $rfCtimes->[$i][0]; $curr_st = $rfCtimes->[$i][1];
- 
     ## when downhill:
     if(($upOrDown == $DOWNHILL) && ($curr_st > $prev_st)) {
       ## prev_[ts, s(t)] pair is a local minimum
@@ -774,8 +666,8 @@ sub getLocalMinimaList {
   &debug($name, "Success") if $DEBUG_VERBOSE; 
   return $success;
 } ## end sub getLocalMinimaList
-
 ## -------------------------------------------------------------------------- ##
+
 
 ## --| Overlap Elimination |------------------------------------------------- ##
 sub removeOverlap {
@@ -840,8 +732,8 @@ sub removeOverlap {
   &debug($name, "Success") if $DEBUG_VERBOSE; 
   return $success;
 } # end sub removeOverlap
-
 ## -------------------------------------------------------------------------- ##
+
 
 ## --| Bottom Searching |---------------------------------------------------- ##
 sub bottomSearch {

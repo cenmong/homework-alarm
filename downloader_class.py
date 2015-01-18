@@ -114,23 +114,11 @@ def get_parse_one_rib(co, sdate):
 
 
 def delete_reset(co, rib_full_loc, tmp_full_listfile):
-    peerlistfile = datadir+'tmp_peers.txt'
-
-    # read the peer info file and get the peers and write into a tmp file
-    peerpath = cmlib.peer_path_by_rib_path(rib_full_loc)
-    pf = open(peerpath, 'r')
-    tmp_f = open(peerlistfile, 'w')
-    for line in pf:
-        pfx = line.split(':')[0]
-        tmp_f.write(pfx+'\n')
-    pf.close()
-    tmp_f.close()
-
     ## record reset info into a temp file
     reset_info_file = datadir + 'peer_resets.txt'
 
     subprocess.call('perl '+projectdir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
-            tmp_full_listfile+' -p '+peerlistfile+' > '+reset_info_file, shell=True)
+            tmp_full_listfile + ' > '+reset_info_file, shell=True)
 
     if os.path.exists(reset_info_file): 
         if os.path.getsize(reset_info_file) == 0:
@@ -163,10 +151,7 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
         for l in peer_resettime[p]:
             #delete_reset_updates(co, peer, l[0], l[1], tmp_full_listfile)
             pass
-    #del_tabletran_updates(co, peer, reset_info_file, tmp_full_listfile)
-                        
 
-    os.remove(peerlistfile)
     os.remove(reset_info_file)
     return 0
 
@@ -398,7 +383,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [20]
+    order_list = [21]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date
@@ -454,5 +439,5 @@ if __name__ == '__main__':
         for co in co_rib:
             f.write(co+':'+co_rib[co]+'\n')
         f.close()
-
     '''
+

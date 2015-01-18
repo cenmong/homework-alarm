@@ -8,9 +8,8 @@ import string
 import gzip
 import traceback
 import logging
+import subprocess
 
-
-from pytz import timezone
 from netaddr import *
 from env import *
 #from supporter_class import *
@@ -30,8 +29,7 @@ class Alarm():
         self.cl_list = period.co_mo.keys()
         self.max_dt = -1
 
-        # Store all middle files here
-        self.middle_dir = datadir+'output/'+self.sdate+'_'+self.edate+'/'
+        self.middle_dir = period.get_middle_dir()
         cmlib.make_dir(self.middle_dir)
 
         self.monitors = []
@@ -197,7 +195,7 @@ class Alarm():
 
             if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
                 return -1
-        except Exception, err:
+        except Exception:
             if update != '':
                 logging.info(traceback.format_exc())
                 logging.info(update)
@@ -222,7 +220,7 @@ class Alarm():
 
         return 0
 
-    def analyze(self):
+    def analyze_to_middle(self):
         self.readfiles()
 
     def set_now(self, cl, line):

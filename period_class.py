@@ -1,12 +1,13 @@
 from env import *
 from downloader_class import *
 
+import hashlib
+import calendar
 import traceback
 import cmlib
 import patricia
 import os
 import datetime
-import time as time_lib
 import logging
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
@@ -23,15 +24,21 @@ class Period():
         # Store the rib information of every collector (Note: do not change this!)
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
-        # TODO select only one monitor in each AS
         self.co_mo = dict() # collector: monitor list (does not store empty list)
+
         self.no_prefixes = patricia.trie(None) # prefixes that should be ignored TODO
 
-        # XXX Get this only when necessary
+        # Note: Get this only when necessary
         self.as2nation = self.get_as2nation_dict()
 
-        # Occassionally run it to get the latest data. (Now up to 20141225)
+        # Note: Occassionally run it to get the latest data. (Now up to 20141225)
         #self.get_fib_size_file()
+
+    def get_middle_dir(self):
+        return datadir+'middle_output/'+self.sdate+'_'+self.edate+'/'
+
+    def get_final_dir(self):
+        return datadir+'final_output/'+self.sdate+'_'+self.edate+'/'
 
     def get_fib_size_file(self):
         url = 'http://bgp.potaroo.net/as2.0/'
@@ -40,7 +47,7 @@ class Period():
 
     def get_fib_size(self):
         objdt = datetime.datetime.strptime(self.sdate, '%Y%m%d') 
-        intdt = time_lib.mktime(objdt.timetuple())
+        intdt = calendar.timegm(objdt.timetuple())
 
         dtlist = []
         pclist = []
@@ -153,6 +160,40 @@ class Period():
         
         return 0
 
+    # remove the ip whose co has smaller hash value
+    def rm_dup_mo(self):
+        print 'Removing duplicate monitors...'
+        mo_count = dict()
+        for co in self.co_mo.keys():
+            for mo in self.co_mo[co]:
+                try:
+                    mo_count[mo] += 1
+                except:
+                    mo_count[mo] = 1
+
+        for mo in mo_count.keys():
+            if mo_count[mo] == 1:
+                continue
+            co2 = list()
+            for co in self.co_mo.keys():
+                if mo in self.co_mo[co]:
+                    co2.append(co)
+
+            assert len(co2) == 2
+            co_chosen = ''
+            max_hash = -1
+            for co in co2:
+                ha = int(hashlib.md5(co).hexdigest(), 16)
+                if ha > max_hash:
+                    max_hash = ha
+                    co_chosen = co
+
+            co2.remove(co_chosen)
+            co_rm = co2[0]
+
+            self.co_mo[co_rm].remove(mo)
+
+
     # choose only one monitor from each AS
     # Note: the choice should be consistent (e.g., choose the one with the largest prefix integer)
     def mo_filter_same_as(self):
@@ -179,7 +220,9 @@ class Period():
                 asn = int(line.split(':')[1].split('|')[1])
                 if mo_ip in mo_list:
                     try:
-                        asn_mo[asn].append(mo_ip)
+                        test = asn_mo[asn]
+                        if mo_ip not in asn_mo[asn]:
+                            asn_mo[asn].append(mo_ip)
                     except:
                         asn_mo[asn] = list()
                         asn_mo[asn].append(mo_ip)
@@ -200,6 +243,7 @@ class Period():
             for mo in tmp_list:
                 if cmlib.ip_to_integer(mo) > max:
                     selected = mo
+                    max = cmlib.ip_to_integer(mo)
             tmp_list.remove(selected)
             remove_mo.extend(tmp_list)
 
@@ -258,8 +302,3 @@ class Period():
 
     def get_prefix(self):
         return 0
-
-    #TODO select monitors; build a trie;  output monitor info
-    #TODO select prefixes in two ways
-    #TODO download support files and build it in memo if necessary
-
