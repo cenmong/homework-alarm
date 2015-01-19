@@ -1,6 +1,7 @@
-from period_class import *
+from period_class import Period
 from env import *
-from alarm_class import *
+from alarm_class import Alarm
+from reaper_class import Reaper
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
 
@@ -30,9 +31,11 @@ for i in index_list:
         alarm.analyze_to_middle() # analyze all updates and store all middle output files
 
     if action['final']:
-        '''
         reaper = Reaper(my_period, option['final_granu'])
+        '''
+        # TODO paper: prefix
         reaper.get_XXX
+        # TODO paper: disruptive events
         reaper.get_XXX
         '''
 
