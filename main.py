@@ -4,6 +4,7 @@ from alarm_class import *
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
 
+from plot_matrix import plot_matrix
 import logging
 logging.info('Program starts!')
 
@@ -22,7 +23,7 @@ for i in index_list:
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
     my_period.rm_dup_mo() # rm multiple existence of the same monitor
-    my_period.mo_filter_same_as() # FIXME still under test
+    my_period.mo_filter_same_as()
 
     if action['middle']:
         alarm = Alarm(my_period, option['mid_granu'])
@@ -37,9 +38,23 @@ for i in index_list:
 
     if action['plot']:
         # TODO Plotting into the same dir as final output dir. No logic in plotting
-        final_dir = my_period.get_final_dir()
         '''
         plotter = Plotter(my_period)
         '''
+
+    # plot matrices of every time slot only for observation
+    mdir = my_period.get_middle_dir()
+    mfiles = os.listdir(mdir)
+    for mf in mfiles:
+        if not os.path.isfile(mdir+mf):
+            mfiles.remove(mf)
+
+    plotdir = mdir + 'matrix/'
+    cmlib.make_dir(plotdir)
+
+    for mf in mfiles:
+        pf = mf.split('.')[0] + '.pdf'
+        print 'Ploting matrix:', mdir+mf
+        plot_matrix(mdir+mf, plotdir+pf) #TODO specify a range
 
 logging.info('Program ends!')

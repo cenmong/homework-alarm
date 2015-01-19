@@ -1,14 +1,8 @@
-Never ctrl+Z when packing, unpacking and parsing files
-
-----------------------------------------------------------------
 2014-12-20
 BUG: a strange situation: a few .gz.txt among all .gz.txt.gz files 
 work-arounds: check whether this file exists before packing
-BUG: a few files are not downloaded
-question: we didn't download it or it is deleted when comparing sizes
 ---------------------------------------------------------------
 There are few files where there are blank lines between two successive updates
-solve: try-except
 ---------------------------------------------------------------
 Note: do not put everything into log, which makes the log file extremely large
 Besides, logging costs much time! do not log frequently!
@@ -19,12 +13,10 @@ Once apon a time, archive.routeviews.org fail to work, while routeviews.org can
 However now the latter fails in IPv6 but the former can in both
 --------------------------------------------------------------
 BUG: sometimes when downloading an update file, the program looks like has stoped
-inspect: this may due to connection cut off while downloading
+inspect: may due to too many tcp connections
 -------------------------------------------------------------
 BUG: cannot parse a certain file (program cannot stop)
 ------------------------------------------------------------------
 when viewing a long line, vim can become very slow...
 ----------------------------------------------------------------
 Never press ctrl+Z, use ctrl+C instead
------------------------------------------------
-There is a monitor 12.0.1.63 that exists in both rv2 and rrc00

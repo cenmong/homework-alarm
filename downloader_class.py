@@ -383,7 +383,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [21]
+    order_list = [22]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date

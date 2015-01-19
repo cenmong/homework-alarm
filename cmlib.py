@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
 import datetime
 import patricia
+import socket
 import gzip
 import time as time_lib
 import operator
@@ -97,11 +98,12 @@ def force_download_file(url, save_loc, filename):
     while 1:
         print 'Downloading '+url+filename
         try:
-            f = urllib2.urlopen(url+filename)
+            f = urllib2.urlopen(url+filename, timeout = 10)
             with open(save_loc+filename,'wb') as code:
                 code.write(f.read())
             break
-        except:
+        except socket.timeout, e:
+            print 'Time out! Retry...'
             pass
 
 def get_unpack_gz(url, save_loc, filename):

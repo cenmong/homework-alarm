@@ -13,10 +13,8 @@ from matplotlib import ticker
 from matplotlib.colors import LogNorm
 from cStringIO import StringIO
 
-def plot_matrix(fname):
-    tag = fname.split('/')[-1].split('.')[0]
-
-    p = subprocess.Popen(['zcat', fname],stdout=subprocess.PIPE)
+def plot_matrix(floc, saveloc):
+    p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
     f = StringIO(p.communicate()[0])
     assert p.returncode == 0
 
@@ -52,7 +50,9 @@ def plot_matrix(fname):
     cbar = fig.colorbar(cax, ticks=lvls)
     #cbar.ax.set_yticklabels(['0', str(high)])
 
-    plt.savefig(tag+'matrix.pdf', bbox_inches='tight')
+    plt.savefig(saveloc, bbox_inches='tight')
+    plt.clf() # clear the figure
+    plt.close()
 
 if __name__ == '__main__':
     #matrixes = []
@@ -60,5 +60,3 @@ if __name__ == '__main__':
     #for m in matrixes:
     #    plot_matrix(m)
     plot_matrix('/media/usb/output/20141130_20141201/1417420800.txt.gz')
-
-

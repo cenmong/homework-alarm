@@ -69,8 +69,8 @@ daterange = {
     18:('20130213','20130216'), #SEACOM outage | XXX contained in 28
     #19:('20110327','20110330'), #Caucasus cable cut |
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
-    21:('20120223','20120229'), #TEAMS cable cut in east Africa |
-    22:('20120425','20120428'), #TEAMS cable cut in east Africa again |
+    21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
+    22:('20120424','20120430'), #TEAMS cable cut in east Africa again |
     27:('20141130','20141201'), # test only
     28:('20130101','20131231'), # XXX downloading in WD
 }
