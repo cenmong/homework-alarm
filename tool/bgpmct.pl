@@ -543,7 +543,7 @@ sub getCollectionTimes {
           ##
           ## current updatePrefixes > RIB estimate
           ##
-          while(($uniq_size{$peer} >= $nRIB{$peer}) && ($end{$peer} - $start{$peer}) < $range) {
+          while(($uniq_size{$peer} >= $nRIB{$peer}) && ($end{$peer} > $start{$peer}) && ($end{$peer} - $start{$peer}) < $range) {
             ## advance "start" marker to the next timestamp in queue
             while($queue{$peer}->[0][0] == $start{$peer}) {
               my $que_ref = shift(@{$queue{$peer}});

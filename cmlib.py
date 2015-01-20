@@ -30,7 +30,7 @@ def get_peer_info(rib_full_loc):
 
     output = peer_path_by_rib_path(rib_full_loc)
     if os.path.exists(output):
-        print 'Already exists!'
+        print 'Peer info file already exists!'
         return output
 
     peer_pfx_count = dict()

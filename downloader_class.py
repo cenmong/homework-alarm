@@ -117,6 +117,7 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
     ## record reset info into a temp file
     reset_info_file = datadir + 'peer_resets.txt'
 
+    print 'Obtaining BGP session reset start-end period...'
     subprocess.call('perl '+projectdir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
             tmp_full_listfile + ' > '+reset_info_file, shell=True)
 
@@ -134,7 +135,7 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
         if line.startswith('run') or line.startswith('/') or '#' in line:
             continue
         if ':' in line:
-            now_peer = line.split(':')[0]
+            now_peer = line.rstrip(':\n')
             continue
 
         stime_unix, endtime_unix= int(line.split(',')[0]), int(line.split(',')[1])
@@ -145,11 +146,14 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
 
     resetf.close()
 
-    print peer_resettime
+    if peer_resettime == {}:
+        print 'no reset at all!'
+    else:
+        print peer_resettime
 
     for p in peer_resettime:
         for l in peer_resettime[p]:
-            #delete_reset_updates(co, peer, l[0], l[1], tmp_full_listfile)
+            delete_reset_updates(co, p, l[0], l[1], tmp_full_listfile)
             pass
 
     os.remove(reset_info_file)
@@ -158,10 +162,13 @@ def delete_reset(co, rib_full_loc, tmp_full_listfile):
 def delete_reset_updates(co, peer, stime_unix, endtime_unix, tmp_full_listfile):
     start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
     end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
-    print 'session reset from ', start_datetime, ' to ', end_datetime
+    print 'Deleting session reset ',peer,':[',start_datetime,',',end_datetime,']...'
 
     #---------------------------------------------------------------------
     # Read the temproary full-path file list (original list is relative path)
+    
+    time_found = False # XXX Error if cannot find time
+
     f = open(tmp_full_listfile, 'r')
     for line in f:  
         updatefile = line.rstrip('\n')
@@ -172,7 +179,7 @@ def delete_reset_updates(co, peer, stime_unix, endtime_unix, tmp_full_listfile):
         else:
             fattr_date, fattr_time = file_attr[rv_date_fpos], file_attr[rv_time_fpos]
 
-        # Get datetime from the file name
+        # Get file datetime obj dt from the file's name
         dt = datetime.datetime(int(fattr_date[0:4]),\
                 int(fattr_date[4:6]), int(fattr_date[6:8]),\
                 int(fattr_time[0:2]), int(fattr_time[2:4]))
@@ -187,16 +194,17 @@ def delete_reset_updates(co, peer, stime_unix, endtime_unix, tmp_full_listfile):
 
         # Check whether the file is our target
         if not start_datetime + datetime.timedelta(minutes=-30) <= dt <= end_datetime:
+            # FIXME redundant files are also shrinked
             continue
 
-        print 'Processing (session reset probably exists): ', updatefile
-        # FIXME assert whether reset updates have been deleted; exception if cannot find time
+        logging.info('Processing (session reset probably exists) file: %s', updatefile)
         # record the prefix whose update has already been deleted (for once)
         size_before = os.path.getsize(updatefile)
         counted_pfx = radix.Radix()
 
         p = subprocess.Popen(['zcat', updatefile],stdout=subprocess.PIPE)
         old_f = StringIO(p.communicate()[0])
+        assert p.returncode == 0
         new_f = gzip.open(datadir + updatefile.split('/')[-1], 'wb')
 
         # find and delete the reset updates
@@ -204,6 +212,7 @@ def delete_reset_updates(co, peer, stime_unix, endtime_unix, tmp_full_listfile):
             try:
                 attr = updt.rstrip('\n').split('|')
                 if cmp(attr[3], peer) == 0 and (stime_unix<int(attr[1])<endtime_unix):
+                    time_found = True
                     pfx = attr[5]
                     try: # Test whether the trie has the pfx
                         rnode = counted_pfx.search_exact(pfx)
@@ -226,12 +235,14 @@ def delete_reset_updates(co, peer, stime_unix, endtime_unix, tmp_full_listfile):
 
         # use the new file to replace the old file
         os.remove(updatefile)
-        subprocess.call('mv '+datadir+updatefile.split('/')[-1]+\
-                        ' '+updatefile.split('/')[:-1], shell=True)
+        tmp_loc = cmlib.get_file_dir(updatefile)
+        subprocess.call('mv '+datadir+updatefile.split('/')[-1]+' '+tmp_loc, shell=True)
         size_after = os.path.getsize(updatefile)
-        print 'size(b):', size_before, ',size(a):', size_after
+        logging.info('size(b):%f,size(a):%f', size_before, size_after)
                
     f.close()
+
+    assert time_found == True
 
 #--------------------------------------------------------------------------
 TEST = False
@@ -383,7 +394,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function of this py file
 if __name__ == '__main__':
-    order_list = [22]
+    order_list = [27]
     # collector_list = {27:('','rrc00')} # For TEST
 
     # all co that has appropriate date
@@ -395,6 +406,7 @@ if __name__ == '__main__':
                 collector_list[i].append(co)
         print i,':',collector_list[i]
     
+    '''
     listfiles = []
     # download update files
     for order in order_list:
@@ -411,27 +423,30 @@ if __name__ == '__main__':
         parse_update_files(listf)
     '''
 
-    # FIXME de-couple getting reset time and deleting reset updates
     # Deleting updates caused by reset
     for order in order_list:
-        co_rib = dict() # co: rib full path
+        co_rib = dict() # co: rib full path TODO rib=>ribs
 
         sdate = daterange[order][0]
         edate = daterange[order][1]
+        #TODO check the length of the period according to UNIX timestamp
+
+        # If period <= 31 days
         for co in collector_list[order]:
             # FIXME download a RIB every two months for long duration
             rib_full_loc = get_parse_one_rib(co, sdate)
-            cmlib.get_peer_info(rib_full_loc) # do not delete this line
+            cmlib.get_peer_info(rib_full_loc) # do not delete this line TODO for long period get many files
             co_rib[co] = rib_full_loc
 
             # create temproary full-path update file list
             dl = Downloader(sdate, edate, co)
-            full_list = dl.get_tmp_full_list()
+            full_list = dl.get_tmp_full_list() #TODO for long period get list of lists
 
             delete_reset(co, rib_full_loc, full_list)
             os.remove(full_list)
 
         # for each period, maintain a file that record its related RIBs
+        # TODO diff format for long period
         cmlib.make_dir(rib_info_dir)
         # Do not change this
         rib_info = rib_info_dir + sdate + '_' + edate + '.txt'
@@ -439,5 +454,5 @@ if __name__ == '__main__':
         for co in co_rib:
             f.write(co+':'+co_rib[co]+'\n')
         f.close()
-    '''
 
+        
