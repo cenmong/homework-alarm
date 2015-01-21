@@ -1,11 +1,9 @@
 import os
-# XXX should use urllib2 instead of urllib
 import urllib
 import urllib2 # use this instead of urllib
 import subprocess
 import re
 import nltk
-import numpy as np
 import matplotlib
 # This is useful. I can render figures thourgh ssh. (VNC viewer is unnecessary.)
 matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
@@ -23,11 +21,8 @@ from env import *
 # Get all the info once and forever, store in a well-known place
 # (Actually when pre-processing)
 # Note: we should read RIB as less as possible because it costs too much time
-# TODO get LVP
 def get_peer_info(rib_full_loc):
-
-    print 'Getting info of peers from:', rib_full_loc
-
+    print 'Getting and storing peer info from:', rib_full_loc
     output = peer_path_by_rib_path(rib_full_loc)
     if os.path.exists(output):
         print 'Peer info file already exists!'
@@ -39,30 +34,26 @@ def get_peer_info(rib_full_loc):
     p = subprocess.Popen(['zcat', rib_full_loc],stdout=subprocess.PIPE)
     f = StringIO(p.communicate()[0])
     assert p.returncode == 0
+
     for line in f:
         try:
             peer = line.split('|')[3]
-            peer = ip_to_binary(peer)
             try:
                 peer_pfx_count[peer] += 1
             except:
                 peer_pfx_count[peer] = 1
 
             asn = line.split('|')[4]
-            peer2as[peer] = asn
+            if int(asn) > 0: # I ran into a 0 for once
+                peer2as[peer] = asn
         except: # strange line
             pass
     f.close()
 
     fo = open(output, 'w')
     for peer in peer_pfx_count:
-        if peer == '':
-            continue
-        peer_str = binary_to_ip4(peer)
-        # peer IP:pfx count|ASN
-        # FIXME remove ipv6 peer
-        fo.write(peer_str+':'+str(peer_pfx_count[peer])+'|'+peer2as[peer]+'\n')
-
+        # peer IP(including IPv6):pfx count|ASN
+        fo.write(peer+'@'+str(peer_pfx_count[peer])+'|'+peer2as[peer]+'\n')
     fo.close()
 
     return output
@@ -98,13 +89,12 @@ def force_download_file(url, save_loc, filename):
     while 1:
         print 'Downloading '+url+filename
         try:
-            f = urllib2.urlopen(url+filename, timeout = 10)
+            f = urllib2.urlopen(url+filename, timeout = 5)
             with open(save_loc+filename,'wb') as code:
                 code.write(f.read())
             break
         except socket.timeout, e:
             print 'Time out! Retry...'
-            pass
 
 def get_unpack_gz(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.gz$', '', filename)):
@@ -132,13 +122,14 @@ def make_dir(location):
         os.makedirs(location)
 
 def get_weblist(url):
+    print 'Obtaining filelist from: ', url
     while 1:
         try:
-            webhtml = urllib.urlopen(url).read()
+            webhtml = urllib2.urlopen(url, timeout = 5).read()
             webraw = nltk.clean_html(webhtml)
             break
-        except:
-            pass
+        except socket.timeout, e:
+            print 'Time out! Retry...'
 
     return webraw
 

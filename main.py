@@ -4,8 +4,10 @@ from alarm_class import Alarm
 from reaper_class import Reaper
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
-
 from plot_matrix import plot_matrix
+
+import cmlib
+import os
 import logging
 logging.info('Program starts!')
 
@@ -23,6 +25,7 @@ for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
+    # TODO ignore ipv6 monitors
     my_period.rm_dup_mo() # rm multiple existence of the same monitor
     my_period.mo_filter_same_as()
 

@@ -49,6 +49,8 @@ class Downloader():
         self.gap_days = (self.edt_obj-self.sdt_obj).days + 1
         self.co = co
 
+        self.rib_list = list()
+
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
 
     def get_listfile(self):
@@ -96,6 +98,30 @@ class Downloader():
 
         return month_list
 
+
+    def get_month_list(self):
+        smonth = int(sdate[0:4])*12 + int(sdate[4:6])
+        emonth = int(edate[0:4])*12 + int(edate[4:6])
+        month_gap = emonth - smonth # could be zero
+
+        month_list = [] 
+        for m in xrange(0, month_gap+1):
+            now_month = smonth + m
+            if now_month % 12 == 0: # the 12th month
+                now_year = now_month / 12 - 1
+                now_month = 12
+            else:
+                now_year = now_month / 12
+                now_month = now_month % 12
+
+            if now_month / 10 == 0:
+                str_now_month = '0' + str(now_month) # E.g., '5'=>'05'
+            else:
+                str_now_month = str(now_month)
+
+            month_list.append(str(now_year)+str_now_month) #XXX note the dot
+
+        return month_list
 
     def get_all_updates(self):
         self.get_update_list()
@@ -180,22 +206,21 @@ class Downloader():
     def get_rib(self):
         if self.gap_days < 32:
             rib_full_loc = self.download_one_rib(self.sdate)
-            return [rib_full_loc]
+            self.rib_list = [rib_full_loc]
         else:
-            month_list = self.get_month_list_dot()
+            month_list = self.get_month_list()
             datelist = list()
             for m in month_list:
-                m = m.strip('.')
-                datelist.append(m+'01') # XXX I get the first day of the month
+                datelist.append(m+'01') # XXX RIB from the first day of the month
 
             riblist = list()
             for date in datelist:
                 rib_full_loc = self.download_one_rib(date)
                 riblist.append(rib_full_loc)
-            return rib_list
+            self.rib_list = rib_list
 
-    def download_one_rib(self, my_date_str):
-        tmp_month = my_date_str[0:4] + '.' + my_date_str[4:6]
+    def download_one_rib(self, my_date):
+        tmp_month = my_date[0:4] + '.' + my_date[4:6]
         if self.co.startswith('rrc'):
             web_location = rrc_root + self.co + '/' + tmp_month + '/' 
         else:
@@ -224,7 +249,7 @@ class Downloader():
         closest = 99999
         for line in rib_list:
             fdate = line.split()[0].split('.')[-3]
-            diff = abs(int(fdate)-int(my_date_str)) # >0
+            diff = abs(int(fdate)-int(my_date)) # >0
             # XXX logic here not clear (maybe effective)
             if diff <= closest:
                 size = line.split()[-1]
@@ -248,7 +273,6 @@ class Downloader():
 
         #------------------------------------------------------------------
         # Download the RIB
-        print 'Supposed full location of the RIB:', full_loc
         if os.path.exists(full_loc+'.txt.gz'): 
             print 'existed size & original size:',os.path.getsize(full_loc+'.txt.gz'),fsize
             if os.path.getsize(full_loc+'.txt.gz') > 0.6 * fsize: # 0.6 is good enough
@@ -268,25 +292,89 @@ class Downloader():
         cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
         cmlib.parse_mrt(full_loc, full_loc+'.txt')
         cmlib.pack_gz(full_loc+'.txt')
+        os.remove(full_loc) # remove the original file
 
         return full_loc+'.txt.gz'
 
     def delete_reset(self):
+        rib_info = rib_info_dir + sdate + '_' + edate + '.txt' # Do not change this
+
         if self.gap_days < 32:
+            f = open(rib_info, 'r')
+            rib_full_loc = ''
+            for line in f:
+                line = line.rstrip('\n')
+                now_co = line.split(':')[0]
+                if now_co == self.co:
+                    rib_full_loc = line.split(':')[1]
+            f.close()
+
+            assert rib_full_loc != ''
             # create temproary full-path update file list only for this task
-            full_list = dl.get_tmp_full_list() #TODO for long period get list of lists
+            full_list = self.get_tmp_full_list()
             self.rm_reset_one_list(rib_full_loc, full_list)
-            os.remove(full_list)
         else:
-            # TODO build [full_list,rib_full_loc] pairs
-            pass
+            f = open(rib_info, 'r')
+            ribs = list()
+            for line in f:
+                line = line.rstrip('\n')
+                now_co = line.split(':')[0]
+                if now_co != self.co:
+                    continue
+                ribs = line.split(':')[1].split('|')
+            
+            f.close()
+
+            assert ribs != []
+
+            full_list = self.get_tmp_full_list()
+            month_list = self.get_month_list()
+
+            assert len(ribs) == len(month_list)
+
+            month_rib_udt = dict() # month: [rib_full_loc, update_full_loc_list]
+            for m in month_list:
+                full_list_part = full_list + '_' + m
+                f = open(full_list, 'r')
+                fin = open(full_list_part, 'w')
+                for line in f:
+                    date = line.split('.')[-5]
+                    fmonth = date[:6]
+                    day = date[6:8]
+                    if fmonth == m or (self.month_larger_one(fmonth,m) and day == '01'):
+                        fin.write(line)
+                        
+                f.close()
+                fin.close()
+
+                rib = ''
+                for r in ribs:
+                    if r.split('.')[-5][:6] == m:
+                        rib = r
+                month_rib_udt[m] = [rib, full_list_part]
+
+            #TODO test before really remove updates
+
+    def month_larger_one(month1, month2): # whether month1 larger than month2 for 1 month
+        if month1[:4] == month2[:4]:
+            if int(month1[4:6]) - int(month2[4:6]) == 1:
+                return True
+            else:
+                return False
+        elif int(month1[:4]) - int(month2[:4]) == 1:
+            if month1[4:6] == '01' and month2[4:6] == '12':
+                return True
+            else:
+                return False
+        else:
+            return False
 
 
     def rm_reset_one_list(self, rib_full_loc, tmp_full_listfile):
         ## record reset info into a temp file
         reset_info_file = datadir + 'peer_resets.txt'
 
-        print 'Obtaining BGP session reset start-end period...'
+        print self.co, ' obtaining BGP session reset start-end period...'
         subprocess.call('perl '+projectdir+'tool/bgpmct.pl -rf '+rib_full_loc+' -ul '+\
                 tmp_full_listfile + ' > '+reset_info_file, shell=True)
 
@@ -327,7 +415,7 @@ class Downloader():
 
         os.remove(reset_info_file)
 
-    def delete_reset_updates(peer, stime_unix, endtime_unix, tmp_full_listfile):
+    def delete_reset_updates(self, peer, stime_unix, endtime_unix, tmp_full_listfile):
         start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
         end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
         print 'Deleting session reset ',peer,':[',start_datetime,',',end_datetime,']...'
@@ -439,7 +527,6 @@ if __name__ == '__main__':
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
-    '''
 
     # Download and record RIB and get peer info 
     for order in order_list:
@@ -449,11 +536,12 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
-            co_ribs[co] = dl.get_rib() # return a list
+            dl.get_rib()
+            co_ribs[co] = dl.rib_list
             for r in co_ribs[co]:
                 cmlib.get_peer_info(r) # do not delete this line
 
-        # for each period, maintain a file that record its RIBs
+        # for each period, maintain a file that record its RIBs (do not delete!)
         rib_info = rib_info_dir + sdate + '_' + edate + '.txt' # Do not change this
         cmlib.make_dir(rib_info_dir)
         f = open(rib_info, 'w')
@@ -463,6 +551,8 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
+    '''
+
 
     # Delete reset updates
     for order in order_list:

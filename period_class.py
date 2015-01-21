@@ -128,10 +128,10 @@ class Period():
             ok = 0
             fp = open(peerfile, 'r')
             for line in fp:
-                if len(line.split(':')) > 2:
+                mo_ip = line.split('@')[0]
+                if '.' not in mo_ip: # ignore ipv6
                     continue
-                mo_ip = line.split(':')[0]
-                fibsize = int(line.split(':')[1].split('|')[0])
+                fibsize = int(line.split('@')[1].split('|')[0])
                 if fibsize > 0.9 * norm_size:
                     try: 
                         test = self.co_mo[co]
@@ -140,7 +140,7 @@ class Period():
                     if mo_ip not in self.co_mo[co]:
                         self.co_mo[co].append(mo_ip)
                     ok += 1
-                    asn = int(line.split(':')[1].split('|')[1])
+                    asn = int(line.split('@')[1].split('|')[1])
                     try:
                         nation = self.as2nation[asn]
                     except:
@@ -216,8 +216,8 @@ class Period():
             for line in fp:
                 if len(line.split(':')) > 2:
                     continue
-                mo_ip = line.split(':')[0]
-                asn = int(line.split(':')[1].split('|')[1])
+                mo_ip = line.split('@')[0]
+                asn = int(line.split('@')[1].split('|')[1])
                 if mo_ip in mo_list:
                     try:
                         test = asn_mo[asn]
