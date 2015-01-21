@@ -20,3 +20,6 @@ BUG: cannot parse a certain file (program cannot stop)
 when viewing a long line, vim can become very slow...
 ----------------------------------------------------------------
 Never press ctrl+Z, use ctrl+C instead
+-----------------------------------------------------------------
+Interesing fact:
+File size (write diresctly into .gz) slightly < file size (gzip a text file)
