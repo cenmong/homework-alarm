@@ -214,7 +214,7 @@ while(my($key,$value) = each %ctimes)
     &logError($progname, "Errors occured while getting local minima list");
     exit($error);
   }
-=d
+=sss
     print $key;
     print "\n";
     my $value_num = scalar keys @localMinima;
@@ -467,7 +467,7 @@ sub getCollectionTimes {
     &debug($name, "Opened updatefile $updateFile for reading") if $DEBUG_VERBOSE;
     
     #sxr#test
-    print "$updateFile\n";
+    #print "$updateFile\n";
     # [DEBUG #1]
     my $is_firstline = 1;
     my $line = undef;

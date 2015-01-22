@@ -9,16 +9,6 @@ rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
 
 #--------------------------------------------------------
-rrc_date_fpos = 5
-rrc_time_fpos = 6
-if rv_root.startswith('archive'):
-    rv_date_fpos = 4
-    rv_time_fpos = 5
-else:
-    rv_date_fpos = 3
-    rv_time_fpos = 4
-
-#--------------------------------------------------------
 pub_spt_dir = datadir + 'support/public/'
 rib_info_dir = datadir+'rib_info/'
 

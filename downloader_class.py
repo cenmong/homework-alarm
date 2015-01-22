@@ -24,7 +24,6 @@ from cStringIO import StringIO
 
 # output: .bz2/gz.txt.gz files
 def parse_update_files(listfile): # all update files from one collectors/list
-    print 'Parsing update files...'
     flist = open(listfile, 'r')
     for line in flist:
         line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
@@ -141,7 +140,6 @@ class Downloader():
                 web_location = rv_root + self.co + '/bgpdata/' + month + '/UPDATES/'
                 web_location = web_location.replace('//', '/')  # when name is ''
 
-            print 'Getting update list: http://' + web_location
             webraw = cmlib.get_weblist('http://' + web_location)
             cmlib.make_dir(datadir+web_location)
 
@@ -389,7 +387,7 @@ class Downloader():
         peer_resettime = dict() # peer: list of [reset start, reset end]
         resetf = open(reset_info_file, 'r')
         for line in resetf:
-            if line.startswith('run') or line.startswith('/') or '#' in line:
+            if line.startswith('run') or line.startswith('/') or ('#' in line):
                 continue
             if ':' in line:
                 now_peer = line.rstrip(':\n')
@@ -399,19 +397,12 @@ class Downloader():
             try:
                 peer_resettime[now_peer].append([stime_unix, endtime_unix])
             except:
-                peer_resettime[now_peer] = [[stime_unix, endtime_unix], ]
-
+                peer_resettime[now_peer] = [[stime_unix, endtime_unix],]
         resetf.close()
-
-        if peer_resettime == {}:
-            print 'no reset at all!'
-        else:
-            print peer_resettime
 
         for p in peer_resettime:
             for l in peer_resettime[p]:
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
-                pass
 
         os.remove(reset_info_file)
 
@@ -420,21 +411,13 @@ class Downloader():
         end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
         print 'Deleting session reset ',peer,':[',start_datetime,',',end_datetime,']...'
 
-        #---------------------------------------------------------------------
-        # Read the temproary full-path file list (original list is relative path)
-        
         time_found = False # Raise an error if cannot find time
 
         f = open(tmp_full_listfile, 'r')
         for line in f:  
             updatefile = line.rstrip('\n')
             file_attr = updatefile.split('.')
-
-            if co.startswith('rrc'): # note the difference in file name formats
-                fattr_date, fattr_time = file_attr[rrc_date_fpos], file_attr[rrc_time_fpos]
-            else:
-                fattr_date, fattr_time = file_attr[rv_date_fpos], file_attr[rv_time_fpos]
-
+            fattr_date, fattr_time = file_attr[-5], file_attr[-4]
             # Get file datetime obj dt from the file's name
             dt = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
@@ -449,54 +432,58 @@ class Downloader():
                 dt = dt + datetime.timedelta(hours=8)
 
             # Check whether the file is a possible target
-            if not start_datetime + datetime.timedelta(minutes=-30) <= dt <= end_datetime:
+            if co.startswith('rrc'): # note the difference in file name formats
+                shift = -5
+            else:
+                shift = -15
+            if not start_datetime + datetime.timedelta(minutes=shift) <= dt <= end_datetime:
                 continue
 
-            logging.info('Processing (session reset probably exists) file: %s', updatefile)
+            logging.info('Session reset probably exists in: %s', updatefile)
             size_before = os.path.getsize(updatefile)
-            # record the prefix whose update has already been deleted (for once)
+            # record the prefix whose update has already been deleted for once
             counted_pfx = radix.Radix()
 
             p = subprocess.Popen(['zcat', updatefile],stdout=subprocess.PIPE)
             old_f = StringIO(p.communicate()[0])
             assert p.returncode == 0
-            new_f = gzip.open(datadir + updatefile.split('/')[-1], 'wb')
+            tmp_file_loc = datadir + updatefile.split('/')[-1]
+            new_f = gzip.open(tmp_file_loc, 'wb')
 
             # find and delete the reset updates
             for updt in old_f:
                 try:
                     attr = updt.rstrip('\n').split('|')
-                    if attr[3] == peer and (stime_unix<int(attr[1])<endtime_unix):
+                    if attr[3]==peer and stime_unix<=int(attr[1])<=endtime_unix:
                         time_found = True
                         pfx = attr[5]
-                        try:
-                            rnode = counted_pfx.search_exact(pfx)
-                            rnode.data[0] += 1
-                            new_f.write(updt)
-                        except:
+                        rnode = counted_pfx.search_exact(pfx)
+                        if rnode == None:
                             rnode = counted_pfx.add(pfx)
-                            rnode.data[0] = 1
+                        else:
+                            new_f.write(updt)
                     else:
                         new_f.write(updt)
                 except Exception, err:
                     if updt != '':
                         logging.info(traceback.format_exc())
                         logging.info(update)
-                        print traceback.format_exc()
 
             old_f.close()
             new_f.close()
 
             # use the new file to replace the old file
             os.remove(updatefile)
-            tmp_loc = cmlib.get_file_dir(updatefile)
-            subprocess.call('mv '+datadir+updatefile.split('/')[-1]+' '+tmp_loc, shell=True)
+            target_loc = cmlib.get_file_dir(updatefile)
+            subprocess.call('mv '+tmp_file_loc+' '+target_loc, shell=True)
             size_after = os.path.getsize(updatefile)
             logging.info('size(b):%f,size(a):%f', size_before, size_after)
                    
         f.close()
 
-        assert time_found == True
+        assert time_found == True # does not fit a very active peer
+        #if time_found == False:
+        #    logging.error('%s:Cannot find time in files when deleting reset...', self.co)
 
 #----------------------------------------------------------------------------
 # The main function
@@ -511,6 +498,9 @@ if __name__ == '__main__':
             if int(all_collectors[co]) <= int(daterange[i][0]):
                 collector_list[i].append(co)
         print i,':',collector_list[i]
+
+    collector_list[27] = collector_list[27][-2:] #XXX test
+    #collector_list[27] = ['route-views.eqix']
     
     '''
     listfiles = [] # a list of update file list files
@@ -552,7 +542,6 @@ if __name__ == '__main__':
             f.write(co_ribs[co][-1]+'\n')
         f.close()
     '''
-
 
     # Delete reset updates
     for order in order_list:
