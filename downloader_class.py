@@ -545,6 +545,7 @@ if __name__ == '__main__':
     '''
 
     # Delete reset updates
+    # FIXME record delete reset history!
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]

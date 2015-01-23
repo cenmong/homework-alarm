@@ -28,10 +28,15 @@ for i in index_list:
     my_period.rm_dup_mo() # rm multiple existence of the same monitor
     my_period.mo_filter_same_as()
 
+    my_period.get_as2namenation()
+    my_period.get_mo2cc()
+    my_period.get_mo2tier()
+
+    #show monitor name and nation
     for co in my_period.co_mo:
         for m in my_period.co_mo[co]:
             asn = my_period.mo_asn[m]
-            print m,asn,my_period.as2name[asn],my_period.as2nation[asn]
+            print m,asn,my_period.as2name[asn],my_period.as2nation[asn],my_period.mo_cc[m],my_period.mo_tier[m]
 
     if action['middle']:
         alarm = Alarm(my_period, option['mid_granu'])

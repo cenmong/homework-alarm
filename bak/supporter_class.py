@@ -12,41 +12,6 @@ class Supporter():
         self.sdate = sdate
         cmlib.make_dir(datadir+'support/')
 
-    def get_as2cc_file(self): # AS to customer cone
-        location = datadir + 'support/' + self.sdate + '/'
-        cmlib.make_dir(location)
-
-        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
-        for line in tmp:
-            if 'ppdc' in line:
-                return 0 # we already have a prefix2as file
-
-        print 'Downloading AS to customer cone file ...'
-        webloc = 'http://data.caida.org/datasets/2013-asrank-data-supplement/data/'
-        webraw = cmlib.get_weblist(webloc)
-        target_line = ''
-        yearmonth = self.sdate[:6] # YYYYMM
-        for line in webraw.split('\n'):
-            if yearmonth in line and 'ppdc' in line:
-                target_line = line
-                break
-
-        if target_line == '':
-            print 'Downloading AS to customer cone file fails: no such month!'
-            return -1
-
-        fname = target_line.split()[0]
-        urllib.urlretrieve(webloc+fname, location+fname)
-        if int(yearmonth) <= 201311:
-            # unpack .gz (only before 201311 (include))
-            subprocess.call('gunzip '+location+fname, shell=True)
-        else:
-            # unpack .bz2 (only after 201406 (include))
-            subprocess.call('bunzip2 -d '+location+fname, shell=True)
-
-        # Now we have file xxxxyyzz.ppdc-ases.txt
-
-        return 0
 
     # XXX should we get this from the last hop of AS path?
     def get_pfx2as_file(self):
@@ -162,31 +127,6 @@ class Supporter():
 
         return as2type
 
-    def get_as2cc_dict(self): # AS to customer cone
-        self.get_as2cc_file()
-        print 'Calculating AS to customer cone dict...'
-
-        as2cc_file = ''
-        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
-        for line in tmp:
-            if 'ppdc' in line:
-                as2cc_file = line
-                break
-
-        as2cc = {}
-        f = open(datadir+'support/'+self.sdate+'/'+as2cc_file)
-        for line in f:
-            if line == '' or line == '\n':
-                continue
-            line = line.rstrip('\n')
-            attr = line.split()
-            if attr[0] == '#':
-                continue
-            as2cc[int(attr[0])] = len(attr) - 1 
-
-        f.close()
-
-        return as2cc
 
     def get_nation2cont_dict(self):
         nation2cont == {}

@@ -1,6 +1,7 @@
-from env import *
-from downloader_class import *
+from downloader_class import Downloader
+from  env import *
 
+import subprocess
 import hashlib
 import calendar
 import traceback
@@ -19,19 +20,19 @@ class Period():
         self.edate = daterange[index][1] 
         
         # location to store supporting files
-        self.spt_dir = datadir + 'support/' + str(index) + '/'
+        self.spt_dir = spt_dir + self.sdate + '_' + self.edate + '/'
+        cmlib.make_dir(self.spt_dir)
 
         # Store the rib information of every collector (Note: do not change this!)
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
         self.co_mo = dict() # collector: monitor list (does not store empty list)
         self.mo_asn = dict()
+        self.mo_cc = dict()
+        self.mo_tier = dict()
 
-        # Note: Get this only when necessary
-        #self.get_as2nn_file()
-        as2nn = self.get_as2nn_dict()
-        self.as2nation = as2nn[0]
-        self.as2name = as2nn[1]
+        self.as2nation = dict()
+        self.as2name = dict()
 
         # Note: Occassionally run it to get the latest data. (Now up to 20141225)
         #self.get_fib_size_file()
@@ -105,6 +106,99 @@ class Period():
         f.close()
 
         return [as2nation, as2name]
+
+    def get_as2namenation(self):
+        # Note: Get this only when necessary
+        #self.get_as2nn_file()
+        as2nn = self.get_as2nn_dict()
+        self.as2nation = as2nn[0]
+        self.as2name = as2nn[1]
+
+    def get_as2cc_file(self): # AS to customer cone
+        sptfiles = os.listdir(self.spt_dir)
+        for line in sptfiles:
+            if 'ppdc' in line:
+                return 0 # already have a file
+
+        target_line = None
+        yearmonth = self.sdate[:6] # YYYYMM
+        print 'Downloading AS to customer cone file ...'
+        theurl = 'http://data.caida.org/datasets/2013-asrank-data-supplement/data/'
+        webraw = cmlib.get_weblist(theurl)
+        for line in webraw.split('\n'):
+            if yearmonth in line and 'ppdc' in line:
+                target_line = line
+                break
+
+        assert target_line != None
+
+        fname = target_line.split()[0]
+        cmlib.force_download_file(theurl, self.spt_dir, fname)
+        if int(yearmonth) <= 201311:
+            # unpack .gz (only before 201311 (include))
+            subprocess.call('gunzip '+self.spt_dir+fname, shell=True)
+        else:
+            # unpack .bz2 (only after 201406 (include))
+            subprocess.call('bunzip2 -d '+self.spt_dir+fname, shell=True)
+
+        return 0
+
+    def get_as2cc_dict(self): # AS to customer cone
+        print 'Calculating AS to customer cone dict...'
+
+        as2cc_file = None
+        sptfiles = os.listdir(self.spt_dir)
+        for line in sptfiles:
+            if 'ppdc' in line:
+                as2cc_file = line
+                break
+
+        assert as2cc_file != None
+
+        as2cc = {}
+        f = open(self.spt_dir+as2cc_file)
+        for line in f:
+            if line == '' or line == '\n' or line.startswith('#'):
+                continue
+            line = line.rstrip('\n')
+            attr = line.split()
+            as2cc[int(attr[0])] = len(attr) - 1 
+        f.close()
+
+        return as2cc
+
+    def get_mo2cc(self):
+        self.get_as2cc_file()
+        as2cc = self.get_as2cc_dict()
+        for mo in self.mo_asn:
+            asn = self.mo_asn[mo]
+            try:
+                cc = as2cc[asn]
+            except:
+                cc = -1
+            self.mo_cc[mo] = cc
+
+    def get_mo2tier(self):
+        assert self.mo_cc != {}
+        for m in self.mo_asn:
+            if self.mo_asn[m] in tier1_asn:
+                self.mo_tier[m] = 1
+
+        for m in self.mo_cc:
+            try:
+                if self.mo_tier[m] == 1:
+                    continue
+            except:
+                pass
+            cc = self.mo_cc[m]
+            if cc < 0:
+                self.mo_tier[m] = -1 #unknown
+            elif cc <= 4:
+                self.mo_tier[m] = 999 # stub
+            elif cc <= 50:
+                self.mo_tier[m] = 3 # small ISP
+            else:
+                self.mo_tier[m] = 2 # large ISP
 
     def get_global_monitors(self):
         norm_size = self.get_fib_size()

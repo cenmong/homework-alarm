@@ -9,8 +9,13 @@ rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
 
 #--------------------------------------------------------
+spt_dir = datadir + 'support/'
 pub_spt_dir = datadir + 'support/public/'
 rib_info_dir = datadir+'rib_info/'
+
+#------------------------------------------------------
+# according to http://en.wikipedia.org/wiki/Tier_1_network
+tier1_asn = [3320,3356,3549,1,2914,5511,1239,6453,6762,12956,1299,701,702,703,1273,2828,6461]
 
 #-------------------------------------------------------
 all_collectors = { # 17 in total
