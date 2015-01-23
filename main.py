@@ -25,9 +25,13 @@ for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
-    # TODO ignore ipv6 monitors
     my_period.rm_dup_mo() # rm multiple existence of the same monitor
     my_period.mo_filter_same_as()
+
+    for co in my_period.co_mo:
+        for m in my_period.co_mo[co]:
+            asn = my_period.mo_asn[m]
+            print m,asn,my_period.as2name[asn],my_period.as2nation[asn]
 
     if action['middle']:
         alarm = Alarm(my_period, option['mid_granu'])
@@ -48,6 +52,7 @@ for i in index_list:
         plotter = Plotter(my_period)
         '''
 
+    '''
     # plot matrices of every time slot only for observation
     mdir = my_period.get_middle_dir()
     mfiles = os.listdir(mdir)
@@ -61,6 +66,7 @@ for i in index_list:
     for mf in mfiles:
         pf = mf.split('.')[0] + '.pdf'
         print 'Ploting matrix:', mdir+mf
-        plot_matrix(mdir+mf, plotdir+pf) #TODO specify a range
+        plot_matrix(mdir+mf, plotdir+pf) #TODO specify a range?
+    '''
 
 logging.info('Program ends!')

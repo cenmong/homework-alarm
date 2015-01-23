@@ -25,11 +25,13 @@ class Period():
         self.rib_info_file = rib_info_dir + self.sdate + '_' + self.edate + '.txt'
     
         self.co_mo = dict() # collector: monitor list (does not store empty list)
-
-        self.no_prefixes = patricia.trie(None) # prefixes that should be ignored TODO
+        self.mo_asn = dict()
 
         # Note: Get this only when necessary
-        self.as2nation = self.get_as2nation_dict()
+        #self.get_as2nn_file()
+        as2nn = self.get_as2nn_dict()
+        self.as2nation = as2nn[0]
+        self.as2name = as2nn[1]
 
         # Note: Occassionally run it to get the latest data. (Now up to 20141225)
         #self.get_fib_size_file()
@@ -81,35 +83,28 @@ class Period():
         
 
     # Run it once will be enough. (Note: we can only get the *latest* AS to nation mapping)
-    def get_as2nation_file(self):
-        print 'Downloading AS to nation file...'
-        if os.path.exists(pub_spt_dir+'as2nation.txt'):
-            return 0
+    def get_as2nn_file(self):
+        cmlib.force_download_file('http://bgp.potaroo.net/cidr/', pub_spt_dir, 'autnums.html')
 
-        the_url = 'http://bgp.potaroo.net/cidr/autnums.html'
-        rows = cmlib.get_weblist(the_url).split('\n')
-
-        f = open(pub_spt_dir+'as2nation.txt', 'w')
-        for line in rows:
-            if 'AS' not in line:
-                continue
-            nation = line.split(',')[-1] 
-            ASN = line.split()[0].strip('AS')
-            f.write(ASN+' '+nation+'\n')
-        f.close()
-
-        return 0
-
-    def get_as2nation_dict(self):
+    def get_as2nn_dict(self):
         print 'Constructing AS to nation dict...'
         as2nation = {}
+        as2name = {}
 
-        f = open(datadir+'support/as2nation.txt')
+        f = open(pub_spt_dir+'autnums.html')
         for line in f:
-            as2nation[int(line.split()[0])] = line.split()[1]
+            if not line.startswith('<a h'):
+                continue
+            line = line.split('</a> ')
+            content = line[1].rsplit(',', 1)
+            name = content[0]
+            nation = content[1].rstrip('\n')
+            asn = int(line[0].split('>AS')[1])
+            as2nation[asn] = nation
+            as2name[asn] = name
         f.close()
 
-        return as2nation
+        return [as2nation, as2name]
 
     def get_global_monitors(self):
         norm_size = self.get_fib_size()
@@ -132,6 +127,8 @@ class Period():
                 if '.' not in mo_ip: # ignore ipv6
                     continue
                 fibsize = int(line.split('@')[1].split('|')[0])
+                asn = int(line.split('@')[1].split('|')[1])
+                self.mo_asn[mo_ip] = asn
                 if fibsize > 0.9 * norm_size:
                     try: 
                         test = self.co_mo[co]
