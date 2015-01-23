@@ -458,7 +458,7 @@ class Downloader():
                         time_found = True
                         pfx = attr[5]
                         rnode = counted_pfx.search_exact(pfx)
-                        if rnode == None:
+                        if rnode is None:
                             rnode = counted_pfx.add(pfx)
                         else:
                             new_f.write(updt)
@@ -488,6 +488,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
+    #order_list = [0,1,3,4,5]
     order_list = [27]
 
     # we select all collectors that have appropriate start dates
@@ -499,7 +500,7 @@ if __name__ == '__main__':
                 collector_list[i].append(co)
         print i,':',collector_list[i]
 
-    collector_list[27] = collector_list[27][-2:] #XXX test
+    collector_list[27] = collector_list[27][-1:] #XXX test
     #collector_list[27] = ['route-views.eqix']
     
     '''

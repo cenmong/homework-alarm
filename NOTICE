@@ -5,16 +5,14 @@ work-arounds: check whether this file exists before packing
 There are few files where there are blank lines between two successive updates
 ---------------------------------------------------------------
 Note: do not put everything into log, which makes the log file extremely large
-Besides, logging costs much time! do not log frequently!
+Note: logging costs much time! do not log frequently!
 ---------------------------------------------------------------
 Problem: RV2 peers' prefix quantity quite small in a certain RIB
+Solve: download RIB of reasonbale size
 --------------------------------------------------------------
 Once apon a time, archive.routeviews.org fail to work, while routeviews.org can
 However now the latter fails in IPv6 but the former can in both
 --------------------------------------------------------------
-BUG: sometimes when downloading an update file, the program looks like has stoped
-inspect: may due to too many tcp connections
--------------------------------------------------------------
 BUG: cannot parse a certain file (program cannot stop)
 ------------------------------------------------------------------
 when viewing a long line, vim can become very slow...
@@ -23,13 +21,11 @@ Never press ctrl+Z, use ctrl+C instead
 -----------------------------------------------------------------
 Interesing fact:
 File size (write diresctly into .gz) slightly < file size (gzip a text file)
----------------------------------------------------------------
-strange: ll and os.getsize show different results? (CHECK AGAIN!!!)
 ----------------------------------------------------------------------
-Note: if a peer is too strange or active, we can dismiss it from analysis
+Note: if a peer is too strange or active, we can simply dismiss it from analysis
 ---------------------------------------------------------------------------
 Note: according to limited sampling, if the date of a RRC/RV update file is X minutes, then the updates inside the file
 could be as early as X(for rrc)and X~X+several seconds(for RV), and as late as X+4:99/5(for rrc) and X + 15 seconds(For RV)
-In conclusion, the date time of the updates will be always within the confine of the file name
+In conclusion, the date-time of the updates will be always within the confine of the file name
 -------------------------------------------------------------------------
-Note: run delete reset program only once; running it multiple times may cause over-deletion
+Note: run delete reset program only once! running it multiple times may cause over-deletion!

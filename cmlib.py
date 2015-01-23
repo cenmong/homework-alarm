@@ -38,14 +38,13 @@ def get_peer_info(rib_full_loc):
     for line in f:
         try:
             peer = line.split('|')[3]
-            try:
-                peer_pfx_count[peer] += 1
-            except:
-                peer_pfx_count[peer] = 1
-
             asn = line.split('|')[4]
-            if int(asn) > 0: # I ran into a 0 for once
+            if int(asn) > 0: # I ran into a 0 for several times
                 peer2as[peer] = asn
+                try:
+                    peer_pfx_count[peer] += 1
+                except:
+                    peer_pfx_count[peer] = 1
         except: # strange line
             pass
     f.close()
