@@ -48,6 +48,16 @@ class Reaper():
                 self.filegroups.append(group)
                 group = []
 
+        self.dv_thre = 0.2
+        self.uq_thre = 50
+        self.hdv_ts = dict()
+        self.huq_ts = dict()
+        self.h2_ts = dict()
+        self.hdvo = ditc()
+        self.huqo = dict()
+
+        self.uq_total = dict()
+
     # Do many tasks in only one scan of all files!
     def read_files(self):
         for fg in self.filegroups:

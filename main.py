@@ -12,6 +12,7 @@ import logging
 logging.info('Program starts!')
 
 # TODO Microscopic analysis (e.g., case studies, update content) should be in another logic
+# analyze certain prefix, certain AS, certain period, etc.
 
 #action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
@@ -27,7 +28,7 @@ for i in index_list:
     my_period.get_global_monitors() # decide my_period.monitors
     #my_period.rm_dup_mo() # rm multiple existence of the same monitor
     #my_period.mo_filter_same_as()
-    # TODO construct different monitor sets to observe their effect
+    # TODO construct different monitor sets to observe their effect on ...
 
     my_period.get_as2namenation()
     my_period.get_mo2cc()
@@ -43,18 +44,20 @@ for i in index_list:
 
     if action['middle']:
         alarm = Alarm(my_period, option['mid_granu'])
-        alarm.analyze_to_middle() # analyze all updates and store all middle output files
+        alarm.analyze_to_middle() # analyze all updates and store to middle output files
 
     if action['final']:
         reaper = Reaper(my_period, option['final_granu'], shift=10)
         reaper.read_files()
         # TODO record DV and UQ distribution for certain periods, e.g., 8 weeks?
-        # TODO Obtain time series of all types of prefixes (enable threshold change)
-        # TODO record the overall UQ time series related to all types of prefixes
-        # TODO record the overall DV distribution of all types of prefixes
+        # easy TODO Obtain time series of all types of prefixes (enable threshold change)
+        # easy TODO record the overall UQ time series related to all types of prefixes
+        # easy TODO record the overall DV distribution of all types of prefixes
         # TODO obtain the time series ratio of new HUQ prefixes in every interval
+        # :easy,maintain a now_huq set
         # TODO obtain the life time distribution of HUQ prefixes
-        # Note: be careful when organizing output
+        # :follow the previous step. If a HUQ persists, we +1 in a radix. Record multiple existence in a list
+        # Note: be careful when organizing output becaue we have so many variables
         '''
         # TODO paper: prefix
         reaper.get_XXX
