@@ -400,6 +400,8 @@ class Downloader():
                 peer_resettime[now_peer] = [[stime_unix, endtime_unix],]
         resetf.close()
 
+        # FIXME write the info into a file
+        # different cos in the same file
         for p in peer_resettime:
             for l in peer_resettime[p]:
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
@@ -489,7 +491,7 @@ class Downloader():
 # The main function
 if __name__ == '__main__':
     #order_list = [0,1,3,4,5]
-    order_list = [27]
+    order_list = [271]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
@@ -500,10 +502,8 @@ if __name__ == '__main__':
                 collector_list[i].append(co)
         print i,':',collector_list[i]
 
-    collector_list[27] = collector_list[27][-1:] #XXX test
-    #collector_list[27] = ['route-views.eqix']
+    #collector_list[27] = collector_list[27][-1:] #XXX test
     
-    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -542,13 +542,13 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
-    '''
 
+    '''
     # Delete reset updates
-    # FIXME record delete reset history!
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
             dl.delete_reset()
+    '''

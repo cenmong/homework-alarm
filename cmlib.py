@@ -92,8 +92,9 @@ def force_download_file(url, save_loc, filename):
             with open(save_loc+filename,'wb') as code:
                 code.write(f.read())
             break
-        except socket.timeout, e:
-            print 'Time out! Retry...'
+        #except socket.timeout, e:
+        except:
+            print 'Time out or other failure! Retry...'
 
 def get_unpack_gz(url, save_loc, filename):
     if not os.path.exists(save_loc+re.sub('\.gz$', '', filename)):

@@ -67,6 +67,7 @@ daterange = {
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again |
     27:('20141130','20141201'), # test only
+    271:('20141115', '20141116'), # test only
     28:('20130101','20131231'), # XXX downloading in WD
 }
 

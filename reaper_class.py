@@ -9,6 +9,7 @@ import gzip
 import traceback
 import logging
 import subprocess
+import os
 
 from netaddr import *
 from env import *
@@ -25,15 +26,28 @@ class Reaper():
         self.middle_dir = period.get_middle_dir()
         self.final_dir = period.get_final_dir()
 
-        os.listdir(self.middle_dir)
-        # TODO sort the file list by time
-        # obtain the time granularity of these files
-        # group the files into a list of self.granu/middle_granu files (take care when ==1)
-        # remove the last one if it is not full
-        # sort the new list: its the basic element of analysis
+        mfiles = os.listdir(self.middle_dir)
+        for f in mfiles:
+            if not f.endswith('.gz'):
+                mfiles.remove(f)
+        mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
+
+        # get granularity of middle files
+        m_granu = (int(mfiles[1].rstrip('.txt.gz')) - int(mfiles[0].rstrip('.txt.gz'))) / 60
+        shift_file_c = shift / m_granu
+        mfiles = mfiles[shift_file_c:] # shift the interval
+
+        group_size = self.granu / m_granu
+        filegroups = list() # list of file groups
+        group = []
+        for f in mfiles:
+            group.append(f)
+            if len(group) is group_size:
+                filegroups.append(group)
+                group = []
+
         # Is it necessary? datatime obj : [file1,file2]
 
-    # XXX a slot here looks like [file1,file2]
     # get the dv and uq of all prefixes in this slot
     # write into final files? return a all_dv_uq_files list. Jump if files exist.
     def get_all_dv_uq(self, slot):
@@ -45,20 +59,3 @@ class Reaper():
         return 0
     # high DV time series obtained from final files
     # argument: a list of thresholds
-
-    def ts_hdv(self, tlist):
-        return 0
-
-    # high UQ time series
-    def ts_huq(self):
-        return 0
-
-    # high both time series
-    def ts_h2(self):
-        return 0
-
-    def ts_hdvo(self):
-        return 0
-
-    def ts_huqo(self):
-        return 0
