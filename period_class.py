@@ -357,6 +357,13 @@ class Period():
             count += len(self.co_mo[co])
         logging.info('Filtered out same-AS-monitors, # now:%d', count)
 
+    def get_mo_number(self):
+        count = 0
+        for co in self.co_mo:
+            for mo in self.co_mo[co]:
+                count += 1
+        return count
+
     def get_filelist(self):
         listdir = ''
 
@@ -371,14 +378,10 @@ class Period():
         for lf in listfiles:
             f = open(lf, 'r')
             for name in f:
-                name = name.replace('\n', '')
+                name = name.rstrip('\n')
                 file_attr = name.split('.')
-                try:
-                    file_dt = file_attr[rrc_date_fpos] + file_attr[rrc_time_fpos]
-                    dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
-                except:
-                    file_dt = file_attr[rv_date_fpos] + file_attr[rv_time_fpos]
-                    dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
+                file_dt = file_attr[-6] + file_attr[-5]
+                dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
                 fnames[name] = dt_obj
             f.close()
         tmpdict = sorted(fnames, key=fnames.get)

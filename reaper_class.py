@@ -10,7 +10,9 @@ import traceback
 import logging
 import subprocess
 import os
+import ast
 
+from cStringIO import StringIO
 from netaddr import *
 from env import *
 #from supporter_class import *
@@ -20,8 +22,7 @@ class Reaper():
 
     def __init__(self, period, granu, shift):
         self.period = period
-        self.granu = granu
-        self.shift = shift
+        self.mo_number = float(self.period.get_mo_number())
 
         self.middle_dir = period.get_middle_dir()
         self.final_dir = period.get_final_dir()
@@ -37,25 +38,42 @@ class Reaper():
         shift_file_c = shift / m_granu
         mfiles = mfiles[shift_file_c:] # shift the interval
 
+        self.granu = granu
         group_size = self.granu / m_granu
-        filegroups = list() # list of file groups
+        self.filegroups = list() # list of file groups
         group = []
         for f in mfiles:
             group.append(f)
             if len(group) is group_size:
-                filegroups.append(group)
+                self.filegroups.append(group)
                 group = []
 
-        # Is it necessary? datatime obj : [file1,file2]
+    # Do many tasks in only one scan of all files!
+    def read_files(self):
+        for fg in self.filegroups:
+            dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            for f in fg:
+                print 'Reading ',self.middle_dir+f
 
-    # get the dv and uq of all prefixes in this slot
-    # write into final files? return a all_dv_uq_files list. Jump if files exist.
-    def get_all_dv_uq(self, slot):
-        return 0
+                p = subprocess.Popen(['zcat', self.middle_dir+f],stdout=subprocess.PIPE)
+                fin = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in fin:
+                    line = line.rstrip('\n')
+                    if line == '':
+                        continue
 
-    # XXX Note: we should Read these final files as less as possible to save time
-    # get all time seris after one reading
-    def get_ts(self, options):
+                    pfx = line.split(':')[0]
+                    data = ast.literal_eval(line.split(':')[1])
+
+                    count = 0
+                    uq = 0
+                    for d in data:
+                        if d > 0:
+                            count += 1
+                            uq += d
+                    dv = count/self.mo_number
+
+                fin.close()
+
         return 0
-    # high DV time series obtained from final files
-    # argument: a list of thresholds

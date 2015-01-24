@@ -25,8 +25,8 @@ for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
-    my_period.rm_dup_mo() # rm multiple existence of the same monitor
-    my_period.mo_filter_same_as()
+    #my_period.rm_dup_mo() # rm multiple existence of the same monitor
+    #my_period.mo_filter_same_as()
     # TODO construct different monitor sets to observe their effect
 
     my_period.get_as2namenation()
@@ -46,7 +46,8 @@ for i in index_list:
         alarm.analyze_to_middle() # analyze all updates and store all middle output files
 
     if action['final']:
-        reaper = Reaper(my_period, option['final_granu'], shift=0)
+        reaper = Reaper(my_period, option['final_granu'], shift=10)
+        reaper.read_files()
         # TODO record DV and UQ distribution for certain periods, e.g., 8 weeks?
         # TODO Obtain time series of all types of prefixes (enable threshold change)
         # TODO record the overall UQ time series related to all types of prefixes
