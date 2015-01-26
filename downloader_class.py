@@ -19,10 +19,7 @@ logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, forma
 from env import *
 from cStringIO import StringIO
 
-#--------------------------------------------------------------------
-# Stand-alone functions
 
-# output: .bz2/gz.txt.gz files
 def parse_update_files(listfile): # all update files from one collectors/list
     flist = open(listfile, 'r')
     for line in flist:
@@ -37,7 +34,7 @@ def parse_update_files(listfile): # all update files from one collectors/list
     flist.close()
     return 0
 
-#--------------------------------------------------------------------------
+
 class Downloader():
 
     def __init__(self, sdate, edate, co):
@@ -51,7 +48,8 @@ class Downloader():
         self.rib_list = list()
 
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
-
+        
+        self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
     def get_listfile(self):
         return self.listfile
 
@@ -243,21 +241,29 @@ class Downloader():
 
         avg = np.mean(sizelist) 
 
-        target_line = '' # stores the RIB file for downloading
+        target_line = None # stores the RIB file for downloading
+        largest_line = None
+        max = -1
         closest = 99999
         for line in rib_list:
             fdate = line.split()[0].split('.')[-3]
+            size = line.split()[-1]
+            fsize = cmlib.parse_size(size)
+            if fsize > max:
+                max = fsize
+                largest_line = line
+            
             diff = abs(int(fdate)-int(my_date)) # >0
-            # XXX logic here not clear (maybe effective)
-            if diff <= closest:
-                size = line.split()[-1]
-                fsize = cmlib.parse_size(size)
+            # XXX logic here not clear (but seems effective)
+            if diff <= closest and fsize > 0.9 * avg and fsize < 1.1 * avg:
+                target_line = line
+                closest = diff
 
-                if fsize > 0.9 * avg and fsize < 1.1 * avg:
-                    target_line = line
-                    closest = diff
+        if target_line is None:
+            assert largest_line is not None
+            print 'Failed. Resort to downloading the largest RIB...'
+            target_line = largest_line # work-around for a special case
 
-        assert target_line != ''
 
         print 'Selected RIB:', target_line
         size = target_line.split()[-1] # claimed RIB file size
@@ -400,7 +406,14 @@ class Downloader():
                 peer_resettime[now_peer] = [[stime_unix, endtime_unix],]
         resetf.close()
 
-        # FIXME write the info into a file
+        # write the reset info into a file
+        cmlib.make_dir(reset_info_dir)
+        f = open(self.reset_info, 'a')
+        f.write(self.co+':\n')
+        for p in peer_resettime:
+            f.write(p+'@'+str(peer_resettime[p])+'\n')
+        f.close()
+
         # different cos in the same file
         for p in peer_resettime:
             for l in peer_resettime[p]:
@@ -460,9 +473,9 @@ class Downloader():
                         time_found = True
                         pfx = attr[5]
                         rnode = counted_pfx.search_exact(pfx)
-                        if rnode is None:
+                        if rnode is None: # cannot find, delete the update
                             rnode = counted_pfx.add(pfx)
-                        else:
+                        else: # found, so the prefix has been deleted once
                             new_f.write(updt)
                     else:
                         new_f.write(updt)
@@ -490,7 +503,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    #order_list = [0,1,3,4,5]
+    #order_list = [4,5]
     order_list = [271]
 
     # we select all collectors that have appropriate start dates
@@ -504,6 +517,7 @@ if __name__ == '__main__':
 
     #collector_list[27] = collector_list[27][-1:] #XXX test
     
+    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -551,4 +565,3 @@ if __name__ == '__main__':
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
             dl.delete_reset()
-    '''

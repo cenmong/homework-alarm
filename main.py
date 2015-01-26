@@ -47,9 +47,10 @@ for i in index_list:
         alarm.analyze_to_middle() # analyze all updates and store to middle output files
 
     if action['final']:
-        reaper = Reaper(my_period, option['final_granu'], shift=10)
+        reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
         reaper.read_files()
-        # TODO record DV and UQ distribution for certain periods, e.g., 8 weeks?
+        # XXX the coding should be rather scalable
+        # step2 TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # easy TODO Obtain time series of all types of prefixes (enable threshold change)
         # easy TODO record the overall UQ time series related to all types of prefixes
         # easy TODO record the overall DV distribution of all types of prefixes

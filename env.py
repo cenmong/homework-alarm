@@ -12,6 +12,7 @@ rrc_root = 'data.ris.ripe.net/'
 spt_dir = datadir + 'support/'
 pub_spt_dir = datadir + 'support/public/'
 rib_info_dir = datadir+'rib_info/'
+reset_info_dir = datadir+'reset_info/'
 
 #------------------------------------------------------
 # according to http://en.wikipedia.org/wiki/Tier_1_network
