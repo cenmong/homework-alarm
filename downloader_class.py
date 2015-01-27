@@ -417,8 +417,10 @@ class Downloader():
                 f.write(str(rs)+'\n')
         f.close()
 
-        # different cos in the same file
+        # different collectors in the same file
         for p in peer_resettime:
+            if ':' in p: # XXX note: We do not delete IPv6 updates
+                continue
             for l in peer_resettime[p]:
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
 

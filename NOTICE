@@ -29,3 +29,5 @@ could be as early as X(for rrc)and X~X+several seconds(for RV), and as late as X
 In conclusion, the date-time of the updates will be always within the confine of the file name
 -------------------------------------------------------------------------
 Note: run delete reset program only once! running it multiple times may cause over-deletion!
+----------------------------------------------------------------------
+I've decided not to delete IPv6 peer reset. For some peers, its FIB size is much smaller than observed prefixes (which is very strange), so the 'bottom search' function can make to resets have the same end time. Anyway, IPv6 is a little strange in this aspect (possibly makes interesting future work).
