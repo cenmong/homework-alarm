@@ -19,6 +19,7 @@ reset_info_dir = datadir+'reset_info/'
 tier1_asn = [3320,3356,3549,1,2914,5511,1239,6453,6762,12956,1299,701,702,703,1273,2828,6461]
 
 #-------------------------------------------------------
+# XXX Note: do not change this list
 all_collectors = { # 17 in total
     '': '20011101', 
     'route-views4': '20081201',
@@ -42,6 +43,11 @@ all_collectors = { # 17 in total
     #'rrc07': '20020501', # too few peers with global table
 }
 
+# rrc14 has a blank period where no update is collected
+co_blank = {
+    'rrc14': ['20090324', '20100326'],
+}
+
 #-------------------------------------------------------
 daterange = {
     0:('20061224','20061230'), #taiwan cable cut | SG
@@ -53,24 +59,25 @@ daterange = {
     6:('20100225','20100303'), #Chile earthquake | SG
     7:('20110309','20110315'), #Japan Tsunami | SG
     8:('20121020','20121102'), #Hurricane Sandy | SG
-    9:('20130316','20130329'), # Spamhaus DDoS attack | XXX contained in 28
+    9:('20130316','20130329'), # Spamhaus DDoS attack | WD XXX contained in 28
     10:('20080510','20080516'), #Sichuan Earthquake | SG
     #11:('20110824','20110827'), #Hurricane Irene |
-    12:('20130206','20130212'), #Northeastern US blackout | XXX contained in 28
+    12:('20130206','20130212'), #Northeastern US blackout | WD XXX contained in 28
     13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
     #14:('20120221','20120224'), #Australia route leakage |
     #15:('20120807','20120810'), #Canada route leakage |
     16:('20030123','20030129'), #Slammer worm | SG
-    17:('20130321','20130324'), #EASSy/SEACOM outages | XXX contained in 28
-    18:('20130213','20130216'), #SEACOM outage | XXX contained in 28
+    17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX contained in 28
+    18:('20130213','20130216'), #SEACOM outage | WD XXX contained in 28
     #19:('20110327','20110330'), #Caucasus cable cut |
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
-    22:('20120424','20120430'), #TEAMS cable cut in east Africa again |
+    22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
     27:('20141130','20141201'), # test only
     271:('20141115', '20141116'), # test only
     28:('20130101','20131231'), # XXX downloading in WD
 }
+# TODO: Blaster worm(2003);
 
 # [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
 # [6th parm] event start date time,[7th parm] (opt) event end date time

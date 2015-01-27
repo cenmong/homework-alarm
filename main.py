@@ -14,9 +14,9 @@ logging.info('Program starts!')
 # TODO Microscopic analysis (e.g., case studies, update content) should be in another logic
 # analyze certain prefix, certain AS, certain period, etc.
 
-#action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
+action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
-action = {'middle':False, 'final':True, 'plot':False}
+#action = {'middle':False, 'final':True, 'plot':False}
 #action = {'middle':False, 'final':False, 'plot':True}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N
 
@@ -26,8 +26,8 @@ for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
-    #my_period.rm_dup_mo() # rm multiple existence of the same monitor
-    #my_period.mo_filter_same_as()
+    my_period.rm_dup_mo() # rm multiple existence of the same monitor
+    my_period.mo_filter_same_as()
     # TODO construct different monitor sets to observe their effect on ...
 
     my_period.get_as2namenation()
@@ -48,7 +48,7 @@ for i in index_list:
 
     if action['final']:
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-        reaper.read_files()
+        #reaper.read_files()
         # XXX the coding should be rather scalable
         # step2 TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # easy TODO Obtain time series of all types of prefixes (enable threshold change)

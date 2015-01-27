@@ -407,11 +407,14 @@ class Downloader():
         resetf.close()
 
         # write the reset info into a file
+        # FIXME deal with gap > 32 days
         cmlib.make_dir(reset_info_dir)
         f = open(self.reset_info, 'a')
         f.write(self.co+':\n')
         for p in peer_resettime:
-            f.write(p+'@'+str(peer_resettime[p])+'\n')
+            f.write(p+'@\n')
+            for rs in peer_resettime[p]:
+                f.write(str(rs)+'\n')
         f.close()
 
         # different cos in the same file
@@ -482,7 +485,7 @@ class Downloader():
                 except Exception, err:
                     if updt != '':
                         logging.info(traceback.format_exc())
-                        logging.info(update)
+                        logging.info(updt)
 
             old_f.close()
             new_f.close()
@@ -496,26 +499,38 @@ class Downloader():
                    
         f.close()
 
-        assert time_found == True # does not fit a very active peer
-        #if time_found == False:
-        #    logging.error('%s:Cannot find time in files when deleting reset...', self.co)
+        #assert time_found == True # does not fit a very active peer
+        if time_found == False:
+            logging.error('%s:Cannot find time in files when deleting reset: ', self.co)
+            logging.error(peer, stime_unix, endtime_unix)
 
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    #order_list = [4,5]
-    order_list = [271]
+    order_list = [6,7,8,10,13]
+    #order_list = [271]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
         collector_list[i] = list()
         for co in all_collectors.keys():
-            if int(all_collectors[co]) <= int(daterange[i][0]):
-                collector_list[i].append(co)
+            co_sdate = all_collectors[co]
+            sdate = daterange[i][0]
+            edate = daterange[i][1]
+            if co not in co_blank.keys():
+                if int(co_sdate) <= int(sdate):
+                    collector_list[i].append(co)
+            else:
+                bstart = co_blank[co][0]
+                bend = co_blank[co][1]
+                if int(co_sdate)<=int(sdate) and not (int(bstart)<=int(sdate)<=\
+                        int(bend) or int(bstart)<=int(edate)<=int(bend)):
+                    collector_list[i].append(co)
+
         print i,':',collector_list[i]
 
-    #collector_list[27] = collector_list[27][-1:] #XXX test
+    #collector_list[271] = collector_list[271][2:] #XXX test
     
     '''
     listfiles = [] # a list of update file list files
@@ -532,6 +547,7 @@ if __name__ == '__main__':
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
+    '''
 
     # Download and record RIB and get peer info 
     for order in order_list:
@@ -565,3 +581,4 @@ if __name__ == '__main__':
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
             dl.delete_reset()
+    '''
