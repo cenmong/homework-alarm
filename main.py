@@ -28,7 +28,6 @@ for i in index_list:
     my_period.get_global_monitors() # decide my_period.monitors
     #my_period.rm_dup_mo() # rm multiple existence of the same monitor
     #my_period.mo_filter_same_as()
-    # future TODO construct different monitor sets to observe their effect on ...
 
     my_period.get_as2namenation()
     my_period.get_mo2cc()
@@ -54,15 +53,11 @@ for i in index_list:
         reaper.analyze()
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # : in order to avoid the period when disruptive events happened
-        # OK TODO Obtain time series of all types of prefixes (enable threshold change)
-        # OK TODO record the overall UQ time series related to all types of prefixes
-        # ready TODO record the overall DV distribution of all types of prefixes
-        # ready TODO obtain the time series ratio of new HUQ prefixes in every interval
-        # ready TODO obtain the overall-lifetime distribution of HUQ prefixes
         '''
         # for paper 2
         reaper.calculate()
         '''
+        # future TODO select results of only part of the monitors to observe its impact
 
     if action['plot']:
         # TODO No or little logic in plotting

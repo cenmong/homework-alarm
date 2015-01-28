@@ -23,6 +23,7 @@ class Reaper():
     def __init__(self, period, granu, shift):
         self.period = period
         self.mo_number = float(self.period.get_mo_number())
+        self.shift = shift
 
         self.middle_dir = period.get_middle_dir()
         self.final_dir = period.get_final_dir()
@@ -34,12 +35,12 @@ class Reaper():
         mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
 
         # get granularity of middle files
-        m_granu = (int(mfiles[1].rstrip('.txt.gz')) - int(mfiles[0].rstrip('.txt.gz'))) / 60
-        shift_file_c = shift / m_granu
+        self.m_granu = (int(mfiles[1].rstrip('.txt.gz')) - int(mfiles[0].rstrip('.txt.gz'))) / 60
+        shift_file_c = shift / self.m_granu
         mfiles = mfiles[shift_file_c:] # shift the interval
 
         self.granu = granu
-        group_size = self.granu / m_granu
+        group_size = self.granu / self.m_granu
         self.filegroups = list() # list of file groups
         group = []
         for f in mfiles:
@@ -48,14 +49,14 @@ class Reaper():
                 self.filegroups.append(group)
                 group = []
 
-        # DV and UQ threshold (set by a self function)
+        # DV and UQ thresholds (set by a self function)
         self.dv_thre = None
         self.uq_thre = None
 
 
         #--------------------------------------------------------------------
         # values for specific tasks
-        # TODO check memory pressure. if too hard, scan two or more times. Or only use one radix
+        # TODO check memory pressure. if too hard, scan two or more times
 
         # recore time series of three types of prefixes. datetime: value
         self.hdv_ts = dict()
@@ -63,26 +64,19 @@ class Reaper():
         self.h2_ts = dict()
 
         # overall updates time series of certain prefixes
-        self.uq_hdv_ts = dict()
-        self.uq_huq_ts = dict()
-        self.uq_h2_ts = dict()
+        self.uq_ts_hdv = dict()
+        self.uq_ts_huq = dict()
+        self.uq_ts_h2 = dict()
         # total updates time series 
         self.uq_ts = dict()
 
         # overall DV distribution of certain prefixes
-        self.dv_hdv_distr = dict() # DV value: existence
-        self.dv_huq_distr = dict() # DV value: existence
-        self.dv_h2_distr = dict() # DV value: existence
+        self.dv_distr_hdv = dict() # DV value: existence
+        self.dv_distr_huq = dict() # DV value: existence
+        self.dv_distr_h2 = dict() # DV value: existence
 
         # Lifetime of 3 types of H prefixes
         self.pfx_lifetime = radix.Radix() # XXX costs memo
-
-        # total DV and UQ distribution
-        self.dv_distr_all = dict()
-        self.uq_distr_all = dict()
-        # DV and UQ distribution for certain period # TODO need INPUT
-        #self.dv_distr[period1] = dict()
-        #self.uq_distr[period1] = dict()
 
         self.p_hset = radix.Radix() # H prefix set in the previous interval 
         self.c_hset = radix.Radix() # current high prefix set
@@ -94,9 +88,22 @@ class Reaper():
         self.newp_huq_ts = dict()
         self.newp_h2_ts = dict()
 
+        # total DV and UQ distribution
+        self.dv_distr_all = dict()
+        self.uq_distr_all = dict()
+        # DV and UQ distribution for certain period # TODO accomplish when dealing the year 2013
+        #self.dv_distr[period1] = dict()
+        #self.uq_distr[period1] = dict()
+
+
     def set_dv_uq_thre(self, dvt, uqt): # Input a dict of exact format
         self.dv_thre = dvt
         self.uq_thre = uqt
+
+    def get_output_dir(self):
+        assert self.dv_thre != None and self.uq_thre != None
+        return self.final_dir + str(self.dv_thre).lstrip('0.') + '_' + str(self.uq_thre) +\
+                '_' + str(self.m_granu) + '_' + str(self.granu) + '_' + str(self.shift) + '/'
 
     # Do many tasks in only one scan of all files!
     def analyze(self):
@@ -107,9 +114,9 @@ class Reaper():
             self.huq_ts[unix_dt] = 0
             self.h2_ts[unix_dt] = 0
 
-            self.uq_hdv_ts[unix_dt] = 0
-            self.uq_huq_ts[unix_dt] = 0
-            self.uq_h2_ts[unix_dt] = 0
+            self.uq_ts_hdv[unix_dt] = 0
+            self.uq_ts_huq[unix_dt] = 0
+            self.uq_ts_h2[unix_dt] = 0
             self.uq_ts[unix_dt] = 0
 
             self.new_hdv_ts[unix_dt] = 0
@@ -125,10 +132,8 @@ class Reaper():
                 self.read_a_file(self.middle_dir+f, unix_dt)
 
             self.p_hset = self.c_hset
-        # TODO output here
-        # release memo if necessary
-        # be careful when constructing the outpur dir and file name
-        # consider DV HQ thre, original and final granu and shift 
+
+        self.output()
         return 0
 
     def read_a_file(self, floc, unix_dt):
@@ -141,6 +146,8 @@ class Reaper():
             if line == '':
                 continue
 
+            #---------------------------------------------------------
+            # Obtain DV and UQ
             pfx = line.split(':')[0]
             data = ast.literal_eval(line.split(':')[1])
 
@@ -152,12 +159,14 @@ class Reaper():
                     uq += d
             dv = count/self.mo_number # dynamic visibility
 
+            #---------------------------------------------------------
+            # analyze the DV and UQ
             huq_flag = False
             if uq > self.uq_thre: # the prefix is a HUQ prefix
                 self.huq_ts[unix_dt] += 1
-                self.uq_huq_ts[unix_dt] += uq
+                self.uq_ts_huq[unix_dt] += uq
 
-                self.distr_add_one(self.dv_huq_distr, dv)
+                self.distr_add_one(self.dv_distr_huq, dv)
 
                 if self.is_newp(pfx, 'huq'):
                     self.newp_huq_ts[unix_dt] += 1
@@ -170,9 +179,9 @@ class Reaper():
 
             if dv > self.dv_thre: # the prefix is a HDV prefix
                 self.hdv_ts[unix_dt] += 1
-                self.uq_hdv_ts[unix_dt] += uq
+                self.uq_ts_hdv[unix_dt] += uq
 
-                self.distr_add_one(self.dv_hdv_distr, dv)
+                self.distr_add_one(self.dv_distr_hdv, dv)
 
                 if self.is_newp(pfx, 'hdv'):
                     self.newp_hdv_ts[unix_dt] += 1
@@ -183,9 +192,9 @@ class Reaper():
 
                 if huq_flag: # the prefix is a H2 prefix
                     self.h2_ts[unix_dt] += 1
-                    self.uq_h2_ts[unix_dt] += uq
+                    self.uq_ts_h2[unix_dt] += uq
 
-                    self.distr_add_one(self.dv_h2_distr, dv)
+                    self.distr_add_one(self.dv_distr_h2, dv)
 
                     if self.is_newp(pfx, 'h2'):
                         self.newp_h2_ts[unix_dt] += 1
@@ -202,6 +211,38 @@ class Reaper():
             self.distr_add_one(self.uq_distr_all, uq)
 
         fin.close()
+
+    def output(self):
+        output_dir = self.get_output_dir()
+        print output_dir
+        cmlib.make_dir(output_dir)
+
+        selfv = self.__dict__.keys()
+        ts_v = []
+        distr_v = []
+        for v in selfv:
+            if '_ts' in v:
+                ts_v.append(v)
+            elif '_distr' in v:
+                distr_v.append(v)
+
+        print ts_v
+        print distr_v
+
+        for v in ts_v:
+            vname = 'self.' + v
+            value = eval(vname)
+            fname = v + '.txt'
+            self.output_ts(value, output_dir + fname)
+
+        for v in distr_v:
+            vname = 'self.' + v
+            value = eval(vname)
+            fname = v + '.txt'
+            self.output_distr(value, output_dir + fname)
+
+        # TODO output self.pfx_lifetime = radix.Radix()
+
 
     def increase_lifetime(self, pfx, key):
         rnode = self.pfx_lifetime.search_exact(pfx)
@@ -245,4 +286,3 @@ class Reaper():
                 return False #Found
             except:
                 return True
-
