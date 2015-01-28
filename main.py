@@ -26,8 +26,8 @@ for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
-    my_period.rm_dup_mo() # rm multiple existence of the same monitor
-    my_period.mo_filter_same_as()
+    #my_period.rm_dup_mo() # rm multiple existence of the same monitor
+    #my_period.mo_filter_same_as()
     # future TODO construct different monitor sets to observe their effect on ...
 
     my_period.get_as2namenation()
@@ -47,24 +47,21 @@ for i in index_list:
         alarm.analyze_to_middle() # analyze all updates and store to middle output files
 
     if action['final']:
+        # for paper 1
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-
         reaper.set_dv_uq_thre(0.2, 50)
-
-        raction = {'1':True, '2':True}
-        reaper.analyze(raction)
-        # XXX the coding should be rather scalable
+        periods = [[],[],[],[],[],[]]
+        reaper.analyze()
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
+        # : in order to avoid the period when disruptive events happened
         # OK TODO Obtain time series of all types of prefixes (enable threshold change)
         # OK TODO record the overall UQ time series related to all types of prefixes
         # ready TODO record the overall DV distribution of all types of prefixes
         # ready TODO obtain the time series ratio of new HUQ prefixes in every interval
         # ready TODO obtain the overall-lifetime distribution of HUQ prefixes
         '''
-        # TODO paper: prefix
-        reaper.get_XXX
-        # TODO paper: disruptive events
-        reaper.get_XXX
+        # for paper 2
+        reaper.calculate()
         '''
 
     if action['plot']:
