@@ -78,6 +78,7 @@ daterange = {
     28:('20130101','20131231'), # XXX downloading in WD
 }
 # TODO: Blaster worm(2003);
+# Moscow blackout(2005)
 
 # [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
 # [6th parm] event start date time,[7th parm] (opt) event end date time

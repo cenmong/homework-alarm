@@ -49,44 +49,52 @@ class Reaper():
                 group = []
 
         # DV and UQ threshold (set by a self function)
-        self.dv_uq_thre = dict()
+        self.dv_thre = None
+        self.uq_thre = None
 
 
         #--------------------------------------------------------------------
         # values for specific tasks
-        # TODO check memory pressure. if too hard, scan two or more times.
+        # TODO check memory pressure. if too hard, scan two or more times. Or only use one radix
 
         # recore time series of three types of prefixes. datetime: value
         self.hdv_ts = dict()
         self.huq_ts = dict()
         self.h2_ts = dict()
 
-        # overall updates TS of certain prefixes
+        # overall updates time series of certain prefixes
         self.uq_hdv_ts = dict()
         self.uq_huq_ts = dict()
         self.uq_h2_ts = dict()
+        # total updates time series 
+        self.uq_ts = dict()
 
         # overall DV distribution of certain prefixes
         self.dv_hdv_distr = dict() # DV value: existence
         self.dv_huq_distr = dict() # DV value: existence
         self.dv_h2_distr = dict() # DV value: existence
 
-        # DV and uQ distribution for certain period # TODO need INPUT
+        # Lifetime of 3 types of H prefixes
+        self.pfx_lifetime = radix.Radix() # XXX costs memo
+
+        # total DV and UQ distribution
+        self.dv_distr_all = dict()
+        self.uq_distr_all = dict()
+        # DV and UQ distribution for certain period # TODO need INPUT
         self.dv_distr[period1] = dict()
         self.uq_distr[period1] = dict()
 
         # New HDV and HUQ quantity time series
-        self.p_hset = radix.Radix() # previous interval H prefix set
-        self.p10_hset = radix.Radix() # previous 10 interval H prefix set
-
+        self.hset = radix.Radix() # H prefix set for all previous intervals
         self.new_hdv_ts = dict()
         self.new_huq_ts = dict()
+        self.p_hset = radix.Radix() # H prefix set in the previous interval 
+        self.newp_hdv_ts = dict()
+        self.new_huq_ts = dict()
 
-        # Lifetime of H prefixes
-        self.pfx_lifetime = radix.Radix() # XXX certain value plus 1
-
-    def set_dv_uq_thre(self, input): # Input a dict of exact format
-        self.dv_uq_thre = input
+    def set_dv_uq_thre(self, dvt, uqt): # Input a dict of exact format
+        self.dv_thre = dvt
+        self.uq_thre = uqt
 
     def read_a_file(self, floc, unix_dt):
         print 'Reading ', floc
@@ -109,15 +117,83 @@ class Reaper():
                     uq += d
             dv = count/self.mo_number # dynamic visibility
 
+            huq_flag = False
+            if uq > self.uq_thre: # the prefix is a HUQ prefix
+                self.huq_ts[unix_dt] += 1
+                self.uq_huq_ts[unix_dt] += uq
+                try:
+                    self.dv_huq_distr[dv] += 1
+                except:
+                    self.dv_huq_distr[dv] = 1
+                huq_flag = True
+
+                rnode = self.pfx_lifetime.search_exact(pfx)
+                if rnode is None:
+                    mynode = self.pfx_lifetime.add(pfx)
+                    mynode.data['huq_LT'] = 1
+                else:
+                    rnode.data['huq_LT'] += 1
+
+            if dv > self.dv_thre: # the prefix is a HDV prefix
+                self.hdv_ts[unix_dt] += 1
+                self.uq_hdv_ts[unix_dt] += uq
+                try:
+                    self.dv_hdv_distr[dv] += 1
+                except:
+                    self.dv_hdv_distr[dv] = 1
+
+                rnode = self.pfx_lifetime.search_exact(pfx)
+                if rnode is None:
+                    mynode = self.pfx_lifetime.add(pfx)
+                    mynode.data['hdv_LT'] = 1
+                else:
+                    rnode.data['hdv_LT'] += 1
+
+                if huq_flag: # the prefix is a H2 prefix
+                    self.h2_ts[unix_dt] += 1
+                    self.uq_h2_ts[unix_dt] += uq
+                    try:
+                        self.dv_h2_distr[dv] += 1
+                    except:
+                        self.dv_h2_distr[dv] = 1
+
+                    rnode = self.pfx_lifetime.search_exact(pfx)
+                    try:
+                        rnode['h2_LT'] += 1
+                    except:
+                        rnode['h2_LT'] = 1
+
+            # Total update quantity
+            self.uq_ts[unix_dt] += uq
+
+            # Total DV and UQ distribution
+            try:
+                self.dv_distr_all[dv] += 1
+            except:
+                self.dv_distr_all[dv] = 1
+            try:
+                self.uq_distr_all[uq] += 1
+            except:
+                self.uq_distr_all[uq] = 1
+
         fin.close()
 
     # Do many tasks in only one scan of all files!
     def analyze(self):
         for fg in self.filegroups:
-            dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            self.hdv_ts[unix_dt] = 0
+            self.huq_ts[unix_dt] = 0
+            self.h2_ts[unix_dt] = 0
+
+            self.uq_hdv_ts[unix_dt] = 0
+            self.uq_huq_ts[unix_dt] = 0
+            self.uq_h2_ts[unix_dt] = 0
+            self.uq_ts[unix_dt] = 0
             for f in fg:
                 self.read_a_file(self.middle_dir+f, dt)
         # TODO output here
+        # release memo if necessary
         # be careful when constructing the outpur dir and file name
         # consider DV HQ thre, original and final granu and shift 
         return 0

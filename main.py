@@ -14,9 +14,9 @@ logging.info('Program starts!')
 # future TODO Microscopic analysis (e.g., case studies, update content) should be in another logic
 # analyze certain prefix, certain AS, certain period, etc.
 
-action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
+#action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
-#action = {'middle':False, 'final':True, 'plot':False}
+action = {'middle':False, 'final':True, 'plot':False}
 #action = {'middle':False, 'final':False, 'plot':True}
 option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N
 
@@ -49,15 +49,14 @@ for i in index_list:
     if action['final']:
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
 
-        dv_uq_thre = {'dv':0.2, 'uq':50}
-        reaper.set_dv_uq_thre(dv_uq_thre)
+        reaper.set_dv_uq_thre(0.2, 50)
 
         raction = {'1':True, '2':True}
         reaper.analyze(raction)
         # XXX the coding should be rather scalable
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
-        # ready TODO Obtain time series of all types of prefixes (enable threshold change)
-        # ready TODO record the overall UQ time series related to all types of prefixes
+        # OK TODO Obtain time series of all types of prefixes (enable threshold change)
+        # OK TODO record the overall UQ time series related to all types of prefixes
         # ready TODO record the overall DV distribution of all types of prefixes
         # ready TODO obtain the time series ratio of new HUQ prefixes in every interval
         # ready TODO obtain the overall-lifetime distribution of HUQ prefixes
