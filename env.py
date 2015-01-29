@@ -61,21 +61,21 @@ daterange = {
     8:('20121020','20121102'), #Hurricane Sandy | SG
     9:('20130316','20130329'), # Spamhaus DDoS attack | WD XXX contained in 28
     10:('20080510','20080516'), #Sichuan Earthquake | SG
-    #11:('20110824','20110827'), #Hurricane Irene |
+    11:('20110824','20110827'), #Hurricane Irene |
     12:('20130206','20130212'), #Northeastern US blackout | WD XXX contained in 28
     13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
-    #14:('20120221','20120224'), #Australia route leakage |
-    #15:('20120807','20120810'), #Canada route leakage |
+    14:('20120221','20120224'), #Australia route leakage |
+    15:('20120807','20120810'), #Canada route leakage |
     16:('20030123','20030129'), #Slammer worm | SG
     17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX contained in 28
     18:('20130213','20130216'), #SEACOM outage | WD XXX contained in 28
-    #19:('20110327','20110330'), #Caucasus cable cut |
+    19:('20110327','20110330'), #Caucasus cable cut |
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
     27:('20141130','20141201'), # test only
     271:('20141115', '20141116'), # test only
-    28:('20130101','20131231'), # XXX downloading in WD
+    28:('20130101','20131231'), # XXX parsing in WD
 }
 # TODO: Blaster worm(2003);
 # Moscow blackout(2005)

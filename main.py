@@ -48,8 +48,8 @@ for i in index_list:
     if action['final']:
         # for paper 1
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-        reaper.set_dv_uq_thre(0.2, 50)
-        periods = [[],[],[],[],[],[]]
+        reaper.set_dv_uq_thre(0.15, 150)
+        #periods = [[],[],[],[],[],[]]
         reaper.analyze()
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # : in order to avoid the period when disruptive events happened

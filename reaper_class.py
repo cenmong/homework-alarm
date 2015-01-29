@@ -49,6 +49,8 @@ class Reaper():
                 self.filegroups.append(group)
                 group = []
 
+        self.filegroups = self.filegroups[:5] #XXX test
+
         # DV and UQ thresholds (set by a self function)
         self.dv_thre = None
         self.uq_thre = None
@@ -57,6 +59,9 @@ class Reaper():
         #--------------------------------------------------------------------
         # values for specific tasks
         # TODO check memory pressure. if too hard, scan two or more times
+
+        # record all pfx and data in the current interval
+        self.c_pfx_data = radix.Radix()
 
         # recore time series of three types of prefixes. datetime: value
         self.hdv_ts = dict()
@@ -126,17 +131,18 @@ class Reaper():
             self.newp_huq_ts[unix_dt] = 0
             self.newp_h2_ts[unix_dt] = 0
 
-            self.c_hset = radix.Radix() # initialize the radix to empty
-
             for f in fg:
-                self.read_a_file(self.middle_dir+f, unix_dt)
+                self.read_a_file(self.middle_dir+f)
 
+            self.analyze_interval(unix_dt)
             self.p_hset = self.c_hset
+            self.c_hset = radix.Radix() # set the current high radix to empty
+            self.c_pfx_data = radix.Radix()
+            print 'Analyzed one interval.'
 
         self.output()
-        return 0
 
-    def read_a_file(self, floc, unix_dt):
+    def read_a_file(self, floc):
         print 'Reading ', floc
         p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
         fin = StringIO(p.communicate()[0])
@@ -146,10 +152,23 @@ class Reaper():
             if line == '':
                 continue
 
-            #---------------------------------------------------------
-            # Obtain DV and UQ
             pfx = line.split(':')[0]
-            data = ast.literal_eval(line.split(':')[1])
+            datalist = ast.literal_eval(line.split(':')[1])
+
+            rnode = self.c_pfx_data.search_exact(pfx)
+            if rnode is None:
+                rnode = self.c_pfx_data.add(pfx)
+                rnode.data[0] = datalist
+            else:
+                c_datalist = rnode.data[0]
+                combined = [x+y for x,y in zip(datalist, c_datalist)]
+                rnode.data[0] = combined
+        fin.close()
+
+    def analyze_interval(self, unix_dt):
+        for rnode in self.c_pfx_data:
+            pfx = rnode.prefix
+            data = rnode.data[0]
 
             count = 0
             uq = 0 # update quantity
@@ -176,6 +195,9 @@ class Reaper():
                 self.increase_lifetime(pfx, 'huq')
 
                 huq_flag = True
+                #print uq,dv
+    
+            # XXX note: high dv usually indicate high uq but not verse visa
 
             if dv > self.dv_thre: # the prefix is a HDV prefix
                 self.hdv_ts[unix_dt] += 1
@@ -210,9 +232,9 @@ class Reaper():
             self.distr_add_one(self.dv_distr_all, dv)
             self.distr_add_one(self.uq_distr_all, uq)
 
-        fin.close()
 
     def output(self):
+        print 'Writing to final output...'
         output_dir = self.get_output_dir()
         print output_dir
         cmlib.make_dir(output_dir)
@@ -226,8 +248,8 @@ class Reaper():
             elif '_distr' in v:
                 distr_v.append(v)
 
-        print ts_v
-        print distr_v
+        #print ts_v
+        #print distr_v
 
         for v in ts_v:
             vname = 'self.' + v
@@ -241,8 +263,29 @@ class Reaper():
             fname = v + '.txt'
             self.output_distr(value, output_dir + fname)
 
-        # TODO output self.pfx_lifetime = radix.Radix()
+        self.output_radix(self.pfx_lifetime, output_dir + 'pfx_lifetime.txt')
 
+    def output_ts(self, mydict, floc):
+        f = open(floc, 'w')
+        for dt in mydict:
+            f.write(str(dt)+':'+str(mydict[dt])+'\n')
+        f.close()
+
+    def output_distr(self, mydict, floc):
+        f = open(floc, 'w')
+        for v in mydict:
+            f.write(str(v)+':'+str(mydict[v])+'\n')
+        f.close()
+
+    def output_radix(self, rtree, floc):
+        f = open(floc, 'w')
+        for rnode in rtree:
+            f.write(rnode.prefix+'@')
+            rdata = rnode.data
+            for k in rdata.keys():
+                f.write(k+':'+str(rdata[k])+'|')
+            f.write('\n')
+        f.close()
 
     def increase_lifetime(self, pfx, key):
         rnode = self.pfx_lifetime.search_exact(pfx)
