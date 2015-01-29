@@ -1,7 +1,7 @@
 from env import *
 from period_class import *
 
-index_list = [27]
+index_list = [0]
 
 for i in index_list:
     total = 0

@@ -58,7 +58,7 @@ class Reaper():
 
         #--------------------------------------------------------------------
         # values for specific tasks
-        # TODO check memory pressure. if too hard, scan two or more times
+        # XXX if memo too hard, scan two or more times
 
         # record all pfx and data in the current interval
         self.c_pfx_data = radix.Radix()
@@ -67,6 +67,7 @@ class Reaper():
         self.hdv_ts = dict()
         self.huq_ts = dict()
         self.h2_ts = dict()
+        self.pfx_ts = dict()
 
         # overall updates time series of certain prefixes
         self.uq_ts_hdv = dict()
@@ -82,6 +83,11 @@ class Reaper():
 
         # Lifetime of 3 types of H prefixes
         self.pfx_lifetime = radix.Radix() # XXX costs memo
+        
+        # TODO implement just beforing outputing distributions
+        self.lifet_distr_hdv = dict() # life time: prefix count
+        self.lifet_distr_huq = dict() # life time: prefix count
+        self.lifet_distr_h2 = dict() # life time: prefix count
 
         self.p_hset = radix.Radix() # H prefix set in the previous interval 
         self.c_hset = radix.Radix() # current high prefix set
@@ -96,7 +102,7 @@ class Reaper():
         # total DV and UQ distribution
         self.dv_distr_all = dict()
         self.uq_distr_all = dict()
-        # DV and UQ distribution for certain period # TODO accomplish when dealing the year 2013
+        # DV and UQ distribution for certain period # TODO implement when dealing with 2013
         #self.dv_distr[period1] = dict()
         #self.uq_distr[period1] = dict()
 
@@ -118,6 +124,7 @@ class Reaper():
             self.hdv_ts[unix_dt] = 0
             self.huq_ts[unix_dt] = 0
             self.h2_ts[unix_dt] = 0
+            self.pfx_ts[unix_dt] = 0
 
             self.uq_ts_hdv[unix_dt] = 0
             self.uq_ts_huq[unix_dt] = 0
@@ -178,6 +185,7 @@ class Reaper():
                     uq += d
             dv = count/self.mo_number # dynamic visibility
 
+            self.pfx_ts[unix_dt] += 1
             #---------------------------------------------------------
             # analyze the DV and UQ
             huq_flag = False
