@@ -419,7 +419,7 @@ class Downloader():
 
         # different collectors in the same file
         for p in peer_resettime:
-            if ':' in p: # XXX note: We do not delete IPv6 updates
+            if ':' in p: # XXX note: We do not really delete IPv6 updates
                 continue
             for l in peer_resettime[p]:
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
@@ -502,15 +502,14 @@ class Downloader():
         f.close()
 
         #assert time_found == True # does not fit a very active peer
-        if time_found == False:
+        if time_found == False: # Very rarely happens!
             logging.error('%s:Cannot find time in files when deleting reset: ', self.co)
             logging.error(peer, stime_unix, endtime_unix)
 
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [16,20,21,22]
-    #order_list = [271]
+    order_list = [0]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
@@ -532,8 +531,6 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
-    #collector_list[271] = collector_list[271][2:] #XXX test
-    
     '''
     listfiles = [] # a list of update file list files
     # download update files
@@ -549,7 +546,6 @@ if __name__ == '__main__':
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
-    '''
 
     # Download and record RIB and get peer info 
     for order in order_list:
@@ -574,8 +570,8 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
-
     '''
+
     # Delete reset updates
     for order in order_list:
         sdate = daterange[order][0]
@@ -583,4 +579,3 @@ if __name__ == '__main__':
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
             dl.delete_reset()
-    '''

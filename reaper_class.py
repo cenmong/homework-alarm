@@ -49,7 +49,7 @@ class Reaper():
                 self.filegroups.append(group)
                 group = []
 
-        self.filegroups = self.filegroups[:5] #XXX test
+        self.filegroups = self.filegroups[:3] #XXX test
 
         # DV and UQ thresholds (set by a self function)
         self.dv_thre = None
@@ -83,8 +83,6 @@ class Reaper():
 
         # Lifetime of 3 types of H prefixes
         self.pfx_lifetime = radix.Radix() # XXX costs memo
-        
-        # TODO implement just beforing outputing distributions
         self.lifet_distr_hdv = dict() # life time: prefix count
         self.lifet_distr_huq = dict() # life time: prefix count
         self.lifet_distr_h2 = dict() # life time: prefix count
@@ -247,6 +245,13 @@ class Reaper():
         print output_dir
         cmlib.make_dir(output_dir)
 
+        # conduct some final calculation before outputing
+        for rn in self.pfx_lifetime:
+            the_data = rn.data
+            for htype in the_data.keys():
+                v = the_data[htype]
+                eval('self.distr_add_one(self.lifet_distr_'+htype+','+str(v)+')')
+
         selfv = self.__dict__.keys()
         ts_v = []
         distr_v = []
@@ -260,14 +265,12 @@ class Reaper():
         #print distr_v
 
         for v in ts_v:
-            vname = 'self.' + v
-            value = eval(vname)
+            value = eval('self.' + v)
             fname = v + '.txt'
             self.output_ts(value, output_dir + fname)
 
         for v in distr_v:
-            vname = 'self.' + v
-            value = eval(vname)
+            value = eval('self.' + v)
             fname = v + '.txt'
             self.output_distr(value, output_dir + fname)
 
