@@ -2,6 +2,7 @@ from period_class import Period
 from env import *
 from alarm_class import Alarm
 from reaper_class import Reaper
+from plotter_class import Plotter
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
 from plot_matrix import plot_matrix
@@ -16,8 +17,8 @@ logging.info('Program starts!')
 
 #action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
-action = {'middle':False, 'final':True, 'plot':False}
-#action = {'middle':False, 'final':False, 'plot':True}
+#action = {'middle':False, 'final':True, 'plot':False}
+action = {'middle':False, 'final':False, 'plot':True}
 option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N
 
 index_list = [27]
@@ -45,12 +46,14 @@ for i in index_list:
         alarm = Alarm(my_period, option['mid_granu'])
         alarm.analyze_to_middle() # analyze all updates and store to middle output files
 
+    dv_thre = 0.15
+    uq_thre = 150
     if action['final']:
         # for paper 1
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-        reaper.set_dv_uq_thre(0.15, 150)
-        #periods = [[],[],[],[],[],[]]
+        reaper.set_dv_uq_thre(dv_thre, uq_thre)
         reaper.analyze()
+        #periods = [[],[],[],[],[],[]]
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # : in order to avoid the period when disruptive events happened
         '''
@@ -60,13 +63,13 @@ for i in index_list:
         # future TODO select results of only part of the monitors to observe its impact
 
     if action['plot']:
-        # TODO No or little logic in plotting
-        '''
-        plotter = Plotter(my_period)
-        '''
+        # XXX No or little logic in plotting
+        reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
+        reaper.set_dv_uq_thre(dv_thre, uq_thre)
+        plotter = Plotter(reaper)
 
     '''
-    # plot matrices of every time slot only for observation
+    # plot matrices of every time slot
     mdir = my_period.get_middle_dir()
     mfiles = os.listdir(mdir)
     for mf in mfiles:
