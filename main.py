@@ -12,23 +12,22 @@ import os
 import logging
 logging.info('Program starts!')
 
-# future TODO Microscopic analysis (e.g., case studies, update content) should be in another logic
-# analyze certain prefix, certain AS, certain period, etc.
+# future TODO Microscopic analysis (e.g., case studies, update content)
 
 #action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
-#action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
+action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
 #action = {'middle':False, 'final':True, 'plot':False}
-action = {'middle':False, 'final':True, 'plot':True}
+#action = {'middle':False, 'final':True, 'plot':True}
 option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N
 
-index_list = [27]
+index_list = [0]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
     my_period.get_global_monitors() # decide my_period.monitors
-    #my_period.rm_dup_mo() # rm multiple existence of the same monitor
-    #my_period.mo_filter_same_as()
+    my_period.rm_dup_mo() # rm multiple existence of the same monitor
+    my_period.mo_filter_same_as()
 
     my_period.get_as2namenation()
     my_period.get_mo2cc()
@@ -46,8 +45,8 @@ for i in index_list:
         alarm = Alarm(my_period, option['mid_granu'])
         alarm.analyze_to_middle() # analyze all updates and store to middle output files
 
-    dv_thre = 0.15
-    uq_thre = 150
+    dv_thre = 0.2
+    uq_thre = 200
     if action['final']:
         # for paper 1
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
@@ -56,33 +55,24 @@ for i in index_list:
         #periods = [[],[],[],[],[],[]]
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # : in order to avoid the period when disruptive events happened
-        '''
-        # for paper 2
-        reaper.calculate()
-        '''
         # future TODO select results of only part of the monitors to observe its impact
 
     if action['plot']:
-        # XXX No or little logic in plotting
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
         reaper.set_dv_uq_thre(dv_thre, uq_thre)
         plotter = Plotter(reaper)
 
-    '''
-    # plot matrices of every time slot
+    # plot matrices of every middle file
     mdir = my_period.get_middle_dir()
+    plotdir = mdir + 'matrix/'
+    cmlib.make_dir(plotdir)
+
     mfiles = os.listdir(mdir)
     for mf in mfiles:
         if not os.path.isfile(mdir+mf):
             mfiles.remove(mf)
-
-    plotdir = mdir + 'matrix/'
-    cmlib.make_dir(plotdir)
-
-    for mf in mfiles:
-        pf = mf.split('.')[0] + '.pdf'
-        print 'Ploting matrix:', mdir+mf
-        plot_matrix(mdir+mf, plotdir+pf) #TODO specify a range?
-    '''
+        else:
+            print 'Ploting matrix:', mdir+mf
+            plot_matrix(mdir+mf, plotdir+mf.split('.')[0]+'.pdf') #TODO specify a range?
 
 logging.info('Program ends!')

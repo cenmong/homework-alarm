@@ -29,6 +29,7 @@ class Alarm():
         self.cl_list = period.co_mo.keys()
         self.max_dt = -1
 
+        # XXX should we make another dir if the monitor set changes? Or just replace current files?
         self.middle_dir = period.get_middle_dir()
         cmlib.make_dir(self.middle_dir)
 
@@ -39,15 +40,25 @@ class Alarm():
 
         self.mcount = len(self.monitors)
 
-        # FIXME write this mapping to a file in period class
+        # Sort the monitor list first so that this mapping consistent across multiple runs
+        tmp_list = sorted(self.monitors, key=cmlib.ip_to_integer)
+        print tmp_list
+
         self.mo2index = {} # map monitor ip to an index
         index = 0
-        for mo in self.monitors:
+        for mo in tmp_list:
             self.mo2index[mo] = index
             index += 1
     
-        # FIXME map all prefixes in RIB to integers for easy plotting
-        self.no_prefixes = period.no_prefixes # a trie TODO excluded prefixes
+        # write this mapping to a file for future microscopic analysis
+        self.mo2index_file = rib_info_dir + self.sdate + '_' + self.edate + '_mo2index.txt'
+        f = open(self.mo2index_file, 'w')
+        for mo in self.mo2index:
+            f.write(mo+':'+str(self.mo2index[mo])+'\n')
+        f.close()
+
+
+        #self.no_prefixes = period.no_prefixes # a trie TODO excluded prefixes
 
         self.pfx_radix = dict() # every dt has a corresponding trie, deleted periodically
 
@@ -229,6 +240,7 @@ class Alarm():
     
 #--------------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------------
+#old
 
     def output(self):
         for dt in self.pfxcount[0].keys():
