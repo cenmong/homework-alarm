@@ -18,7 +18,7 @@ logging.info('Program starts!')
 #action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':False, 'final':True, 'plot':False}
-action = {'middle':False, 'final':False, 'plot':True}
+action = {'middle':False, 'final':True, 'plot':True}
 option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N
 
 index_list = [27]

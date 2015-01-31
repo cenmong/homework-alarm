@@ -171,6 +171,7 @@ class Reaper():
         fin.close()
 
     def analyze_interval(self, unix_dt):
+        uq_total = 0
         for rnode in self.c_pfx_data:
             pfx = rnode.prefix
             data = rnode.data[0]
@@ -236,7 +237,9 @@ class Reaper():
 
             # Total DV and UQ distribution
             self.distr_add_one(self.dv_distr_all, dv)
-            self.distr_add_one(self.uq_distr_all, uq)
+            uq_total += uq
+
+        self.distr_add_one(self.uq_distr_all, uq_total)
 
 
     def output(self):

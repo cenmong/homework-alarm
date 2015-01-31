@@ -31,3 +31,6 @@ In conclusion, the date-time of the updates will be always within the confine of
 Note: run delete reset program only once! running it multiple times may cause over-deletion!
 ----------------------------------------------------------------------
 I've decided not to delete IPv6 peer reset. For some peers, its FIB size is much smaller than observed prefixes (which is very strange), so the 'bottom search' function can make to resets have the same end time. Anyway, IPv6 is a little strange in this aspect (possibly makes interesting future work).
+----------------------------------------------------------------------
+We are afraid: cannot find a single right time when deleting reset
+We are not afraid: sometimes the reset updates has been deleted already by previous rounds

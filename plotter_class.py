@@ -47,8 +47,9 @@ class Plotter():
                 print 'Plotting ', plot_dir+pdfname
                 self.basic_ts(f, plot_dir+pdfname)
             elif '_distr' in f:
-                pdfname = f.split('.')[0] + '.pdf'
-                #self.basic_distr(f, plot_dir+pdfname)
+                pdfname = f.split('/')[-1].split('.')[0] + '.pdf'
+                print 'Plotting ', plot_dir+pdfname
+                self.basic_distr(f, plot_dir+pdfname)
             else:
                 print 'Did not plot ', f
 
@@ -84,4 +85,54 @@ class Plotter():
         plt.clf() # clear the figure
         plt.close()
 
-    #def basic_distr(self, input_loc, output_loc):
+    def basic_distr(self, input_loc, output_loc):
+        the_dict = {}
+        f = open(input_loc, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            attrs = line.split(':')
+            value = float(attrs[0])
+            count = float(attrs[1])
+            the_dict[value] = count
+        f.close()
+
+        cdf_dict = self.value_count2cdf(the_dict)
+
+        xlist = [0]
+        ylist = [0]
+        for key in sorted(cdf_dict):
+            xlist.append(key)
+            ylist.append(cdf_dict[key])
+
+        xmax = max(xlist)
+        ymax = max(ylist)
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        ax.plot(xlist, ylist, 'k-')
+        ax.set_ylim([-0.1*ymax, 1.1*ymax])
+        ax.set_xlim([-0.1*xmax, 1.1*xmax])
+        ax.set_ylabel('cumulative distribution')
+        ax.set_xlabel('value')
+
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def value_count2cdf(self, vc_dict): # dict keys are contable values
+        cdf = dict()
+        xlist = [0]
+        ylist = [0]
+
+        for key in sorted(vc_dict): # sort by key
+            xlist.append(key)
+            ylist.append(vc_dict[key])
+
+        ## y is the number of values that <= x
+        for i in xrange(1, len(ylist)):
+            ylist[i] += ylist[i-1]
+
+        for i in xrange(0, len(ylist)):
+            cdf[xlist[i]] = ylist[i]
+
+        return cdf 

@@ -539,29 +539,6 @@ class Alarm():
 
         return 0
 
-    def value_count2cdf(self, vc_dict): # dict keys are contable values
-        cdf = dict()
-        xlist = [0]
-        ylist = [0]
-
-        for key in sorted(vc_dict): # sort by key
-            xlist.append(key)
-            ylist.append(vc_dict[key])
-
-        ## y is the number of values that <= x
-        for i in xrange(1, len(ylist)):
-            ylist[i] += ylist[i-1]
-
-        ## change y into percentage
-        giant = ylist[-1] # the largest y value
-        if giant == 0: # no value actually
-            return {1:1}
-        for i in xrange(0, len(ylist)):
-            cdf[xlist[i]] = ylist[i]
-
-        return cdf # NOTE: dict are not ordered. Order by key when plotting
-
-
     def symbol_count2cdf(self, sc_dict): # dict keys are just symbols
         cdf = dict()
         xlist = [0]

@@ -429,7 +429,7 @@ class Downloader():
     def delete_reset_updates(self, peer, stime_unix, endtime_unix, tmp_full_listfile):
         start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
         end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
-        print 'Deleting session reset ',peer,':[',start_datetime,',',end_datetime,']...'
+        logging.info( 'Deleting session reset %s: [%s, %s]', peer, str(start_datetime), str(end_datetime))
 
         time_found = False # Raise an error if cannot find time
 
@@ -438,25 +438,25 @@ class Downloader():
             updatefile = line.rstrip('\n')
             file_attr = updatefile.split('.')
             fattr_date, fattr_time = file_attr[-5], file_attr[-4]
-            # Get file datetime obj dt from the file's name
-            dt = datetime.datetime(int(fattr_date[0:4]),\
+            # Get file datetime obj fname_dt_obj from the file's name
+            fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
 
             # Deal with several special time zone problems
             dt_anchor1 = datetime.datetime(2003,2,3,19,0)
             dt_anchor2 = datetime.datetime(2006,2,1,21,0)
-            if self.co == 'route-views.eqix' and dt <= dt_anchor2: # now dt is PST time
-                dt = dt + datetime.timedelta(hours=8)
-            elif not co.startswith('rrc') and dt <= dt_anchor1: # PST time
-                dt = dt + datetime.timedelta(hours=8)
+            if self.co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # now dt is PST time
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8)
+            elif not co.startswith('rrc') and fname_dt_obj <= dt_anchor1: # PST time
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8)
 
             # Check whether the file is a possible target
             if co.startswith('rrc'): # note the difference in file name formats
                 shift = -5
             else:
                 shift = -15
-            if not start_datetime + datetime.timedelta(minutes=shift) <= dt <= end_datetime:
+            if not start_datetime + datetime.timedelta(minutes=shift) <= fname_dt_obj <= end_datetime:
                 continue
 
             logging.info('Session reset probably exists in: %s', updatefile)
@@ -504,12 +504,12 @@ class Downloader():
         #assert time_found == True # does not fit a very active peer
         if time_found == False: # Very rarely happens!
             logging.error('%s:Cannot find time in files when deleting reset: ', self.co)
-            logging.error(peer, stime_unix, endtime_unix)
+            logging.error('%s:[%d,%d]', peer, stime_unix, endtime_unix)
 
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [0]
+    order_list = [1,5,6,7,8,10]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
