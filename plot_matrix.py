@@ -28,18 +28,21 @@ def plot_matrix(floc, saveloc):
             continue
         data = line.split(':')[1]
         data = ast.literal_eval(data) 
-        now_max = max(data)
-        if now_max > high:
-            high = now_max
-        lists.append(data)
         
         count = 0
         for d in data:
             if d > 0:
                 count += 1
-        dvs.append(count)
+
+        if count > 2: # we do not plot dv that is too small
+            dvs.append(count)
+            lists.append(data)
+            now_max = max(data)
+            if now_max > high:
+                high = now_max
 
     f.close()
+
 
     lists = [x for (y,x) in sorted(zip(dvs, lists))]
 

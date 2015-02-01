@@ -34,3 +34,8 @@ I've decided not to delete IPv6 peer reset. For some peers, its FIB size is much
 ----------------------------------------------------------------------
 We are afraid: cannot find a single right time when deleting reset
 We are not afraid: sometimes the reset updates has been deleted already by previous rounds
+------------------------------------------------------------------------
+It's very strange that rrc3 and rrc14 in event 1 has empty update file lists. So I delete the two collectors in rib_info, where major collector information are solicited by our code.
+-----------------------------------------------------------------------
+sometimes we find IPv4 peers with very very small FIB size, e.g., http://data.ris.ripe.net/rrc03/2005.09/bview.20050910.0000.gz,
+although it costs much time and artifact when deleting reset, it will not affect our measurement results because we ignore them

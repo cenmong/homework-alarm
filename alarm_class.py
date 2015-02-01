@@ -27,6 +27,7 @@ class Alarm():
         self.granu = granu
 
         self.cl_list = period.co_mo.keys()
+        print period.co_mo.keys()
         self.max_dt = -1
 
         # XXX should we make another dir if the monitor set changes? Or just replace current files?
@@ -42,7 +43,6 @@ class Alarm():
 
         # Sort the monitor list first so that this mapping consistent across multiple runs
         tmp_list = sorted(self.monitors, key=cmlib.ip_to_integer)
-        print tmp_list
 
         self.mo2index = {} # map monitor ip to an index
         index = 0
@@ -191,20 +191,18 @@ class Alarm():
                 ##self.pfx_radix[dt] = patricia.trie(None)
                 self.pfx_radix[dt] = radix.Radix()
 
-            # TODO check illegal prefix
-            ##pfx = cmlib.pfx4_to_binary(attr[5])
-            ##try:
+            pfx = attr[5]
             try:
-                rnode = self.pfx_radix[dt].search_exact(attr[5])
+                rnode = self.pfx_radix[dt].search_exact(pfx)
                 rnode.data[0][index] += 1
             except: # prefix node does not exist
-                rnode = self.pfx_radix[dt].add(attr[5])
+                rnode = self.pfx_radix[dt].add(pfx)
                 rnode.data[0] = [0] * self.mcount
                 rnode.data[0][index] = 1
             ##except: # self.pfx_radix[dt] has already been deleted. rarely happen 
             ##    return -1
 
-            if ':' in attr[5] or len(attr[5]) == 1: # IPv6 and a very strange case
+            if ':' in pfx or len(pfx) == 1: # IPv6 and a very strange case
                 return -1
         except Exception:
             if update != '':

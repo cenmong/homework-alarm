@@ -14,8 +14,8 @@ logging.info('Program starts!')
 
 # future TODO Microscopic analysis (e.g., case studies, update content)
 
-#action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
-action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
+action = {'middle':False, 'final':False, 'plot':False} # Specify what to do
+#action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
 #action = {'middle':False, 'final':True, 'plot':False}
 #action = {'middle':False, 'final':True, 'plot':True}
 option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N

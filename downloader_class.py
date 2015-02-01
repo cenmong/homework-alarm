@@ -509,7 +509,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [1,5,6,7,8,10]
+    order_list = [3]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
