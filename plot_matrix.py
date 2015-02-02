@@ -45,21 +45,29 @@ def plot_matrix(floc, saveloc):
 
 
     lists = [x for (y,x) in sorted(zip(dvs, lists))]
+    pfx_quantity = len(lists)
 
     fig = plt.figure(figsize=(10,16))
     ax = fig.add_subplot(111)
-    cax = ax.imshow(lists, interpolation='nearest', aspect='auto', cmap=cm.cool, norm=LogNorm(1,high))
+    cax = ax.imshow(lists, interpolation='nearest', aspect='auto', cmap=cm.jet, norm=LogNorm(1,high))
     lvls = np.logspace(0, 3, 10)
     cbar = fig.colorbar(cax, ticks=lvls)
-    #cbar.ax.set_yticklabels(['0', str(high)])
 
+    yticklist = []
+    count = 0
+    while True:
+        if pfx_quantity/200 >= 1:
+            count += 1
+            yticklist.append(count*200)
+            pfx_quantity -= 200
+        else:
+            #yticklist.append(count*200+pfx_quantity)
+            break
+
+    plt.yticks(yticklist)
     plt.savefig(saveloc, bbox_inches='tight')
     plt.clf() # clear the figure
     plt.close()
 
-if __name__ == '__main__':
-    #matrixes = []
-    #matrixes.append('/media/usb/output/20141130_20141201/1417308000.txt.gz') # add matrix file
-    #for m in matrixes:
-    #    plot_matrix(m)
-    plot_matrix('/media/usb/output/20141130_20141201/1417420800.txt.gz')
+#if __name__ == '__main__':
+#    plot_matrix('/media/usb/output/20141130_20141201/1417420800.txt.gz')

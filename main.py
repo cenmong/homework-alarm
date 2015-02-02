@@ -62,6 +62,7 @@ for i in index_list:
         reaper.set_dv_uq_thre(dv_thre, uq_thre)
         plotter = Plotter(reaper)
 
+    #------------------------------------------------------------
     # plot matrices of every middle file
     mdir = my_period.get_middle_dir()
     plotdir = mdir + 'matrix/'
