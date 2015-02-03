@@ -138,6 +138,7 @@ class Alarm():
         # Obtain the ceiling: lowest 'current datetime' among all collectors
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity
+        print self.cl_dt
         new_ceil = 9999999999
         for cl in self.cl_list:
             if self.cl_dt[cl] < new_ceil:
@@ -174,7 +175,9 @@ class Alarm():
         try:
             attr = update.split('|') 
             
+            pfx = attr[5]
             mo = attr[3]
+
             try:
                 index = self.mo2index[mo]
             except: # not a monitor that we have interest in
@@ -188,10 +191,8 @@ class Alarm():
             if dt > self.max_dt:
                 print 'new dt!'
                 self.max_dt = dt
-                ##self.pfx_radix[dt] = patricia.trie(None)
                 self.pfx_radix[dt] = radix.Radix()
 
-            pfx = attr[5]
             try:
                 rnode = self.pfx_radix[dt].search_exact(pfx)
                 rnode.data[0][index] += 1
