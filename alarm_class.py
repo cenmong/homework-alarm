@@ -28,7 +28,7 @@ class Alarm():
 
         self.cl_list = period.co_mo.keys()
         print period.co_mo.keys()
-        self.max_dt = -1
+        #self.max_dt = -1
 
         # XXX should we make another dir if the monitor set changes? Or just replace current files?
         self.middle_dir = period.get_middle_dir()
@@ -138,7 +138,6 @@ class Alarm():
         # Obtain the ceiling: lowest 'current datetime' among all collectors
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity
-        print self.cl_dt
         new_ceil = 9999999999
         for cl in self.cl_list:
             if self.cl_dt[cl] < new_ceil:
@@ -188,11 +187,21 @@ class Alarm():
             dt = intdt / (60 * self.granu) * 60 * self.granu
 
             # run into a brand new dt!
+            '''
+            # XXX This logic does not seem reliable
             if dt > self.max_dt:
                 print 'new dt!'
+                logging.info('max_dt=%d',self.max_dt)
                 self.max_dt = dt
                 self.pfx_radix[dt] = radix.Radix()
+            '''
+            # This logic is solid but takes the risk of consuming too much memory if dt gap large
+            try:
+                test = self.pfx_radix[dt]
+            except:
+                self.pfx_radix[dt] = radix.Radix()
 
+            # We have made sure the radix must exists
             try:
                 rnode = self.pfx_radix[dt].search_exact(pfx)
                 rnode.data[0][index] += 1

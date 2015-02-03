@@ -50,6 +50,9 @@ class Downloader():
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
         
         self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
+        self.dt_anchor1 = datetime.datetime(2003,2,3,19,0) # up to now, never used data prior
+        self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
+
     def get_listfile(self):
         return self.listfile
 
@@ -444,12 +447,11 @@ class Downloader():
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
 
             # Deal with several special time zone problems
-            dt_anchor1 = datetime.datetime(2003,2,3,19,0)
-            dt_anchor2 = datetime.datetime(2006,2,1,21,0)
-            if self.co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # now dt is PST time
-                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8)
-            elif not co.startswith('rrc') and fname_dt_obj <= dt_anchor1: # PST time
-                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8)
+            #FIXME not tested yet
+            if self.co == 'route-views.eqix' and fname_dt_obj <= self.dt_anchor2: # PST time
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX why not 8?
+            elif not self.co.startswith('rrc') and fname_dt_obj <= self.dt_anchor1:
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX 8 or 7?
 
             # Check whether the file is a possible target
             if co.startswith('rrc'): # note the difference in file name formats

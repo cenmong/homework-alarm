@@ -37,6 +37,9 @@ class Period():
         # Note: Occassionally run it to get the latest data. (Now up to 20141225)
         #self.get_fib_size_file()
 
+        self.dt_anchor1 = datetime.datetime(2003,2,3,19,0) # up to now, never used data prior
+        self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
+
     def get_middle_dir(self):
         return datadir+'middle_output/'+self.sdate+'_'+self.edate+'/'
 
@@ -365,6 +368,7 @@ class Period():
         return count
 
     def get_filelist(self):
+        print 'Getting combined file list'
         listdir = ''
 
         co_list = self.co_mo.keys()
@@ -382,6 +386,19 @@ class Period():
                 file_attr = name.split('.')
                 file_dt = file_attr[-6] + file_attr[-5]
                 dt_obj = datetime.datetime.strptime(file_dt, '%Y%m%d%H%M')
+
+                co = name.split('/')[1]
+                if co == 'bgpdata':
+                    co = ''
+
+                if co == 'route-views.eqix' and dt_obj <= self.dt_anchor2: # PST time
+                    dt_obj = dt_obj + datetime.timedelta(hours=7) # XXX why not 8?
+                    #TODO delete rabbish but memo costing files at the end of the list!!
+                    #Or ignore it. Just ignore when memo error
+                    # FIXME the begining of the list is also memo costing we should strip start and end!!!
+                elif not co.startswith('rrc') and dt_obj <= self.dt_anchor1:
+                    dt_obj = dt_obj + datetime.timedelta(hours=8) # XXX 8 or 7?
+
                 fnames[name] = dt_obj
             f.close()
         tmpdict = sorted(fnames, key=fnames.get)

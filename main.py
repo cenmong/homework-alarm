@@ -18,8 +18,7 @@ action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':False, 'final':True, 'plot':True}
 option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N
 
-index_list = [3,5,6,7,8,10]
-#index_list = [1,3,5,6,7,8,10]
+index_list = [3]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
