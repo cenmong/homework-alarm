@@ -378,6 +378,8 @@ class Period():
             listfiles.append(dl.get_listfile())
             listdir = dl.get_listfile_dir()
 
+        eqixshift = None
+
         fnames = dict()
         for lf in listfiles:
             f = open(lf, 'r')
@@ -392,20 +394,45 @@ class Period():
                     co = ''
 
                 if co == 'route-views.eqix' and dt_obj <= self.dt_anchor2: # PST time
-                    dt_obj = dt_obj + datetime.timedelta(hours=7) # XXX why not 8?
-                    #TODO delete rabbish but memo costing files at the end of the list!!
-                    #Or ignore it. Just ignore when memo error
-                    # FIXME the begining of the list is also memo costing we should strip start and end!!!
-                elif not co.startswith('rrc') and dt_obj <= self.dt_anchor1:
+                    eqixshift = 7
+                    dt_obj = dt_obj + datetime.timedelta(hours=eqixshift) # XXX why not 8?
+                elif not co.startswith('rrc') and dt_obj <= self.dt_anchor1: 
                     dt_obj = dt_obj + datetime.timedelta(hours=8) # XXX 8 or 7?
 
                 fnames[name] = dt_obj
             f.close()
-        tmpdict = sorted(fnames, key=fnames.get)
+        newlist = sorted(fnames, key=fnames.get)
+        
+        to_remove = []
+        if eqixshift is not None:
+            #------------------------------------------------------------------
+            # cut off head and end of the list because they can eat up memo
+            # However, this makes 'ignoring first hour' fail when creating middle
+            first_fn = newlist[0]
+            last_fn = newlist[-1]
+            # 0 line could not be eqix # start: align with eqix
+            start_dt = fnames[first_fn] + datetime.timedelta(hours=eqixshift)
+            # -1 line must be eqix # end: cut off eqix
+            end_dt = fnames[last_fn] + datetime.timedelta(hours=-eqixshift)
+
+            for fn in newlist: # sorted list
+                co = fn.split('/')[1]
+                if co == 'bgpdata':
+                    co = ''
+
+                if not co.endswith('eqix') and fnames[fn] < start_dt:
+                    to_remove.append(fn)
+                elif co.endswith('eqix') and fnames[fn] > end_dt:
+                    to_remove.append(fn)
+
+        for fn in to_remove:
+            newlist.remove(fn)
+
+        # TODO delete from newlist the other type of shift (not met yet)
 
         filelist = listdir + 'combined_list.txt'
         f = open(filelist, 'w')
-        for name in tmpdict:
+        for name in newlist:
             f.write(name+'\n')
         f.close()
 

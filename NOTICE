@@ -39,3 +39,7 @@ It's very strange that rrc3 and rrc14 in event 1 has empty update file lists. So
 -----------------------------------------------------------------------
 sometimes we find some IPv4 peers with very very small FIB size, e.g., http://data.ris.ripe.net/rrc03/2005.09/bview.20050910.0000.gz,
 although it costs much time and artifact when deleting reset, it will not affect our measurement results because we ignore non-global peers
+-----------------------------------
+In practice I failed to delete some resets. But it will not affect our results because they are local events!
+----------------------------------
+Do not delete list and dict items while iterating them

@@ -454,10 +454,11 @@ class Downloader():
                 fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX 8 or 7?
 
             # Check whether the file is a possible target
+            # FIXME some times the time intervals are not 5 and 15 (rarely)
             if co.startswith('rrc'): # note the difference in file name formats
-                shift = -5
+                shift = -10
             else:
-                shift = -15
+                shift = -30
             if not start_datetime + datetime.timedelta(minutes=shift) <= fname_dt_obj <= end_datetime:
                 continue
 
@@ -511,7 +512,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [3]
+    order_list = [13,20,21,22]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
