@@ -139,6 +139,7 @@ class Alarm():
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity
         new_ceil = 9999999999
+        print self.cl_dt
         for cl in self.cl_list:
             if self.cl_dt[cl] < new_ceil:
                 new_ceil = self.cl_dt[cl]

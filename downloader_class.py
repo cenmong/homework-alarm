@@ -50,7 +50,7 @@ class Downloader():
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
         
         self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
-        self.dt_anchor1 = datetime.datetime(2003,2,3,19,0) # up to now, never used data prior
+        self.dt_anchor1 = datetime.datetime(2003,2,3,19,0)
         self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
 
     def get_listfile(self):
@@ -451,7 +451,7 @@ class Downloader():
             if self.co == 'route-views.eqix' and fname_dt_obj <= self.dt_anchor2: # PST time
                 fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX why not 8?
             elif not self.co.startswith('rrc') and fname_dt_obj <= self.dt_anchor1:
-                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX 8 or 7?
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX here is 8
 
             # Check whether the file is a possible target
             # FIXME some times the time intervals are not 5 and 15 (rarely)
@@ -512,7 +512,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [13,20,21,22]
+    order_list = [4,16]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()

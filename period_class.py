@@ -428,7 +428,7 @@ class Period():
         for fn in to_remove:
             newlist.remove(fn)
 
-        # TODO delete from newlist the other type of shift (not met yet)
+        # FIXME delete from newlist the other type of shift (i.e. RV2)
 
         filelist = listdir + 'combined_list.txt'
         f = open(filelist, 'w')
