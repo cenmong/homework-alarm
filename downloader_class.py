@@ -512,7 +512,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [4,16]
+    order_list = [11,19]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
@@ -534,7 +534,6 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
-    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -573,7 +572,6 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
-    '''
 
     # Delete reset updates
     for order in order_list:

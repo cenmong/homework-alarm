@@ -19,6 +19,15 @@ reset_info_dir = datadir+'reset_info/'
 tier1_asn = [3320,3356,3549,1,2914,5511,1239,6453,6762,12956,1299,701,702,703,1273,2828,6461]
 
 #-------------------------------------------------------
+beacon4 = {
+    '84.205.64.0/24': ['20110112', '20130610'],
+    '84.205.65.0/24': ['20110112', '20130610'],
+    '84.205.67.0/24': ['20110112', '20130610'],
+    '84.205.68.0/24': ['20110112', '20130610'],
+    '84.205.69.0/24': ['20110112', '20130610'],
+}
+
+#-------------------------------------------------------
 # XXX Note: do not change this list
 all_collectors = { # 17 in total
     '': '20011101', 
@@ -43,9 +52,10 @@ all_collectors = { # 17 in total
     #'rrc07': '20020501', # too few peers with global table
 }
 
-# rrc14 has a blank period where no update is collected
+# rrc14 and rrc10 has a blank period where no update is collected
 co_blank = {
     'rrc14': ['20090324', '20100326'],
+    'rrc10': ['20110718', '20110914'],
 }
 
 #-------------------------------------------------------
@@ -61,7 +71,7 @@ daterange = {
     8:('20121020','20121102'), #Hurricane Sandy | SG
     9:('20130316','20130329'), # Spamhaus DDoS attack | WD XXX contained in 28
     10:('20080510','20080516'), #Sichuan Earthquake | SG
-    11:('20110824','20110827'), #Hurricane Irene |
+    11:('20110819','20110901'), #Hurricane Irene |
     12:('20130206','20130212'), #Northeastern US blackout | WD XXX contained in 28
     13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
     14:('20120221','20120224'), #Australia route leakage |
@@ -69,7 +79,7 @@ daterange = {
     16:('20030123','20030129'), #Slammer worm | SG
     17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX contained in 28
     18:('20130213','20130216'), #SEACOM outage | WD XXX contained in 28
-    19:('20110327','20110330'), #Caucasus cable cut |
+    19:('20110326','20110401'), #Caucasus cable cut |
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
