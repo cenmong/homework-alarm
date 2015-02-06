@@ -20,3 +20,7 @@ class Micro_fighter():
         self.period = period
         self.sdt_obj = sdt_obj
         self.edt_obj = edt_obj
+
+        self.filelist = period.get_filelist()
+
+        self.middle_dir = period.get_middle_dir()

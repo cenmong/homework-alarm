@@ -115,7 +115,7 @@ class Reaper():
                 '_' + str(self.m_granu) + '_' + str(self.granu) + '_' + str(self.shift) + '/'
 
     # Do many tasks in only one scan of all files!
-    def analyze(self):
+    def analyze_pfx(self):
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
@@ -137,7 +137,7 @@ class Reaper():
             self.newp_h2_ts[unix_dt] = 0
 
             for f in fg:
-                self.read_a_file(self.middle_dir+f)
+                self.read_a_file_pfx(self.middle_dir+f)
 
             self.analyze_interval(unix_dt)
             self.p_hset = self.c_hset
@@ -145,9 +145,19 @@ class Reaper():
             self.c_pfx_data = radix.Radix()
             print 'Analyzed one interval.'
 
-        self.output()
+        self.output_pfx()
 
-    def read_a_file(self, floc):
+    def detect_event(self):
+        for fg in self.filegroups:
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            for f in fg:
+                self.read_a_file_event(self.middle_dir+f)
+            print 'Analyzed one interval.'
+
+            # TODO main task here
+        self.output_event()
+
+    def read_a_file_pfx(self, floc):
         print 'Reading ', floc
         p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
         fin = StringIO(p.communicate()[0])
@@ -168,6 +178,22 @@ class Reaper():
                 c_datalist = rnode.data[0]
                 combined = [x+y for x,y in zip(datalist, c_datalist)]
                 rnode.data[0] = combined
+        fin.close()
+
+    def read_a_file_event(self, floc):
+        print 'Reading ', floc
+        p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+        fin = StringIO(p.communicate()[0])
+        assert p.returncode == 0
+        for line in fin:
+            line = line.rstrip('\n')
+            if line == '':
+                continue
+
+            pfx = line.split(':')[0]
+            datalist = ast.literal_eval(line.split(':')[1])
+            
+            # TODO only record here
         fin.close()
 
     def analyze_interval(self, unix_dt):
@@ -242,7 +268,7 @@ class Reaper():
         self.distr_add_one(self.uq_distr_all, uq_total)
 
 
-    def output(self):
+    def output_pfx(self):
         print 'Writing to final output...'
         output_dir = self.get_output_dir()
         print output_dir
@@ -278,6 +304,8 @@ class Reaper():
             self.output_distr(value, output_dir + fname)
 
         self.output_radix(self.pfx_lifetime, output_dir + 'pfx_lifetime.txt')
+
+    def output_event(self):
 
     def output_ts(self, mydict, floc):
         f = open(floc, 'w')
