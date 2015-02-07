@@ -379,6 +379,7 @@ class Period():
             listdir = dl.get_listfile_dir()
 
         eqixshift = None
+        rv_shift = None
 
         fnames = dict()
         for lf in listfiles:
@@ -395,14 +396,17 @@ class Period():
 
                 if co == 'route-views.eqix' and dt_obj <= self.dt_anchor2: # PST time
                     eqixshift = 7
-                    dt_obj = dt_obj + datetime.timedelta(hours=eqixshift) # XXX why not 8?
+                    dt_obj = dt_obj + datetime.timedelta(hours=eqixshift) # XXX not 8
                 elif not co.startswith('rrc') and dt_obj <= self.dt_anchor1: 
-                    dt_obj = dt_obj + datetime.timedelta(hours=8) # XXX 8 or 7?
+                    rv_shift = 8
+                    dt_obj = dt_obj + datetime.timedelta(hours=8) # XXX 8, not 7
 
                 fnames[name] = dt_obj
             f.close()
         newlist = sorted(fnames, key=fnames.get)
         
+        # XXX note: our logic is correct iff we only deal with eqix and rv2, if other
+        # collectors are used, re-consider the logic
         to_remove = []
         if eqixshift is not None:
             #------------------------------------------------------------------
@@ -424,11 +428,28 @@ class Period():
                     to_remove.append(fn)
                 elif co.endswith('eqix') and fnames[fn] > end_dt:
                     to_remove.append(fn)
-
         for fn in to_remove:
             newlist.remove(fn)
 
-        # FIXME delete from newlist the other type of shift (i.e. RV2)
+
+        if rv_shift is not None: # TODO test needed
+            first_fn = newlist[0]
+            last_fn = newlist[-1]
+            start_dt = fnames[first_fn] + datetime.timedelta(hours=rv_shift)
+            end_dt = fnames[last_fn] + datetime.timedelta(hours=-rv_shift)
+
+            for fn in newlist: # sorted list
+                co = fn.split('/')[1]
+                if co == 'bgpdata':
+                    co = ''
+
+                if co.startswith('rrc') and fnames[fn] < start_dt:
+                    to_remove.append(fn)
+                elif not co.startswith('rrc') and fnames[fn] > end_dt:
+                    to_remove.append(fn)
+        for fn in to_remove:
+            newlist.remove(fn)
+
 
         filelist = listdir + 'combined_list.txt'
         f = open(filelist, 'w')

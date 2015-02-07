@@ -447,14 +447,13 @@ class Downloader():
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
 
             # Deal with several special time zone problems
-            #FIXME not tested yet
             if self.co == 'route-views.eqix' and fname_dt_obj <= self.dt_anchor2: # PST time
-                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX why not 8?
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX (not 8)
             elif not self.co.startswith('rrc') and fname_dt_obj <= self.dt_anchor1:
                 fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX here is 8
 
             # Check whether the file is a possible target
-            # FIXME some times the time intervals are not 5 and 15 (rarely)
+            # Note: some times the time intervals are not 5 and 15
             if co.startswith('rrc'): # note the difference in file name formats
                 shift = -10
             else:
@@ -568,7 +567,7 @@ if __name__ == '__main__':
         f = open(rib_info, 'w')
         for co in co_ribs:
             f.write(co+':')
-            for r in co_ribs[co][:-1]: #XXX test when len(co_ribs[co]) == 1
+            for r in co_ribs[co][:-1]: # OK even when len(co_ribs[co]) == 1
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()

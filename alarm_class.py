@@ -30,7 +30,6 @@ class Alarm():
         print period.co_mo.keys()
         #self.max_dt = -1
 
-        # XXX should we make another dir if the monitor set changes? Or just replace current files?
         self.middle_dir = period.get_middle_dir()
         cmlib.make_dir(self.middle_dir)
 
@@ -58,7 +57,7 @@ class Alarm():
         f.close()
 
 
-        #self.no_prefixes = period.no_prefixes # a trie TODO excluded prefixes
+        #self.no_prefixes = period.no_prefixes #  TODO exclude uninteresting prefixes
 
         self.pfx_radix = dict() # every dt has a corresponding trie, deleted periodically
 

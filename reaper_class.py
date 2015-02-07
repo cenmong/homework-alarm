@@ -18,6 +18,8 @@ from env import *
 #from supporter_class import *
 from cStringIO import StringIO
 
+# TODO obtain prefix to AS mapping
+
 class Reaper():
 
     def __init__(self, period, granu, shift):
@@ -49,7 +51,7 @@ class Reaper():
                 self.filegroups.append(group)
                 group = []
 
-        self.filegroups = self.filegroups[:3] #XXX test
+        #self.filegroups = self.filegroups[:3] #XXX test
 
         # DV and UQ thresholds (set by a self function)
         self.dv_thre = None
@@ -57,7 +59,7 @@ class Reaper():
 
 
         #--------------------------------------------------------------------
-        # values for specific tasks
+        # variables for analyzing all types of prefixes
         # XXX if memo too hard, scan two or more times
 
         # record all pfx and data in the current interval
@@ -105,6 +107,12 @@ class Reaper():
         #self.uq_distr[period1] = dict()
 
 
+        #---------------------------------------------------------------
+        # variables for detecting events
+        # TODO store a matrix into a list of lists or numpy.matrix
+        # TODO create a binary matrix if necessary
+
+
     def set_dv_uq_thre(self, dvt, uqt): # Input a dict of exact format
         self.dv_thre = dvt
         self.uq_thre = uqt
@@ -147,15 +155,6 @@ class Reaper():
 
         self.output_pfx()
 
-    def detect_event(self):
-        for fg in self.filegroups:
-            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
-            for f in fg:
-                self.read_a_file_event(self.middle_dir+f)
-            print 'Analyzed one interval.'
-
-            # TODO main task here
-        self.output_event()
 
     def read_a_file_pfx(self, floc):
         print 'Reading ', floc
@@ -178,22 +177,6 @@ class Reaper():
                 c_datalist = rnode.data[0]
                 combined = [x+y for x,y in zip(datalist, c_datalist)]
                 rnode.data[0] = combined
-        fin.close()
-
-    def read_a_file_event(self, floc):
-        print 'Reading ', floc
-        p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
-        fin = StringIO(p.communicate()[0])
-        assert p.returncode == 0
-        for line in fin:
-            line = line.rstrip('\n')
-            if line == '':
-                continue
-
-            pfx = line.split(':')[0]
-            datalist = ast.literal_eval(line.split(':')[1])
-            
-            # TODO only record here
         fin.close()
 
     def analyze_interval(self, unix_dt):
@@ -290,9 +273,6 @@ class Reaper():
             elif '_distr' in v:
                 distr_v.append(v)
 
-        #print ts_v
-        #print distr_v
-
         for v in ts_v:
             value = eval('self.' + v)
             fname = v + '.txt'
@@ -304,8 +284,6 @@ class Reaper():
             self.output_distr(value, output_dir + fname)
 
         self.output_radix(self.pfx_lifetime, output_dir + 'pfx_lifetime.txt')
-
-    def output_event(self):
 
     def output_ts(self, mydict, floc):
         f = open(floc, 'w')
@@ -371,3 +349,35 @@ class Reaper():
                 return False #Found
             except:
                 return True
+
+    #----------------------------------------------------------------------
+    # For detecting disruptive events
+
+    def detect_event(self):
+        for fg in self.filegroups:
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            for f in fg:
+                self.read_a_file_event(self.middle_dir+f)
+            print 'Analyzed one interval.'
+
+            # TODO main task here
+        self.output_event()
+
+    def read_a_file_event(self, floc):
+        print 'Reading ', floc
+        p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+        fin = StringIO(p.communicate()[0])
+        assert p.returncode == 0
+        for line in fin:
+            line = line.rstrip('\n')
+            if line == '':
+                continue
+
+            pfx = line.split(':')[0]
+            datalist = ast.literal_eval(line.split(':')[1])
+            
+            # TODO only record here
+        fin.close()
+
+    def output_event(self):
+
