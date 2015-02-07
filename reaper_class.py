@@ -18,8 +18,6 @@ from env import *
 #from supporter_class import *
 from cStringIO import StringIO
 
-# TODO obtain prefix to AS mapping
-
 class Reaper():
 
     def __init__(self, period, granu, shift):
@@ -57,7 +55,8 @@ class Reaper():
         self.dv_thre = None
         self.uq_thre = None
 
-
+        self.pfx2as = radix.Radix()
+        
         #--------------------------------------------------------------------
         # variables for analyzing all types of prefixes
         # XXX if memo too hard, scan two or more times
@@ -112,6 +111,31 @@ class Reaper():
         # TODO store a matrix into a list of lists or numpy.matrix
         # TODO create a binary matrix if necessary
 
+    # get prefix 2 as mapping from only RouteViews2 collector's RIB
+    # TODO test needed
+    def get_pfx2as(self):
+        # After identifying 'active' prefixes, analyze their origin ASes!
+        print 'Getting prefix to AS mapping...'
+        ribfile = None
+        f = open(self.period.rib_info_file, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            co = line.split(':')[0]
+            if co == '':
+                ribfile = line.split(':')[1]
+        f.close()
+
+        p = subprocess.Popen(['zcat', ribfile], stdout=subprocess.PIPE)
+        f = StringIO(p.communicate()[0])
+        assert p.returncode == 0
+        for line in f:
+            line = line.rstrip('\n').split('|')
+            pfx = line[5]
+            origin_as = int(line[6].split()[-1])
+            rnode = self.pfx2as.add(pfx)
+            rnode.data[0] = origin_as
+        f.close()
+        
 
     def set_dv_uq_thre(self, dvt, uqt): # Input a dict of exact format
         self.dv_thre = dvt
