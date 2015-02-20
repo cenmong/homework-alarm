@@ -67,11 +67,11 @@ daterange = {
     4:('20050823','20050905'), #Hurricane Katrina | SG
     5:('20080128','20080203'), #mediterranean cable cut 1 | SG
     6:('20100225','20100303'), #Chile earthquake | SG
-    7:('20110309','20110315'), #Japan Tsunami | SG
+    7:('20110309','20110315'), #Japan Tsunami | SG (Note that 2011 data always cost time!)
     8:('20121020','20121102'), #Hurricane Sandy | SG
     9:('20130316','20130329'), # Spamhaus DDoS attack | WD XXX contained in 28
     10:('20080510','20080516'), #Sichuan Earthquake | SG
-    11:('20110819','20110901'), #Hurricane Irene |
+    11:('20110819','20110901'), #Hurricane Irene | SG
     12:('20130206','20130212'), #Northeastern US blackout | WD XXX contained in 28
     13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
     14:('20120221','20120224'), #Australia route leakage |
@@ -79,7 +79,7 @@ daterange = {
     16:('20030123','20030129'), #Slammer worm | SG
     17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX contained in 28
     18:('20130213','20130216'), #SEACOM outage | WD XXX contained in 28
-    19:('20110326','20110401'), #Caucasus cable cut |
+    19:('20110326','20110401'), #Caucasus cable cut | SG
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
@@ -88,7 +88,12 @@ daterange = {
     28:('20130101','20131231'), # XXX parsing in WD
 }
 # TODO: Blaster worm(2003);
+# 2004 Indian Ocean earthquake and tsunami
+# Haiti Earthquake in 2010
+# Cyclone Nargis (2008)
 # Moscow blackout(2005)
+# Pakistan Earthquake (2005)
+# New Zealand Earthquake (2011)
 
 # [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
 # [6th parm] event start date time,[7th parm] (opt) event end date time

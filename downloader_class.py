@@ -461,7 +461,7 @@ class Downloader():
             if not start_datetime + datetime.timedelta(minutes=shift) <= fname_dt_obj <= end_datetime:
                 continue
 
-            logging.info('Session reset probably exists in: %s', updatefile)
+            logging.info('Reset maybe in: %s', updatefile)
             size_before = os.path.getsize(updatefile)
             # record the prefix whose update has already been deleted for once
             counted_pfx = radix.Radix()

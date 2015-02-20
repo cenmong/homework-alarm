@@ -407,8 +407,8 @@ class Period():
         
         # XXX note: our logic is correct iff we only deal with eqix and rv2, if other
         # collectors are used, re-consider the logic
-        to_remove = []
         if eqixshift is not None:
+            to_remove = []
             #------------------------------------------------------------------
             # cut off head and end of the list because they can eat up memo
             # However, this makes 'ignoring first hour' fail when creating middle
@@ -428,11 +428,13 @@ class Period():
                     to_remove.append(fn)
                 elif co.endswith('eqix') and fnames[fn] > end_dt:
                     to_remove.append(fn)
-        for fn in to_remove:
-            newlist.remove(fn)
+
+            for fn in to_remove:
+                newlist.remove(fn)
 
 
         if rv_shift is not None: # TODO test needed
+            to_remove = []
             first_fn = newlist[0]
             last_fn = newlist[-1]
             start_dt = fnames[first_fn] + datetime.timedelta(hours=rv_shift)
@@ -447,8 +449,8 @@ class Period():
                     to_remove.append(fn)
                 elif not co.startswith('rrc') and fnames[fn] > end_dt:
                     to_remove.append(fn)
-        for fn in to_remove:
-            newlist.remove(fn)
+            for fn in to_remove:
+                newlist.remove(fn)
 
 
         filelist = listdir + 'combined_list.txt'

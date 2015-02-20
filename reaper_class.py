@@ -384,7 +384,7 @@ class Reaper():
                 self.read_a_file_event(self.middle_dir+f)
             print 'Analyzed one interval.'
 
-            # TODO main task here
+            # TODO main task here: analyze the matrix to identify events. Then make it empty
         self.output_event()
 
     def read_a_file_event(self, floc):
@@ -404,4 +404,4 @@ class Reaper():
         fin.close()
 
     def output_event(self):
-
+        pass

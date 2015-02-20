@@ -19,7 +19,7 @@ action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [1,3,8,10]
+index_list = [16]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
@@ -65,6 +65,7 @@ for i in index_list:
         reaper.set_dv_uq_thre(dv_thre, uq_thre)
         plotter = Plotter(reaper)
 
+    '''
     #------------------------------------------------------------
     # plot matrices of every middle file
     mdir = my_period.get_middle_dir()
@@ -78,5 +79,5 @@ for i in index_list:
         else:
             print 'Ploting matrix:', mdir+mf
             plot_matrix(mdir+mf, plotdir+mf.split('.')[0]+'.pdf') #TODO specify a range?
-
+    '''
 logging.info('Program ends!')

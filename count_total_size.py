@@ -1,8 +1,9 @@
 from env import *
 from period_class import *
 
-index_list = [11]
+index_list = [0,1,3,4,5,6,7,8,10,11,13,16,19,20,21,22]
 
+sum = 0
 for i in index_list:
     total = 0
     my_period = Period(i)
@@ -16,5 +17,8 @@ for i in index_list:
         size = float(line.split('|')[1])
         total += size
     f.close()
+    
+    sum += total/1000000.0
+    print i,':',total/1000000.0,'M'
 
-    print total/1000000.0,'M'
+print 'sum:',sum
