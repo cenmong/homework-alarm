@@ -108,8 +108,13 @@ class Reaper():
 
         #---------------------------------------------------------------
         # variables for detecting events
-        # TODO store a matrix into a list of lists or numpy.matrix
-        # TODO create a binary matrix if necessary
+        self.bmatrix = None # a binary matrix
+        self.thre_size = None
+        self.thre_width = None
+        self.thre_den = None # density threshold
+
+        self.events = dict() # time: event feature list
+        self.pfx_number = self.period.get_fib_size()
 
     # get prefix 2 as mapping from only RouteViews2 collector's RIB
     # TODO test needed
@@ -141,7 +146,7 @@ class Reaper():
         self.dv_thre = dvt
         self.uq_thre = uqt
 
-    def get_output_dir(self):
+    def get_output_dir_pfx(self):
         assert self.dv_thre != None and self.uq_thre != None
         return self.final_dir + str(self.dv_thre).lstrip('0.') + '_' + str(self.uq_thre) +\
                 '_' + str(self.m_granu) + '_' + str(self.granu) + '_' + str(self.shift) + '/'
@@ -237,7 +242,7 @@ class Reaper():
                 huq_flag = True
                 #print uq,dv
     
-            # XXX note: high dv usually indicate high uq but not verse visa
+            # note: high dv usually indicate high uq but not vice versa
 
             if dv > self.dv_thre: # the prefix is a HDV prefix
                 self.hdv_ts[unix_dt] += 1
@@ -277,7 +282,7 @@ class Reaper():
 
     def output_pfx(self):
         print 'Writing to final output...'
-        output_dir = self.get_output_dir()
+        output_dir = self.get_output_dir_pfx()
         print output_dir
         cmlib.make_dir(output_dir)
 
@@ -374,17 +379,164 @@ class Reaper():
             except:
                 return True
 
+
     #----------------------------------------------------------------------
     # For detecting disruptive events
+    def set_event_thre(self, size_ratio, width_ratio, density):
+        self.thre_size = size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
+        self.thre_width = self.mo_number * width_ratio # recommand: 10%
+        self.thre_den = density # recommand: 0.8 or 0.85?
 
     def detect_event(self):
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            print 'creating matrix...'
             for f in fg:
                 self.read_a_file_event(self.middle_dir+f)
-            print 'Analyzed one interval.'
 
-            # TODO main task here: analyze the matrix to identify events. Then make it empty
+            # convert integer lists to binary lists just before preprocessing
+            blists = list()
+            for rnode in self.c_pfx_data:
+                blist = []
+                ilist = rnode.data[0]
+                for value in ilist:
+                    if value > 0:
+                        blist.append(1)
+                    else:
+                        blist.append(0)
+                blists.append(blist)
+
+            print 'analyzing matrix...'
+            self.bmatrix = np.array(blists)
+            size = self.bmatrix.size
+            width = self.bmatrix.shape[1]
+            if size < self.thre_size or width < self.thre_width:
+                continue
+
+            #-------------------
+            # preprocess the matrix
+            height = self.bmatrix.shape[0]
+            row_must_del = []
+            col_must_del = []
+            
+            min_row_sum = 0.5 * self.thre_width # XXX good?
+            min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+
+            for i in xrange(0, height):
+                if self.bmatrix[i].sum() <= min_row_sum:
+                    row_must_del.append(i)
+            for i in xrange(0, width):
+                if self.bmatrix[:,i].sum() <= min_col_sum:
+                    col_must_del.append(i)
+
+            self.bmatrix = np.delete(self.bmatrix,row_must_del,0)
+            self.bmatrix = np.delete(self.bmatrix,col_must_del,1)
+
+            size = float(self.bmatrix.size)
+            width = self.bmatrix.shape[1]
+            if size < self.thre_size or width < self.thre_width:
+                continue
+
+            #--------------------
+            # process the matrix
+            sum = float(np.sum(self.bmatrix))
+            density = sum/size
+            height = self.bmatrix.shape[0]
+            width = self.bmatrix.shape[1]
+            now_den = density
+            no_more_col_del = False
+
+            while(now_den < self.thre_den):
+                #-------------------------
+                sum = float(np.sum(self.bmatrix))
+                size = float(self.bmatrix.size)
+                density = sum/size
+                height = self.bmatrix.shape[0]
+                width = self.bmatrix.shape[1]
+
+                #-----------------------------------------------
+                # obtain candidate prefixes to delete
+                row_one = dict()
+                for i in xrange(0, height):
+                    row_one[i] = self.bmatrix[i].sum()
+
+                row_one = sorted(row_one.items(), key=operator.itemgetter(1))
+                min_row_one = row_one[0][1]
+
+                row_to_del = list()
+                for item in row_one:
+                    if item[1] == min_row_one:
+                        row_to_del.append(item[0])
+                    else:
+                        break
+
+                row_dsize = float(len(row_to_del) * width)
+                row_dsum = 0.0
+                for index in row_to_del:
+                    row_dsum += self.bmatrix[index].sum()
+                row_del_score = ((sum-row_dsum)/(size-row_dsize)-density)/row_dsize
+
+                new_rsize = size - len(row_to_del) * width
+                if new_rsize < self.thre_size:
+                    row_del_score = -1
+
+                #-----------------------------------------------
+                # obtain candidate monitors to delete
+                if no_more_col_del is False:
+                    col_one = dict()
+                    for i in xrange(0, width):
+                        col_one[i] = self.bmatrix[:,i].sum()
+
+                    col_one = sorted(col_one.items(), key=operator.itemgetter(1))
+                    min_col_one = col_one[0][1]
+
+                    col_to_del = list()
+                    for item in col_one:
+                        if item[1] == min_col_one:
+                            col_to_del.append(item[0])
+                        else:
+                            break
+
+                    col_dsize = float(len(col_to_del) * height)
+                    col_dsum = 0.0
+                    for index in col_to_del:
+                        col_dsum += self.bmatrix[:,index].sum()
+                    col_del_score = ((sum-col_dsum)/(size-col_dsize)-density)/col_dsize
+
+                    new_width = width - len(col_to_del)
+                    if new_width < self.thre_width:
+                        col_del_score = -1 # never del col any more
+                        no_more_col_del = True
+
+                    new_csize = size - len(col_to_del) * height
+                    if new_csize < self.thre_size:
+                        col_del_score = -1
+                else:
+                    col_del_score = -1
+
+                #-------------------------------------------
+                # decide which to delete
+                if row_del_score == -1 and col_del_score == -1:
+                    print 'Fail to find such submatrix'
+                    break # XXX note that now_den may still be small when breaking
+                elif col_del_score == -1 or row_del_score >= col_del_score:
+                    print 'deleted row:', row_to_del
+                    self.bmatrix = np.delete(self.bmatrix,row_to_del,0)
+                    now_den = (sum-row_dsum)/(size-row_dsize)
+                else:
+                    print 'deleted col:', col_to_del
+                    self.bmatrix = np.delete(self.bmatrix,col_to_del,1)
+                    now_den = (sum-col_dsum)/(size-col_dsize)
+
+            # Judge the result
+            # No matter how, size, density, etc now stores current bmatrix's info
+            if size >= self.thre_size and density >= self.thre_den:
+                self.events[unix_dt] = [size, density, height, width]
+                logging.info('found event at %d: %s', unix_dt, str([size, density, height, width]))
+
+            self.c_pfx_data = radix.Radix()
+            self.bmatrix = None
+
         self.output_event()
 
     def read_a_file_event(self, floc):
@@ -399,9 +551,36 @@ class Reaper():
 
             pfx = line.split(':')[0]
             datalist = ast.literal_eval(line.split(':')[1])
-            
-            # TODO only record here
+
+            rnode = self.c_pfx_data.search_exact(pfx)
+            if rnode is None:
+                rnode = self.c_pfx_data.add(pfx)
+                rnode.data[0] = datalist
+            else:
+                c_datalist = rnode.data[0]
+                combined = [x+y for x,y in zip(datalist, c_datalist)]
+                rnode.data[0] = combined
+
         fin.close()
 
+    def get_output_dir_event(self):
+        s = str(self.thre_size)
+        tmp = s.index('.')
+        s = s[:tmp]
+        w = str(self.thre_width)
+        tmp = w.index('.')
+        w = w[:tmp]
+        return self.final_dir + s + '_' + w +\
+                '_' + str(self.thre_den).lstrip('0.') + '_' + str(self.m_granu) +\
+                '_' + str(self.granu) + '_' + str(self.shift) + '/'
+
     def output_event(self):
-        pass
+        print 'Writing to final output...'
+        output_dir = self.get_output_dir_event()
+        print output_dir
+        cmlib.make_dir(output_dir)
+        
+        f = open(output_dir+'events.txt', 'w')
+        for dt in self.events:
+            f.write(str(dt)+':'+str(self.events[dt])+'\n')
+        f.close()

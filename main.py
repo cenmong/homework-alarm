@@ -12,14 +12,14 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
+#action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
-#action = {'middle':False, 'final':True, 'plot':False}
+action = {'middle':False, 'final':True, 'plot':False}
 #action = {'middle':False, 'final':True, 'plot':True}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [16]
+index_list = [0,5,6,7]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
@@ -44,20 +44,21 @@ for i in index_list:
         alarm = Alarm(my_period, option['mid_granu'])
         alarm.analyze_to_middle() # analyze all updates and store to middle output files
 
-    dv_thre = 0.2
-    uq_thre = 200
+    dv_thre = 0.2 # HDVP
+    uq_thre = 200 # HUQP
     if action['final']:
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-        reaper.set_dv_uq_thre(dv_thre, uq_thre)
         # only for the prefix paper 
-        reaper.analyze_pfx()
+        #reaper.set_dv_uq_thre(dv_thre, uq_thre)
+        #reaper.analyze_pfx()
 
         #periods = [[],[],[],[],[],[]]
         # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
         # : in order to avoid the period when disruptive events happened
         # future TODO select results of only part of the monitors to observe its impact
 
-        # only for the event paper
+        # only for the event detection paper
+        reaper.set_event_thre(0.008, 0.15, 0.85)
         reaper.detect_event()
 
     if action['plot']:
