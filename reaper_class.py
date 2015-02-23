@@ -386,11 +386,17 @@ class Reaper():
         self.thre_size = size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
         self.thre_width = self.mo_number * width_ratio # recommand: 10%
         self.thre_den = density # recommand: 0.8 or 0.85?
+        logging.info('thre_size:%d;thre_width:%d;',self.thre_size,self.thre_width)
+
+        min_row_sum = 0.5 * self.thre_width # XXX good?
+        min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+        logging.info('preprocess thresholds row %f col %f', min_row_sum, min_col_sum)
 
     def detect_event(self):
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
             print 'creating matrix...'
+
             for f in fg:
                 self.read_a_file_event(self.middle_dir+f)
 
@@ -435,6 +441,7 @@ class Reaper():
             size = float(self.bmatrix.size)
             width = self.bmatrix.shape[1]
             if size < self.thre_size or width < self.thre_width:
+                print 'No further process needed'
                 continue
 
             #--------------------
@@ -476,9 +483,9 @@ class Reaper():
                     row_dsum += self.bmatrix[index].sum()
                 row_del_score = ((sum-row_dsum)/(size-row_dsize)-density)/row_dsize
 
-                new_rsize = size - len(row_to_del) * width
-                if new_rsize < self.thre_size:
-                    row_del_score = -1
+                #new_rsize = size - len(row_to_del) * width # XXX test
+                #if new_rsize < self.thre_size:
+                #    row_del_score = -1
 
                 #-----------------------------------------------
                 # obtain candidate monitors to delete
@@ -504,13 +511,13 @@ class Reaper():
                     col_del_score = ((sum-col_dsum)/(size-col_dsize)-density)/col_dsize
 
                     new_width = width - len(col_to_del)
-                    if new_width < self.thre_width:
-                        col_del_score = -1 # never del col any more
-                        no_more_col_del = True
+                    #if new_width < self.thre_width: # XXX test
+                    #    col_del_score = -1 # never del col any more
+                    #    no_more_col_del = True
 
-                    new_csize = size - len(col_to_del) * height
-                    if new_csize < self.thre_size:
-                        col_del_score = -1
+                    #new_csize = size - len(col_to_del) * height # XXX test
+                    #if new_csize < self.thre_size:
+                    #    col_del_score = -1
                 else:
                     col_del_score = -1
 
@@ -528,9 +535,15 @@ class Reaper():
                     self.bmatrix = np.delete(self.bmatrix,col_to_del,1)
                     now_den = (sum-col_dsum)/(size-col_dsize)
 
+            sum = float(np.sum(self.bmatrix))
+            size = float(self.bmatrix.size)
+            density = sum/size
+            height = self.bmatrix.shape[0]
+            width = self.bmatrix.shape[1]
             # Judge the result
             # No matter how, size, density, etc now stores current bmatrix's info
-            if size >= self.thre_size and density >= self.thre_den:
+            logging.info('%d final submatrix info: %s', unix_dt,str([size, density, height, width]))
+            if size >= self.thre_size and density >= self.thre_den and width >= self.thre_width:
                 self.events[unix_dt] = [size, density, height, width]
                 logging.info('found event at %d: %s', unix_dt, str([size, density, height, width]))
 

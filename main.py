@@ -58,7 +58,7 @@ for i in index_list:
         # future TODO select results of only part of the monitors to observe its impact
 
         # only for the event detection paper
-        reaper.set_event_thre(0.008, 0.15, 0.85)
+        reaper.set_event_thre(0.01, 0.4, 0.8)
         reaper.detect_event()
 
     if action['plot']:
