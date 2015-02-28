@@ -56,7 +56,7 @@ all_collectors = { # 17 in total
 co_blank = {
     'rrc14': ['20090324', '20100326'],
     'rrc10': ['20110718', '20110914'],
-    'rrc11': ['20130130','20130417'],
+    '': ['20110217','20110224'],
 }
 
 #-------------------------------------------------------
@@ -84,18 +84,20 @@ daterange = {
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
+    23:('20110219','20110225'), # new zealand
+    24:('20041224','20041230'), # Indian Ocean earthquake and Tsunami
     27:('20141130','20141201'), # test only
     271:('20141115', '20141116'), # test only
-    28:('20130101','20131231'), # WD
+    28:('20130101','20131231'), # XXX parsing in WD
     29:('20050101','20051231'), # Downloading in TSB
 }
-# TODO: Blaster worm(2003);
-# 2004 Indian Ocean earthquake and tsunami
+# Blaster worm(2003); first noticed and started spreading on August 11, 2003.
+#the number of infections peaked on August 13, 2003
+#The 2004 Indian Ocean earthquake occurred at 00:58:53 UTC on 26 December
 # Haiti Earthquake in 2010
 # Cyclone Nargis (2008)
 # Moscow blackout(2005)
 # Pakistan Earthquake (2005)
-# New Zealand Earthquake (2011)
 
 # [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
 # [6th parm] event start date time,[7th parm] (opt) event end date time
