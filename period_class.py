@@ -371,8 +371,21 @@ class Period():
         print 'Getting combined file list'
         listdir = ''
 
-        co_list = self.co_mo.keys()
+        #co_list = self.co_mo.keys()
+        co_list = list()
+        for co in all_collectors.keys():
+            co_sdate = all_collectors[co]
+            if co not in co_blank.keys():
+                if int(co_sdate) <= int(self.sdate):
+                    co_list.append(co)
+            else:
+                bstart = co_blank[co][0]
+                bend = co_blank[co][1]
+                if int(co_sdate)<=int(self.sdate) and not (int(bstart)<=int(self.sdate)<=\
+                        int(bend) or int(bstart)<=int(self.edate)<=int(bend)):
+                    co_list.append(co)
         listfiles = list()
+
         for co in co_list:
             dl = Downloader(self.sdate, self.edate, co)
             listfiles.append(dl.get_listfile())
@@ -451,7 +464,6 @@ class Period():
                     to_remove.append(fn)
             for fn in to_remove:
                 newlist.remove(fn)
-
 
         filelist = listdir + 'combined_list.txt'
         f = open(filelist, 'w')

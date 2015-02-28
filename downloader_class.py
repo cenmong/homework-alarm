@@ -208,14 +208,16 @@ class Downloader():
             self.rib_list = [rib_full_loc]
         else:
             month_list = self.get_month_list()
+            print 'month list:', month_list
             datelist = list()
             for m in month_list:
                 datelist.append(m+'01') # XXX RIB from the first day of the month
+            print 'date list:', datelist
 
-            riblist = list()
+            rib_list = list()
             for date in datelist:
                 rib_full_loc = self.download_one_rib(date)
-                riblist.append(rib_full_loc)
+                rib_list.append(rib_full_loc)
             self.rib_list = rib_list
 
     def download_one_rib(self, my_date):
@@ -511,7 +513,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [11,19]
+    order_list = [28]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
@@ -528,11 +530,13 @@ if __name__ == '__main__':
                 bstart = co_blank[co][0]
                 bend = co_blank[co][1]
                 if int(co_sdate)<=int(sdate) and not (int(bstart)<=int(sdate)<=\
-                        int(bend) or int(bstart)<=int(edate)<=int(bend)):
+                        int(bend) or int(bstart)<=int(edate)<=int(bend)) and not\
+                        (int(sdate)<=int(bstart) and int(edate)>=int(bend)):
                     collector_list[i].append(co)
 
         print i,':',collector_list[i]
 
+    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -547,7 +551,7 @@ if __name__ == '__main__':
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
-
+    '''
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)
@@ -556,11 +560,11 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
-            dl.get_rib()
+            dl.get_rib() # download RIB and store the list in downloader.rib_list
             co_ribs[co] = dl.rib_list
             for r in co_ribs[co]:
                 cmlib.get_peer_info(r) # do not delete this line
-
+        
         # for each period, maintain a file that record its RIBs (do not delete!)
         rib_info = rib_info_dir + sdate + '_' + edate + '.txt' # Do not change this
         cmlib.make_dir(rib_info_dir)
@@ -571,7 +575,7 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
-
+    '''
     # Delete reset updates
     for order in order_list:
         sdate = daterange[order][0]
@@ -579,3 +583,4 @@ if __name__ == '__main__':
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
             dl.delete_reset()
+    '''
