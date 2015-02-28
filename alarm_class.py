@@ -64,6 +64,7 @@ class Alarm():
         #-----------------------------------------------------
         # For synchronization among collectors and conducting timely aggregation
         # Note: assume all collectors will exist after self.sdate + 1 hour
+        # XXX commented out when dealing with 2013 whole year data
 
         self.cl_dt = {}  # The current datetime of every collector, for getting ceiling
         for cl in self.cl_list:
@@ -72,7 +73,7 @@ class Alarm():
         tmp_dt = datetime.datetime(int(self.sdate[0:4]),\
                 int(self.sdate[4:6]),int(self.sdate[6:8]),0,0) # is UTC
         # do not fill up the hour to allow for the edge value being analyzed
-        tmp_dt = tmp_dt + datetime.timedelta(minutes=58) # is UTC
+        #XXX tmp_dt = tmp_dt + datetime.timedelta(minutes=58) # is UTC
         tmp_dt = calendar.timegm(tmp_dt.timetuple()) # is UTC
 
         # floor is only for ignoring anything before self.sdate + 1 hour
@@ -82,7 +83,7 @@ class Alarm():
 
         tmp_dt = datetime.datetime(int(self.edate[0:4]),\
                 int(self.edate[4:6]),int(self.edate[6:8]),23,59)
-        tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
+        #XXX tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
         tmp_dt = calendar.timegm(tmp_dt.timetuple())
         self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
 

@@ -407,6 +407,8 @@ class Period():
                 if co == 'bgpdata':
                     co = ''
 
+                # FIXME these code create holes between months when dealing with whole year!!
+                # FIXME fix this hole by update in the previous and next month...
                 if co == 'route-views.eqix' and dt_obj <= self.dt_anchor2: # PST time
                     eqixshift = 7
                     dt_obj = dt_obj + datetime.timedelta(hours=eqixshift) # XXX not 8
@@ -428,8 +430,10 @@ class Period():
             first_fn = newlist[0]
             last_fn = newlist[-1]
             # 0 line could not be eqix # start: align with eqix
+            # FIXME fill the gap if possible!
             start_dt = fnames[first_fn] + datetime.timedelta(hours=eqixshift)
             # -1 line must be eqix # end: cut off eqix
+            # FIXME be more accurate when deciding this! (do not omit any file carelessly)
             end_dt = fnames[last_fn] + datetime.timedelta(hours=-eqixshift)
 
             for fn in newlist: # sorted list
@@ -450,6 +454,7 @@ class Period():
             to_remove = []
             first_fn = newlist[0]
             last_fn = newlist[-1]
+            # XXX fill the gap if possible!!!
             start_dt = fnames[first_fn] + datetime.timedelta(hours=rv_shift)
             end_dt = fnames[last_fn] + datetime.timedelta(hours=-rv_shift)
 

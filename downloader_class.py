@@ -125,7 +125,7 @@ class Downloader():
 
     def get_all_updates(self):
         self.get_update_list()
-        self.download_updates()
+        #self.download_updates()
 
     def get_update_list(self):
         tmp_dir = self.get_listfile_dir()
@@ -513,7 +513,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [24]
+    order_list = [281,282,283,284,285,286,287,288,289,2810,2811,2812]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
@@ -536,6 +536,7 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
+    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -574,6 +575,7 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
+    '''
 
     # Delete reset updates
     for order in order_list:
