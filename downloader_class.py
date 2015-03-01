@@ -125,7 +125,7 @@ class Downloader():
 
     def get_all_updates(self):
         self.get_update_list()
-        #self.download_updates()
+        self.download_updates()
 
     def get_update_list(self):
         tmp_dir = self.get_listfile_dir()

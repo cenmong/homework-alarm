@@ -103,6 +103,7 @@ daterange = {
 # Cyclone Nargis (2008)
 # Moscow blackout(2005)
 # Pakistan Earthquake (2005)
+# Witty worm
 
 # [4th parm] order (for easier coding),[5th parm] 10:westdata HDD only 01:seagate HDD only 11: both 00: none
 # [6th parm] event start date time,[7th parm] (opt) event end date time
