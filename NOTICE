@@ -10,7 +10,8 @@ Note: logging costs much time! do not log frequently!
 Once apon a time, archive.routeviews.org fail to work, while routeviews.org can
 However now the latter fails in IPv6 but the former can in both
 --------------------------------------------------------------
-BUG: cannot parse a certain file (program cannot stop)
+While downloading and parsing prolonged 2, we failed to parse RV.wide20030818010(program cannot stop)
+solve: delete the file name from file list
 ------------------------------------------------------------------
 when viewing a long line, vim can become very slow...
 ----------------------------------------------------------------

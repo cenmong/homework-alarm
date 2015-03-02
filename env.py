@@ -64,7 +64,7 @@ co_blank = {
 daterange = {
     0:('20061224','20061230'), #taiwan cable cut | SG
     1:('20081217','20081223'), #mediterranean cable cut 2 | SG
-    2:('20030812','20030818'), #east coast blackout | FIXME Fail to parse one file! SG
+    2:('20030812','20030818'), #east coast blackout | SG
     3:('20050910','20050916'), #LA blackout | SG
     4:('20050823','20050905'), #Hurricane Katrina | SG
     5:('20080128','20080203'), #mediterranean cable cut 1 | SG
@@ -85,7 +85,7 @@ daterange = {
     20:('20121221','20121227'), #Georgia-Russia cable cut | SG
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
-    23:('20110219','20110225'), # new zealand
+    23:('20110219','20110225'), # new zealand | SG
     24:('20041224','20041230'), # Indian Ocean earthquake and Tsunami
     28:('20130101','20131231'), # WD
     281:('20130101','20130131'),282:('20130201','20130228'),283:('20130301','20130331'),

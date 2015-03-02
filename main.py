@@ -14,12 +14,11 @@ logging.info('Program starts!')
 
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
-action = {'middle':False, 'final':True, 'plot':False}
-#action = {'middle':False, 'final':True, 'plot':True}
+action = {'middle':True, 'final':True, 'plot':False}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [28]
+index_list = [24]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
