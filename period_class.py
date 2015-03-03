@@ -1,4 +1,4 @@
-from downloader_class import Downloader
+import downloader_class
 from  env import *
 
 import subprocess
@@ -387,7 +387,7 @@ class Period():
         listfiles = list()
 
         for co in co_list:
-            dl = Downloader(self.sdate, self.edate, co)
+            dl = downloader_class.Downloader(self.sdate, self.edate, co)
             listfiles.append(dl.get_listfile())
             listdir = dl.get_listfile_dir()
 
@@ -409,6 +409,7 @@ class Period():
 
                 # FIXME these code create holes between months when dealing with whole year!!
                 # FIXME fix this hole by update in the previous and next month...
+                # XXX Do this when processing 2005 whole year data
                 if co == 'route-views.eqix' and dt_obj <= self.dt_anchor2: # PST time
                     eqixshift = 7
                     dt_obj = dt_obj + datetime.timedelta(hours=eqixshift) # XXX not 8

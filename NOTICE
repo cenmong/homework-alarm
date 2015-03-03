@@ -42,3 +42,5 @@ although it costs much time and artifact when deleting reset, it will not affect
 In practice I failed to delete some resets. But it will not affect our results because they are local events!
 ----------------------------------
 Do not delete list and dict items while iterating them
+---------------------------------
+When deleting reset the 2013 data quickly, we ignore non-global monitors (90% threshold). We continue with this policy in future work!

@@ -5,6 +5,8 @@
 # reset-updates in it may have not been completely deleted
 # This decision also makes the synchronization much easier
 
+import ast
+import period_class
 import radix # takes 1/4 the time as patricia
 import gzip
 import traceback
@@ -13,6 +15,7 @@ import datetime
 import subprocess
 import os
 import logging
+import shutil
 import numpy as np
 logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
@@ -38,6 +41,7 @@ def parse_update_files(listfile): # all update files from one collectors/list
 class Downloader():
 
     def __init__(self, sdate, edate, co):
+        self.period = None
         self.sdate = sdate
         self.edate = edate
         self.sdt_obj = datetime.datetime(int(sdate[0:4]),int(sdate[4:6]),int(sdate[6:8]),0,0) # is UTC
@@ -52,6 +56,9 @@ class Downloader():
         self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
         self.dt_anchor1 = datetime.datetime(2003,2,3,19,0)
         self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
+
+    def set_period(self, index):
+        self.period = period_class.Period(index)
 
     def get_listfile(self):
         return self.listfile
@@ -412,7 +419,7 @@ class Downloader():
         resetf.close()
 
         # write the reset info into a file
-        # FIXME deal with gap > 32 days
+        # TODO deal with gap > 32 days
         cmlib.make_dir(reset_info_dir)
         f = open(self.reset_info, 'a')
         f.write(self.co+':\n')
@@ -422,16 +429,53 @@ class Downloader():
                 f.write(str(rs)+'\n')
         f.close()
 
+        '''
+        # XXX only for once start (continue after the program stopped because of memo issue)
+        this_co_peers = []
+        peer_file = cmlib.peer_path_by_rib_path(rib_full_loc)
+        fff = open(peer_file, 'r')
+        for line in fff:
+            peer = line.split('@')[0]
+            this_co_peers.append(peer)
+        fff.close()
+        
+        peer_resettime = dict()
+        f = open(self.reset_info, 'r')
+        for line in f:
+            line = line.rstrip('@\n')
+            if ':' in line:
+                continue
+            if line[0].isdigit():
+                p = line
+                peer_resettime[p] = list()
+            else:
+                thelist = ast.literal_eval(line)
+                peer_resettime[p].append(thelist)
+        f.close()
+        # XXX only for once end
+        '''
+
+        self.period.get_global_monitors()
+        global_peers = []
+        for key in self.period.co_mo:
+            global_peers.extend(self.period.co_mo[key])
+
         # different collectors in the same file
         for p in peer_resettime:
-            if ':' in p: # XXX note: We do not really delete IPv6 updates
+            if ':' in p: # We do not really delete IPv6 updates
+                continue
+            #if p not in this_co_peers: # XXX used with the previous commented out code
+            #    continue
+            if p not in global_peers: # We ignore non-global peers to save time
                 continue
             for l in peer_resettime[p]:
+                print 'deleting reset for ', p
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
 
-        os.remove(reset_info_file)
+        os.remove(reset_info_file) #XXX comment out when 'doing it once'...
 
     def delete_reset_updates(self, peer, stime_unix, endtime_unix, tmp_full_listfile):
+        # FIXME something is eating up memory!
         start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
         end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
         logging.info( 'Deleting session reset %s: [%s, %s]', peer, str(start_datetime), str(end_datetime))
@@ -441,9 +485,9 @@ class Downloader():
         f = open(tmp_full_listfile, 'r')
         for line in f:  
             updatefile = line.rstrip('\n')
+
             file_attr = updatefile.split('.')
             fattr_date, fattr_time = file_attr[-5], file_attr[-4]
-            # Get file datetime obj fname_dt_obj from the file's name
             fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
                     int(fattr_date[4:6]), int(fattr_date[6:8]),\
                     int(fattr_time[0:2]), int(fattr_time[2:4]))
@@ -454,16 +498,17 @@ class Downloader():
             elif not self.co.startswith('rrc') and fname_dt_obj <= self.dt_anchor1:
                 fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX here is 8
 
-            # Check whether the file is a possible target
-            # Note: some times the time intervals are not 5 and 15
-            if co.startswith('rrc'): # note the difference in file name formats
+            # Note: some times the time intervals are not 5 and 15, so we set 10 and 30 here
+            if co.startswith('rrc'):
                 shift = -10
             else:
                 shift = -30
-            if not start_datetime + datetime.timedelta(minutes=shift) <= fname_dt_obj <= end_datetime:
+
+            # Check whether the file is a possible target
+            if not start_datetime+datetime.timedelta(minutes=shift)<=fname_dt_obj<=end_datetime:
                 continue
 
-            logging.info('Reset maybe in: %s', updatefile)
+            logging.info('Reading: %s', updatefile)
             size_before = os.path.getsize(updatefile)
             # record the prefix whose update has already been deleted for once
             counted_pfx = radix.Radix()
@@ -497,24 +542,21 @@ class Downloader():
             new_f.close()
 
             # use the new file to replace the old file
-            os.remove(updatefile)
-            target_loc = cmlib.get_file_dir(updatefile)
-            subprocess.call('mv '+tmp_file_loc+' '+target_loc, shell=True)
+            shutil.move(updatefile,updatefile+'.bak')
+            shutil.move(tmp_file_loc, updatefile)
             size_after = os.path.getsize(updatefile)
             logging.info('size(b):%f,size(a):%f', size_before, size_after)
+            os.remove(updatefile+'.bak')
                    
         f.close()
 
-        #assert time_found == True # does not fit a very active peer
         if time_found == False: # Very rarely happens!
-            logging.error('%s:Cannot find time in files when deleting reset: ', self.co)
-            logging.error('%s:[%d,%d]', peer, stime_unix, endtime_unix)
+            logging.error('%s:Cannot find time in the files!!!!!!!(Error)', self.co)
 
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    #order_list = [281,282,283,284,285,286,287,288,289,2810,2811,2812]
-    order_list = [2]
+    order_list = [283,284,285,286,287,288,289,2810,2811,2812]
 
     # we select all collectors that have appropriate start dates
     collector_list = dict()
@@ -537,6 +579,7 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
+    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -575,6 +618,7 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
+    '''
 
     # Delete reset updates
     for order in order_list:
@@ -582,4 +626,5 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
+            dl.set_period(order)
             dl.delete_reset()
