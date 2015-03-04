@@ -76,8 +76,8 @@ daterange = {
     11:('20110819','20110901'), #Hurricane Irene | SG
     12:('20130206','20130212'), #Northeastern US blackout | WD XXX contained in 28
     13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
-    14:('20120221','20120224'), #Australia route leakage | todo: download updates + delete reset
-    15:('20120807','20120810'), #Canada route leakage | todo: download updates + delete reset
+    14:('20120220','20120226'), #Australia route leakage | todo: download updates + delete reset
+    15:('20120806','20120812'), #Canada route leakage | todo: download updates + delete reset
     16:('20030123','20030129'), #Slammer worm | SG
     17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX contained in 28
     18:('20130213','20130216'), #SEACOM outage | WD XXX contained in 28
