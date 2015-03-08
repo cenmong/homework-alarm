@@ -12,7 +12,7 @@ import gzip
 import traceback
 import cmlib
 import datetime
-import subprocess
+import subprocess32 as subprocess
 import os
 import logging
 import shutil
@@ -21,6 +21,8 @@ logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, forma
 
 from env import *
 from cStringIO import StringIO
+from meliae import scanner
+scanner.dump_all_objects('memory.json')
 
 
 def parse_update_files(listfile): # all update files from one collectors/list
@@ -42,6 +44,8 @@ class Downloader():
 
     def __init__(self, sdate, edate, co):
         self.period = None
+        self.global_peers = None
+
         self.sdate = sdate
         self.edate = edate
         self.sdt_obj = datetime.datetime(int(sdate[0:4]),int(sdate[4:6]),int(sdate[6:8]),0,0) # is UTC
@@ -54,11 +58,17 @@ class Downloader():
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
         
         self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
+        self.counted_pfx = None
+
         self.dt_anchor1 = datetime.datetime(2003,2,3,19,0)
         self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
 
     def set_period(self, index):
         self.period = period_class.Period(index)
+        self.period.get_global_monitors()
+        self.global_peers = []
+        for key in self.period.co_mo:
+            self.global_peers.extend(self.period.co_mo[key])
 
     def get_listfile(self):
         return self.listfile
@@ -428,7 +438,6 @@ class Downloader():
             for rs in peer_resettime[p]:
                 f.write(str(rs)+'\n')
         f.close()
-
         '''
         # XXX only for once start (continue after the program stopped because of memo issue)
         this_co_peers = []
@@ -455,18 +464,13 @@ class Downloader():
         # XXX only for once end
         '''
 
-        self.period.get_global_monitors()
-        global_peers = []
-        for key in self.period.co_mo:
-            global_peers.extend(self.period.co_mo[key])
-
         # different collectors in the same file
         for p in peer_resettime:
             if ':' in p: # We do not really delete IPv6 updates
                 continue
             #if p not in this_co_peers: # XXX used with the previous commented out code
             #    continue
-            if p not in global_peers: # We ignore non-global peers to save time
+            if p not in self.global_peers: # We ignore non-global peers to save time
                 continue
             for l in peer_resettime[p]:
                 print 'deleting reset for ', p
@@ -511,9 +515,9 @@ class Downloader():
             logging.info('Reading: %s', updatefile)
             size_before = os.path.getsize(updatefile)
             # record the prefix whose update has already been deleted for once
-            counted_pfx = radix.Radix()
+            self.counted_pfx = radix.Radix()
 
-            p = subprocess.Popen(['zcat', updatefile],stdout=subprocess.PIPE)
+            p = subprocess.Popen(['zcat', updatefile],stdout=subprocess.PIPE, close_fds=True)
             old_f = StringIO(p.communicate()[0])
             assert p.returncode == 0
             tmp_file_loc = datadir + updatefile.split('/')[-1]
@@ -526,9 +530,9 @@ class Downloader():
                     if attr[3]==peer and stime_unix<=int(attr[1])<=endtime_unix:
                         time_found = True
                         pfx = attr[5]
-                        rnode = counted_pfx.search_exact(pfx)
+                        rnode = self.counted_pfx.search_exact(pfx)
                         if rnode is None: # cannot find, delete the update
-                            rnode = counted_pfx.add(pfx)
+                            rnode = self.counted_pfx.add(pfx)
                         else: # found, so the prefix has been deleted once
                             new_f.write(updt)
                     else:
@@ -540,6 +544,8 @@ class Downloader():
 
             old_f.close()
             new_f.close()
+            #p.kill()#This will cause an Error
+            self.counted_pfx = None
 
             # use the new file to replace the old file
             shutil.move(updatefile,updatefile+'.bak')
@@ -556,9 +562,8 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    #order_list = [283,284,285,286,287,288,289,2810,2811,2812]
-    order_list = [14,15]
-
+    #order_list = [285,286,287,288,289,2810,2811,2812]
+    order_list = [285] # XXX XXX
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -580,6 +585,8 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
+    collector_list[285] = collector_list[285][3:]
+    '''
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -595,7 +602,6 @@ if __name__ == '__main__':
     for listf in listfiles:
         parse_update_files(listf)
 
-    '''
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)
@@ -619,13 +625,15 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
+    '''
 
     # Delete reset updates
     for order in order_list:
         sdate = daterange[order][0]
         edate = daterange[order][1]
         for co in collector_list[order]:
+            # TODO get all reset info first, then delete all reset 
             dl = Downloader(sdate, edate, co)
             dl.set_period(order)
             dl.delete_reset()
-    '''
+            del dl

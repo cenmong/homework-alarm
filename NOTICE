@@ -44,3 +44,9 @@ In practice I failed to delete some resets. But it will not affect our results b
 Do not delete list and dict items while iterating them
 ---------------------------------
 When deleting reset the 2013 data quickly, we ignore non-global monitors (90% threshold). We continue with this policy in future work!
+------------------------------------
+For 2013 month 1~4, I unlikely finished the deleting reset process, because when the program stopped, I thought that the work
+of finding reset start and end has finished, which is unlikely to be true. I should make up the missed collectors in future
+work!
+-------------------------------------
+Calling subprocess too many time can cause memory issue likely because of fork()
