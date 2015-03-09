@@ -23,7 +23,7 @@ from env import *
 from cStringIO import StringIO
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
-
+from guppy import hpy
 
 def parse_update_files(listfile): # all update files from one collectors/list
     flist = open(listfile, 'r')
@@ -475,6 +475,8 @@ class Downloader():
             for l in peer_resettime[p]:
                 print 'deleting reset for ', p
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
+                h = hpy()
+                print h.heap()
 
         os.remove(reset_info_file) #XXX comment out when 'doing it once'...
 
@@ -562,8 +564,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    #order_list = [285,286,287,288,289,2810,2811,2812]
-    order_list = [285] # XXX XXX
+    order_list = [286,287,288,289,2810,2811,2812]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -585,7 +586,6 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
-    collector_list[285] = collector_list[285][3:]
     '''
     listfiles = [] # a list of update file list files
     # download update files
