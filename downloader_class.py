@@ -140,8 +140,8 @@ class Downloader():
 
         return month_list
 
-    def get_all_updates(self):
-        self.get_update_list()
+    def download_updates_starter(self):
+        #self.get_update_list() #FIXME test
         self.download_updates()
 
     def get_update_list(self):
@@ -397,6 +397,7 @@ class Downloader():
 
 
     def rm_reset_one_list(self, rib_full_loc, tmp_full_listfile):
+        '''
         ## record reset info into a temp file
         reset_info_file = datadir + 'peer_resets.txt'
 
@@ -440,6 +441,7 @@ class Downloader():
         f.close()
         '''
         # XXX only for once start (continue after the program stopped because of memo issue)
+        # FIXME Giant bug in these code. In future, re-download the affected collectors
         this_co_peers = []
         peer_file = cmlib.peer_path_by_rib_path(rib_full_loc)
         fff = open(peer_file, 'r')
@@ -449,27 +451,31 @@ class Downloader():
         fff.close()
         
         peer_resettime = dict()
+        record = False
         f = open(self.reset_info, 'r')
         for line in f:
             line = line.rstrip('@\n')
             if ':' in line:
+                record = False
                 continue
             if line[0].isdigit():
+                record = True
                 p = line
                 peer_resettime[p] = list()
-            else:
+            elif record is True:
                 thelist = ast.literal_eval(line)
                 peer_resettime[p].append(thelist)
+            else:
+                assert 1 == 0
         f.close()
         # XXX only for once end
-        '''
 
         # different collectors in the same file
         for p in peer_resettime:
             if ':' in p: # We do not really delete IPv6 updates
                 continue
-            #if p not in this_co_peers: # XXX used with the previous commented out code
-            #    continue
+            if p not in this_co_peers: # XXX used with the previous commented out code
+                continue
             if p not in self.global_peers: # We ignore non-global peers to save time
                 continue
             for l in peer_resettime[p]:
@@ -478,13 +484,13 @@ class Downloader():
                 h = hpy()
                 print h.heap()
 
-        os.remove(reset_info_file) #XXX comment out when 'doing it once'...
+        #os.remove(reset_info_file) #XXX comment out when 'doing it once'...
 
     def delete_reset_updates(self, peer, stime_unix, endtime_unix, tmp_full_listfile):
         # FIXME something is eating up memory!
         start_datetime = datetime.datetime.utcfromtimestamp(stime_unix)
         end_datetime = datetime.datetime.utcfromtimestamp(endtime_unix)
-        logging.info( 'Deleting session reset %s: [%s, %s]', peer, str(start_datetime), str(end_datetime))
+        logging.info( 'Deleting session reset %s: [%s, %s]', peer, str(stime_unix), str(endtime_unix))
 
         time_found = False # Raise an error if cannot find time
 
@@ -548,6 +554,7 @@ class Downloader():
             new_f.close()
             #p.kill()#This will cause an Error
             self.counted_pfx = None
+            del self.counted_pfx
 
             # use the new file to replace the old file
             shutil.move(updatefile,updatefile+'.bak')
@@ -564,7 +571,8 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [286,287,288,289,2810,2811,2812]
+    #order_list = [286,287,288,289,2810,2811,2812]
+    order_list = [281,282,284,285,286]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -586,7 +594,12 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
-    '''
+    collector_list[281] = ['route-views.eqix']
+    collector_list[282] = ['route-views.eqix']
+    collector_list[284] = ['route-views.eqix']
+    collector_list[285] = ['route-views.eqix']
+    collector_list[286] = ['rrc00']
+
     listfiles = [] # a list of update file list files
     # download update files
     for order in order_list:
@@ -594,7 +607,7 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
-            dl.get_all_updates() # Download updates here
+            dl.download_updates_starter() # Download updates here
             listf = dl.get_listfile()
             listfiles.append(listf)
 
@@ -602,6 +615,9 @@ if __name__ == '__main__':
     for listf in listfiles:
         parse_update_files(listf)
 
+    #TODO check the update file quantity to identity blank days for each co
+
+    '''
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)
@@ -625,7 +641,6 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
-    '''
 
     # Delete reset updates
     for order in order_list:
@@ -637,3 +652,4 @@ if __name__ == '__main__':
             dl.set_period(order)
             dl.delete_reset()
             del dl
+    '''

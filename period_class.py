@@ -112,7 +112,7 @@ class Period():
 
     def get_as2namenation(self):
         # Note: Get this only when necessary
-        #self.get_as2nn_file()
+        self.get_as2nn_file()
         as2nn = self.get_as2nn_dict()
         self.as2nation = as2nn[0]
         self.as2name = as2nn[1]

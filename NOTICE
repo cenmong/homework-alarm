@@ -50,3 +50,6 @@ of finding reset start and end has finished, which is unlikely to be true. I sho
 work!
 -------------------------------------
 Calling subprocess too many time can cause memory issue likely because of fork()
+------------------------------------
+I found that rrc00 has several blank days in 2013.03 This will be a big problem because a single day of blank could omit the  
+whole month data. Let's see how frequent such things happen!

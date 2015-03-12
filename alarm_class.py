@@ -144,6 +144,8 @@ class Alarm():
             if self.cl_dt[cl] < new_ceil:
                 new_ceil = self.cl_dt[cl]
 
+        # FIXME do not wait for a collector for more than one hour ?
+
         if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # Minimum is 2 *
             self.ceiling = new_ceil - 60 * self.granu
             if self.ceiling > self.top_ceiling:

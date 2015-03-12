@@ -53,11 +53,14 @@ all_collectors = { # 17 in total
 }
 
 # rrc14 and rrc10 has a blank period where no update is collected
+# FIXME there seems to be many short blanks. If I cannot store them all, why not modify alarm_class?
 co_blank = {
     'rrc14': ['20090324', '20100326'],
     'rrc10': ['20110718', '20110914'],
     '': ['20110217','20110224'],
     'rrc11': ['20130130','20130417'],
+    'rrc00': ['20130310','20130313'],
+    'rrc00': ['20130329','20130331'],
 }
 
 #-------------------------------------------------------
