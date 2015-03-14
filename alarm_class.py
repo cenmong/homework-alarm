@@ -19,6 +19,10 @@ from cStringIO import StringIO
 class Alarm():
 
     def __init__(self, period, granu):
+
+        self.blank_co = dict() # collector: [start unix dt, end unix dt(not accurate)]
+        self.ignore_co = list() # we are now ignoring some co whose are in blank period
+
         self.filelist = period.get_filelist()
         self.sdate = period.sdate
         self.edate = period.edate 
@@ -139,16 +143,35 @@ class Alarm():
     def check_memo(self):
         # Obtain the lowest 'current datetime' among all collectors
         new_ceil = 9999999999
+        max_now = 0
         print self.co_unix_dt
-        for co in self.co_unix_dt:
-            if self.co_unix_dt[co] < new_ceil:
-                new_ceil = self.co_unix_dt[co]
 
-        # FIXME do not wait for a collector for more than one hour ? and record the blank
+        if len(self.ignore_co) is 0: # most situations
+            for co in self.co_unix_dt:
+                if self.co_unix_dt[co] < new_ceil:
+                    new_ceil = self.co_unix_dt[co]
+                if self.co_unix_dt[co] > max_now:
+                    max_now = self.co_unix_dt[co]
+
+            # do not wait for a collector for too long
+            if max_now - new_ceil >= 20 * (60*self.granu):
+                new_min = 9999999999
+                for co in self.co_unix_dt:
+                    if self.co_unix_dt[co] == new_ceil:
+                        self.blank_co[co] = [new_ceil]
+                        self.ignore_co.append(co)
+                    elif self.co_unix_dt[co] < new_min:
+                        new_min = self.co_unix_dt[co]
+
+            new_ceil = new_min
+
+        else: # we are ignoring some collectors
+
+        # check whether should we resume ignored co
 
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity (e.g., 10 min)
-        if new_ceil - self.ceiling >= 2 * (60 * self.granu):  # Minimum is 2 * ()
+        if new_ceil - self.ceiling >= 2 * (60*self.granu):  # Minimum is 2 * ()
             self.ceiling = new_ceil - 60 * self.granu
             if self.ceiling > self.top_ceiling: # XXX What do the 3 lines mean?
                 self.ceiling = self.top_ceiling
@@ -296,6 +319,8 @@ class Alarm():
             latest_dt = datetime.datetime.utcfromtimestamp(100)
 
         self.readfiles(latest_dt)
+
+        # TODO output blank co information
 
     def set_now(self, cl, line):
         self.co_unix_dt[cl] = int(line.split('|')[1])

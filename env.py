@@ -13,6 +13,7 @@ spt_dir = datadir + 'support/'
 pub_spt_dir = datadir + 'support/public/'
 rib_info_dir = datadir+'rib_info/'
 reset_info_dir = datadir+'reset_info/'
+blank_indo_dir = datadir+'blank_info/'
 
 #------------------------------------------------------
 # according to http://en.wikipedia.org/wiki/Tier_1_network
