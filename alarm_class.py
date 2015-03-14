@@ -19,28 +19,19 @@ from cStringIO import StringIO
 class Alarm():
 
     def __init__(self, period, granu):
-        self.period = period
-
         self.filelist = period.get_filelist()
-
         self.sdate = period.sdate
         self.edate = period.edate 
         self.granu = granu
 
-        self.cl_list = period.co_mo.keys()
-        print period.co_mo.keys()
-        #self.max_dt = -1
-
         self.middle_dir = period.get_middle_dir()
         cmlib.make_dir(self.middle_dir)
 
+        self.all_co_list = period.co_mo.keys() # collector list
         self.monitors = []
-        tmp_co_mo = period.co_mo
-        for co in tmp_co_mo.keys():
-            self.monitors.extend(tmp_co_mo[co])
-
+        for co in period.co_mo.keys():
+            self.monitors.extend(period.co_mo[co])
         self.mcount = len(self.monitors)
-
         # Sort the monitor list first so that this mapping consistent across multiple runs
         tmp_list = sorted(self.monitors, key=cmlib.ip_to_integer)
 
@@ -49,7 +40,6 @@ class Alarm():
         for mo in tmp_list:
             self.mo2index[mo] = index
             index += 1
-    
         # write this mapping to a file for future microscopic analysis
         self.mo2index_file = rib_info_dir + self.sdate + '_' + self.edate + '_mo2index.txt'
         f = open(self.mo2index_file, 'w')
@@ -58,18 +48,18 @@ class Alarm():
         f.close()
 
 
-        #self.no_prefixes = period.no_prefixes #  TODO exclude uninteresting prefixes
-
-        self.pfx_radix = dict() # every dt has a corresponding trie, deleted periodically
+        ###self.pfx_radix = dict() # every dt has a corresponding trie, deleted periodically
+        self.pfx_tree = radix.Radix() # XXX test
+        self.dt_list = dict() # unix dt => True # XXX test
 
         #-----------------------------------------------------
         # For synchronization among collectors and conducting timely aggregation
         # Note: assume all collectors will exist after self.sdate + 1 hour
         # XXX commented out when dealing with 2013 whole year data
 
-        self.cl_dt = {}  # The current datetime of every collector, for getting ceiling
-        for cl in self.cl_list:
-            self.cl_dt[cl] = 0
+        self.co_unix_dt = {}  # The current datetime of every collector, for getting ceiling
+        for cl in self.all_co_list:
+            self.co_unix_dt[cl] = 0
 
         tmp_dt = datetime.datetime(int(self.sdate[0:4]),\
                 int(self.sdate[4:6]),int(self.sdate[6:8]),0,0) # is UTC
@@ -78,12 +68,13 @@ class Alarm():
         tmp_dt = calendar.timegm(tmp_dt.timetuple()) # is UTC
 
         # floor is only for ignoring anything before self.sdate + 1 hour
-        self.floor = tmp_dt
+        #self.floor = tmp_dt
         # we output everything below ceiling and above floor
-        self.ceiling = self.floor  
+        #self.ceiling = self.floor  
+        self.ceiling = tmp_dt
 
         tmp_dt = datetime.datetime(int(self.edate[0:4]),\
-                int(self.edate[4:6]),int(self.edate[6:8]),23,59)
+                int(self.edate[4:6]),int(self.edate[6:8]),23,59,59)
         #XXX tmp_dt = tmp_dt + datetime.timedelta(minutes=-58)
         tmp_dt = calendar.timegm(tmp_dt.timetuple())
         self.top_ceiling = tmp_dt # self.ceiling cannot exceed this value
@@ -146,69 +137,93 @@ class Alarm():
         fl.close()
 
     def check_memo(self):
-        # Obtain the ceiling: lowest 'current datetime' among all collectors
-        # Aggregate everything before ceiling - granulirity
-        # Because aggregating 10:10 means aggregating 10:10~10:10+granularity
+        # Obtain the lowest 'current datetime' among all collectors
         new_ceil = 9999999999
-        print self.cl_dt
-        for cl in self.cl_list:
-            if self.cl_dt[cl] < new_ceil:
-                new_ceil = self.cl_dt[cl]
+        print self.co_unix_dt
+        for co in self.co_unix_dt:
+            if self.co_unix_dt[co] < new_ceil:
+                new_ceil = self.co_unix_dt[co]
 
-        # FIXME do not wait for a collector for more than one hour ?
+        # FIXME do not wait for a collector for more than one hour ? and record the blank
 
-        if new_ceil - self.ceiling >= 2 * 60 * self.granu:  # Minimum is 2 *
+        # Aggregate everything before ceiling - granulirity
+        # Because aggregating 10:10 means aggregating 10:10~10:10+granularity (e.g., 10 min)
+        if new_ceil - self.ceiling >= 5 * (60 * self.granu):  # Minimum is 2 * ()
             self.ceiling = new_ceil - 60 * self.granu
-            if self.ceiling > self.top_ceiling:
+            if self.ceiling > self.top_ceiling: # XXX What do the 3 lines mean?
                 self.ceiling = self.top_ceiling
             self.release_memo()
+        else:
+            pass # new_ceil is not large enough yet
 
         return 0
 
     # output everything before ceiling and remove garbage
     def release_memo(self):
         rel_dt = []  # dt list for releasing
-        for dt in self.pfx_radix.keys():
-            if self.floor <= dt <= self.ceiling:
+        ###for dt in self.pfx_radix.keys():
+            ###if self.floor <= dt <= self.ceiling:
+                ###rel_dt.append(dt)
+        for dt in self.dt_list.keys():
+            if dt <= self.ceiling:
                 rel_dt.append(dt)
 
         self.middle_output(rel_dt)
-        self.del_garbage()
+        self.del_garbage(rel_dt)
+        for dt in rel_dt:
+            del self.dt_list[dt]
 
         return 0
 
     # delete the tires that have already been used
-    def del_garbage(self):
-        for dt in self.pfx_radix.keys():  # all dt that exists
-            if dt <= self.ceiling:
-                del self.pfx_radix[dt]
+    def del_garbage(self, rel_dt):
+        ###for dt in self.pfx_radix.keys():  # all dt that exists
+            ###if dt <= self.ceiling:
+                ###del self.pfx_radix[dt]
+        for node in self.pfx_tree:
+            for unix in rel_dt:
+                try:
+                    del node.data[unix]
+                except:
+                    pass
+
         return 0
 
     def add(self, update):
         try:
             attr = update.split('|') 
-            
             pfx = attr[5]
             mo = attr[3]
+
+            if ':' in pfx or len(pfx) == 1: # IPv6 and a very strange case
+                return -1
 
             try:
                 index = self.mo2index[mo]
             except: # not a monitor that we have interest in
                 return -1
 
-            # change datetime to fit granularity
+            # fit to the granularity !
             intdt = int(attr[1])
-            dt = intdt / (60 * self.granu) * 60 * self.granu
+            dt = (intdt / (60*self.granu)) * (60*self.granu)
 
+            self.dt_list[dt] = True
+
+            # XXX test
+            node = self.pfx_tree.search_exact(pfx)
+            if node is None:
+                node = self.pfx_tree.add(pfx)
+            try:
+                test = node.data[dt]
+            except:
+                node.data[dt] = dict()
+            try:
+                node.data[dt][index] += 1
+            except:
+                node.data[dt][index] = 1
+
+            '''
             # run into a brand new dt!
-            '''
-            # XXX This logic does not seem reliable
-            if dt > self.max_dt:
-                print 'new dt!'
-                logging.info('max_dt=%d',self.max_dt)
-                self.max_dt = dt
-                self.pfx_radix[dt] = radix.Radix()
-            '''
             # This logic is solid but takes the risk of consuming too much memory if dt gap large
             try:
                 test = self.pfx_radix[dt]
@@ -225,9 +240,7 @@ class Alarm():
                 rnode.data[0][index] = 1
             ##except: # self.pfx_radix[dt] has already been deleted. rarely happen 
             ##    return -1
-
-            if ':' in pfx or len(pfx) == 1: # IPv6 and a very strange case
-                return -1
+            '''
         except Exception:
             if update != '':
                 logging.info(traceback.format_exc())
@@ -241,14 +254,33 @@ class Alarm():
             print 'outputting info in dt:'
             cmlib.print_dt(dt)
 
-            rtree = self.pfx_radix[dt]
+            ###rtree = self.pfx_radix[dt]
             outfile = self.middle_dir + str(dt) + '.txt.gz'
             
             f = gzip.open(outfile, 'wb')
+            '''
             for node in rtree.nodes():
                 mylist = node.data[0]
                 f.write(node.prefix+':')
                 f.write(str(mylist)+'\n')
+            '''
+            for node in self.pfx_tree:
+                mylist = list()
+                try:
+                    mydict = node.data[dt]
+                except:
+                    continue
+
+                index_len = len(self.mo2index)
+                for i in xrange(0, index_len):
+                    try: 
+                        mylist.append(mydict[i])
+                    except:
+                        mylist.append(0)
+
+                f.write(node.prefix+':')
+                f.write(str(mylist)+'\n')
+                del mylist
             f.close()
 
         return 0
@@ -258,16 +290,19 @@ class Alarm():
         for f in mfiles:
             if not f.endswith('.gz'):
                 mfiles.remove(f)
-        mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
+        if len(mfiles) > 0:
+            mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
 
-        latest_dt = mfiles[-1].rstrip('.txt.gz')
-        latest_dt = int(latest_dt) - 36000 # because some files has time zone shift
-        latest_dt = datetime.datetime.utcfromtimestamp(latest_dt)
+            latest_dt = mfiles[-1].rstrip('.txt.gz')
+            latest_dt = int(latest_dt) - 36000 # because some files has time zone shift
+            latest_dt = datetime.datetime.utcfromtimestamp(latest_dt)
+        else:
+            latest_dt = datetime.datetime.utcfromtimestamp(100)
 
         self.readfiles(latest_dt)
 
     def set_now(self, cl, line):
-        self.cl_dt[cl] = int(line.split('|')[1])
+        self.co_unix_dt[cl] = int(line.split('|')[1])
         return 0
     
 #--------------------------------------------------------------------------------------------
