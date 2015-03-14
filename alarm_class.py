@@ -148,7 +148,7 @@ class Alarm():
 
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity (e.g., 10 min)
-        if new_ceil - self.ceiling >= 5 * (60 * self.granu):  # Minimum is 2 * ()
+        if new_ceil - self.ceiling >= 2 * (60 * self.granu):  # Minimum is 2 * ()
             self.ceiling = new_ceil - 60 * self.granu
             if self.ceiling > self.top_ceiling: # XXX What do the 3 lines mean?
                 self.ceiling = self.top_ceiling
@@ -265,18 +265,14 @@ class Alarm():
                 f.write(str(mylist)+'\n')
             '''
             for node in self.pfx_tree:
-                mylist = list()
+                mylist = [0] * self.mcount
                 try:
                     mydict = node.data[dt]
                 except:
                     continue
 
-                index_len = len(self.mo2index)
-                for i in xrange(0, index_len):
-                    try: 
-                        mylist.append(mydict[i])
-                    except:
-                        mylist.append(0)
+                for i in mydict:
+                    mylist[i] = mydict[i]
 
                 f.write(node.prefix+':')
                 f.write(str(mylist)+'\n')

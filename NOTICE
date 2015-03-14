@@ -56,3 +56,5 @@ whole month data. Let's see how frequent such things happen!
 ------------------------------------
 route-views.isc has blank period from 20130308.0815 to 20130308.1807, but I do not want to delete this collector from analysis. 
 I should code: do not wait a collector for more than an hour!
+-----------------------------------
+in alarm class, using only one radix takes 1.5 length of time than before
