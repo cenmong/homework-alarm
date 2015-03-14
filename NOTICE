@@ -53,3 +53,6 @@ Calling subprocess too many time can cause memory issue likely because of fork()
 ------------------------------------
 I found that rrc00 has several blank days in 2013.03 This will be a big problem because a single day of blank could omit the  
 whole month data. Let's see how frequent such things happen!
+------------------------------------
+route-views.isc has blank period from 20130308.0815 to 20130308.1807, but I do not want to delete this collector from analysis. 
+I should code: do not wait a collector for more than an hour!

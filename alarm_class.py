@@ -9,6 +9,7 @@ import gzip
 import traceback
 import logging
 import subprocess
+import os
 
 from netaddr import *
 from env import *
@@ -97,11 +98,21 @@ class Alarm():
             #logging.info('abnormal update:%s',update)
             return False
 
-    def readfiles(self):
+    def readfiles(self, latest_dt):
         fl = open(self.filelist, 'r')
         for fline in fl:
             fline = datadir + fline.split('|')[0]
             print 'Reading ' + fline + '...'
+
+            # check whether time is OK
+            file_attr = fline.split('.')
+            fattr_date, fattr_time = file_attr[-5], file_attr[-4]
+            fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
+                    int(fattr_date[4:6]), int(fattr_date[6:8]),\
+                    int(fattr_time[0:2]), int(fattr_time[2:4]))
+
+            if fname_dt_obj < latest_dt:
+                continue
 
             # get current file's collector
             attributes = fline.split('/') 
@@ -243,7 +254,17 @@ class Alarm():
         return 0
 
     def analyze_to_middle(self):
-        self.readfiles()
+        mfiles = os.listdir(self.middle_dir)
+        for f in mfiles:
+            if not f.endswith('.gz'):
+                mfiles.remove(f)
+        mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
+
+        latest_dt = mfiles[-1].rstrip('.txt.gz')
+        latest_dt = int(latest_dt) - 36000 # because some files has time zone shift
+        latest_dt = datetime.datetime.utcfromtimestamp(latest_dt)
+
+        self.readfiles(latest_dt)
 
     def set_now(self, cl, line):
         self.cl_dt[cl] = int(line.split('|')[1])
