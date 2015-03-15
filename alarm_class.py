@@ -77,7 +77,7 @@ class Alarm():
         tmp_dt = calendar.timegm(tmp_dt.timetuple()) # is UTC
 
         # floor is only for ignoring anything before self.sdate + 1 hour
-        #self.floor = tmp_dt
+        self.floor = tmp_dt
         # we output everything below ceiling and above floor
         #self.ceiling = self.floor  
         self.ceiling = tmp_dt
@@ -98,21 +98,22 @@ class Alarm():
             #logging.info('abnormal update:%s',update)
             return False
 
-    def readfiles(self, latest_dt):
+    #def readfiles(self, latest_dt):
+    def readfiles(self):
         fl = open(self.filelist, 'r')
         for fline in fl:
             fline = datadir + fline.split('|')[0]
             print 'Reading ' + fline + '...'
 
-            # check whether time is OK
-            file_attr = fline.split('.')
-            fattr_date, fattr_time = file_attr[-5], file_attr[-4]
-            fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
-                    int(fattr_date[4:6]), int(fattr_date[6:8]),\
-                    int(fattr_time[0:2]), int(fattr_time[2:4]))
+            ## check whether time is OK
+            #file_attr = fline.split('.')
+            #fattr_date, fattr_time = file_attr[-5], file_attr[-4]
+            #fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
+            #        int(fattr_date[4:6]), int(fattr_date[6:8]),\
+            #        int(fattr_time[0:2]), int(fattr_time[2:4]))
 
-            if fname_dt_obj < latest_dt:
-                continue
+            #if fname_dt_obj < latest_dt:
+            #    continue
 
             # get current file's collector
             attributes = fline.split('/') 
@@ -217,7 +218,7 @@ class Alarm():
             ###if self.floor <= dt <= self.ceiling:
                 ###rel_dt.append(dt)
         for dt in self.dt_list.keys(): # FIXME what if meeting a small dt later?
-            if dt <= self.ceiling:
+            if self.floor < dt <= self.ceiling:
                 rel_dt.append(dt)
 
         self.middle_output(rel_dt)
@@ -332,20 +333,23 @@ class Alarm():
         return 0
 
     def analyze_to_middle(self):
-        mfiles = os.listdir(self.middle_dir)
-        for f in mfiles:
-            if not f.endswith('.gz'):
-                mfiles.remove(f)
-        if len(mfiles) > 0:
-            mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
+        # Note: the following stop-continue code has logic bug
+        #mfiles = os.listdir(self.middle_dir)
+        #for f in mfiles:
+        #    if not f.endswith('.gz'):
+        #        mfiles.remove(f)
+        #if len(mfiles) > 0:
+        #    mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
 
-            latest_dt = mfiles[-1].rstrip('.txt.gz')
-            latest_dt = int(latest_dt) - 36000 # because some files has time zone shift
-            latest_dt = datetime.datetime.utcfromtimestamp(latest_dt)
-        else:
-            latest_dt = datetime.datetime.utcfromtimestamp(100)
+        #    latest_dt = mfiles[-1].rstrip('.txt.gz')
+        #    self.floor = latest_dt
+        #    latest_dt = int(latest_dt) - 36000 # because some files has time zone shift
+        #    latest_dt = datetime.datetime.utcfromtimestamp(latest_dt)
+        #else:
+        #    latest_dt = datetime.datetime.utcfromtimestamp(100)
 
-        self.readfiles(latest_dt)
+        #self.readfiles(latest_dt)
+        self.readfiles()
 
         # output blank co information including monitor count
         blankfile = self.blank_dir + 'blank.txt'
