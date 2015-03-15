@@ -19,9 +19,11 @@ from cStringIO import StringIO
 class Alarm():
 
     def __init__(self, period, granu):
-
-        self.blank_co = dict() # collector: [start unix dt, end unix dt(not accurate)]
+    
+        # not using dict to consider for multiple existence
+        self.blank_co = list() # list of lists: [collector, start unix dt, end unix dt] 
         self.ignore_co = list() # we are now ignoring some co whose are in blank period
+
 
         self.filelist = period.get_filelist()
         self.sdate = period.sdate
@@ -30,7 +32,10 @@ class Alarm():
 
         self.middle_dir = period.get_middle_dir()
         cmlib.make_dir(self.middle_dir)
+        self.blank_dir = period.get_blank_dir()
+        cmlib.make_dir(self.blank_dir)
 
+        self.period = period
         self.all_co_list = period.co_mo.keys() # collector list
         self.monitors = []
         for co in period.co_mo.keys():
@@ -146,28 +151,52 @@ class Alarm():
         max_now = 0
         print self.co_unix_dt
 
-        if len(self.ignore_co) is 0: # most situations
-            for co in self.co_unix_dt:
-                if self.co_unix_dt[co] < new_ceil:
-                    new_ceil = self.co_unix_dt[co]
-                if self.co_unix_dt[co] > max_now:
-                    max_now = self.co_unix_dt[co]
+        print 'Ignoring ', self.ignore_co
+        print 'start_end ', self.blank_co
 
-            # do not wait for a collector for too long
-            if max_now - new_ceil >= 20 * (60*self.granu):
-                new_min = 9999999999
-                for co in self.co_unix_dt:
-                    if self.co_unix_dt[co] == new_ceil:
-                        self.blank_co[co] = [new_ceil]
-                        self.ignore_co.append(co)
-                    elif self.co_unix_dt[co] < new_min:
-                        new_min = self.co_unix_dt[co]
+        # Always ignore the self.ignore_co when getting new ceiling
+        for co in self.co_unix_dt:
+            if co in self.ignore_co:
+                continue
+            mydt = self.co_unix_dt[co]
+            if mydt < new_ceil:
+                new_ceil = mydt
+            if mydt > max_now:
+                max_now = mydt
+
+        # someone is lagging behind
+        if new_ceil != 0 and max_now - new_ceil >= 20 * (60*self.granu):
+            new_min = 9999999999
+            ignore_list = self.ignore_co
+            for co in self.co_unix_dt:
+                if co in ignore_list:
+                    continue
+                mydt = self.co_unix_dt[co]
+                if mydt == new_ceil: # we find the culprit
+                    self.blank_co.append([co, new_ceil]) # set the blank start
+                    self.ignore_co.append(co)
+                elif mydt < new_min:
+                    new_min = mydt
 
             new_ceil = new_min
 
-        else: # we are ignoring some collectors
+        # check whether some ignored co is available now
+        if len(self.ignore_co) > 0:
+            rm_ignore = list()
+            for co in self.ignore_co:
+                mydt = self.co_unix_dt[co]
+                if abs(mydt - new_ceil) < 4 * (60*self.granu): # has catched up
+                    rm_ignore.append(co)
+                    if mydt < new_ceil:
+                        new_ceil = mydt
+            for co in rm_ignore:
+                self.ignore_co.remove(co)
+                # set the end time for record
+                for i in xrange(0, len(self.blank_co)):
+                    lst = self.blank_co[i]
+                    if len(lst) == 2 and lst[0] == co:
+                        self.blank_co[i].append(self.co_unix_dt[co])
 
-        # check whether should we resume ignored co
 
         # Aggregate everything before ceiling - granulirity
         # Because aggregating 10:10 means aggregating 10:10~10:10+granularity (e.g., 10 min)
@@ -187,7 +216,7 @@ class Alarm():
         ###for dt in self.pfx_radix.keys():
             ###if self.floor <= dt <= self.ceiling:
                 ###rel_dt.append(dt)
-        for dt in self.dt_list.keys():
+        for dt in self.dt_list.keys(): # FIXME what if meeting a small dt later?
             if dt <= self.ceiling:
                 rel_dt.append(dt)
 
@@ -281,12 +310,10 @@ class Alarm():
             outfile = self.middle_dir + str(dt) + '.txt.gz'
             
             f = gzip.open(outfile, 'wb')
-            '''
-            for node in rtree.nodes():
-                mylist = node.data[0]
-                f.write(node.prefix+':')
-                f.write(str(mylist)+'\n')
-            '''
+            #for node in rtree.nodes():
+            #    mylist = node.data[0]
+            #    f.write(node.prefix+':')
+            #    f.write(str(mylist)+'\n')
             for node in self.pfx_tree:
                 mylist = [0] * self.mcount
                 try:
@@ -320,10 +347,21 @@ class Alarm():
 
         self.readfiles(latest_dt)
 
-        # TODO output blank co information
+        # output blank co information including monitor count
+        blankfile = self.blank_dir + 'blank.txt'
+        f = open(blankfile, 'w')
+        for lst in self.blank_co:
+            co = lst[0]
+            mcount = len(self.period.co_mo[co])
+            f.write(str(lst)+','+str(mcount)+'\n')
+        f.close()
 
     def set_now(self, cl, line):
-        self.co_unix_dt[cl] = int(line.split('|')[1])
+        pre = self.co_unix_dt[cl]
+        now = int(line.split('|')[1])
+        if now > pre:
+            self.co_unix_dt[cl] = now
+        
         return 0
     
 #--------------------------------------------------------------------------------------------

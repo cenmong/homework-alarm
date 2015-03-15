@@ -46,6 +46,9 @@ class Period():
     def get_final_dir(self):
         return datadir+'final_output/'+self.sdate+'_'+self.edate+'/'
 
+    def get_blank_dir(self):
+        return blank_indo_dir+self.sdate+'_'+self.edate+'/'
+
     def get_fib_size_file(self):
         url = 'http://bgp.potaroo.net/as2.0/'
         cmlib.force_download_file(url, pub_spt_dir, 'bgp-active.txt')
