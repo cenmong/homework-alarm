@@ -58,7 +58,7 @@ class Downloader():
         self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
         
         self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
-        self.counted_pfx = None
+        #self.counted_pfx = None
 
         self.dt_anchor1 = datetime.datetime(2003,2,3,19,0)
         self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
@@ -397,7 +397,6 @@ class Downloader():
 
 
     def rm_reset_one_list(self, rib_full_loc, tmp_full_listfile):
-        '''
         ## record reset info into a temp file
         reset_info_file = datadir + 'peer_resets.txt'
 
@@ -469,13 +468,14 @@ class Downloader():
                 assert 1 == 0
         f.close()
         # XXX only for once end
+        '''
 
         # different collectors in the same file
         for p in peer_resettime:
             if ':' in p: # We do not really delete IPv6 updates
                 continue
-            if p not in this_co_peers: # XXX used with the previous commented out code
-                continue
+            #if p not in this_co_peers: # XXX used with the previous commented out code
+            #    continue
             if p not in self.global_peers: # We ignore non-global peers to save time
                 continue
             for l in peer_resettime[p]:
@@ -484,7 +484,7 @@ class Downloader():
                 h = hpy()
                 print h.heap()
 
-        #os.remove(reset_info_file) #XXX comment out when 'doing it once'...
+        os.remove(reset_info_file) #XXX comment out when 'doing it once'...
 
     def delete_reset_updates(self, peer, stime_unix, endtime_unix, tmp_full_listfile):
         # FIXME something is eating up memory!
@@ -523,7 +523,9 @@ class Downloader():
             logging.info('Reading: %s', updatefile)
             size_before = os.path.getsize(updatefile)
             # record the prefix whose update has already been deleted for once
-            self.counted_pfx = radix.Radix()
+            #self.counted_pfx = radix.Radix()
+
+            existed_pfx = dict() # pfx: True
 
             p = subprocess.Popen(['zcat', updatefile],stdout=subprocess.PIPE, close_fds=True)
             old_f = StringIO(p.communicate()[0])
@@ -538,11 +540,16 @@ class Downloader():
                     if attr[3]==peer and stime_unix<=int(attr[1])<=endtime_unix:
                         time_found = True
                         pfx = attr[5]
-                        rnode = self.counted_pfx.search_exact(pfx)
-                        if rnode is None: # cannot find, delete the update
-                            rnode = self.counted_pfx.add(pfx)
-                        else: # found, so the prefix has been deleted once
+                        #rnode = self.counted_pfx.search_exact(pfx)
+                        #if rnode is None: # cannot find, delete the update
+                        #    rnode = self.counted_pfx.add(pfx)
+                        #else: # found, so the prefix has been deleted once
+                        #    new_f.write(updt)
+                        try:
+                            test = existed_pfx[pfx]
                             new_f.write(updt)
+                        except:
+                            existed_pfx[pfx] = True
                     else:
                         new_f.write(updt)
                 except Exception, err:
@@ -552,9 +559,12 @@ class Downloader():
 
             old_f.close()
             new_f.close()
+
+            del existed_pfx
+
             #p.kill()#This will cause an Error
-            self.counted_pfx = None
-            del self.counted_pfx
+            #self.counted_pfx = None
+            #del self.counted_pfx
 
             # use the new file to replace the old file
             shutil.move(updatefile,updatefile+'.bak')
@@ -572,7 +582,8 @@ class Downloader():
 # The main function
 if __name__ == '__main__':
     #order_list = [286,287,288,289,2810,2811,2812]
-    order_list = [281,282,284,285,286]
+    #order_list = [281,282,284,285,286]
+    order_list = [9002]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -594,11 +605,11 @@ if __name__ == '__main__':
 
         print i,':',collector_list[i]
 
-    collector_list[281] = ['route-views.eqix']
-    collector_list[282] = ['route-views.eqix']
-    collector_list[284] = ['route-views.eqix']
-    collector_list[285] = ['route-views.eqix']
-    collector_list[286] = ['rrc00']
+    #collector_list[281] = ['route-views.eqix']
+    #collector_list[282] = ['route-views.eqix']
+    #collector_list[284] = ['route-views.eqix']
+    #collector_list[285] = ['route-views.eqix']
+    #collector_list[286] = ['rrc00']
 
     listfiles = [] # a list of update file list files
     # download update files
@@ -614,8 +625,6 @@ if __name__ == '__main__':
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
-
-    #TODO check the update file quantity to identity blank days for each co
 
     '''
     # Download and record RIB and get peer info 
