@@ -58,3 +58,5 @@ route-views.isc has blank period from 20130308.0815 to 20130308.1807, but I do n
 I should code: do not wait a collector for more than an hour!
 -----------------------------------
 in alarm class, using only one radix takes 1.5 length of time than before. But it saves memory
+----------------------------------
+Python release memory better for integrated types like dict and list, but bad for external types like radix!

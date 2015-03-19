@@ -23,7 +23,7 @@ from env import *
 from cStringIO import StringIO
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
-from guppy import hpy
+#from guppy import hpy
 
 def parse_update_files(listfile): # all update files from one collectors/list
     flist = open(listfile, 'r')
@@ -481,8 +481,8 @@ class Downloader():
             for l in peer_resettime[p]:
                 print 'deleting reset for ', p
                 self.delete_reset_updates(p, l[0], l[1], tmp_full_listfile)
-                h = hpy()
-                print h.heap()
+                #h = hpy()
+                #print h.heap()
 
         os.remove(reset_info_file) #XXX comment out when 'doing it once'...
 

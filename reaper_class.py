@@ -28,6 +28,21 @@ class Reaper():
         self.middle_dir = period.get_middle_dir()
         self.final_dir = period.get_final_dir()
 
+        self.blank_file = period.get_blank_dir() + 'blank.txt'
+        self.blank_info = list() # list of lists
+        rm_char = [' ', '[',']','\'']
+        if os.path.isfile(self.blank_file):
+            f = open(self.blank_file, 'r')
+            for line in f:
+                line = line.strip('\n')
+                for c in rm_char:
+                    line = line.replace(c, '')
+                attr = line.split(',')
+                tmp_list = [int(attr[1]),int(attr[2]),\
+                        float(attr[3]),attr[0]] # start,end,mcount,collector
+                self.blank_info.append(tmp_list)
+            f.close()
+
         mfiles = os.listdir(self.middle_dir)
         for f in mfiles:
             if not f.endswith('.gz'):
@@ -110,6 +125,7 @@ class Reaper():
         # variables for detecting events
         self.bmatrix = None # a binary matrix
         self.thre_size = None
+        self.width_ratio = None
         self.thre_width = None
         self.thre_den = None # density threshold
 
@@ -384,17 +400,31 @@ class Reaper():
     # For detecting disruptive events
     def set_event_thre(self, size_ratio, width_ratio, density):
         self.thre_size = size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
-        self.thre_width = self.mo_number * width_ratio # recommand: 10%
+        self.width_ratio = width_ratio
         self.thre_den = density # recommand: 0.8 or 0.85?
-        logging.info('thre_size:%d;thre_width:%d;',self.thre_size,self.thre_width)
+        logging.info('thre_size:%d',self.thre_size)
 
-        min_row_sum = 0.1 * self.thre_width # XXX good?
-        min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
-        logging.info('preprocess thresholds row %f col %f', min_row_sum, min_col_sum)
+        #min_row_sum = 0.1 * self.thre_width # XXX good?
+        #min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+        #logging.info('preprocess thresholds row %f col %f', min_row_sum, min_col_sum)
 
     def detect_event(self):
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            self.thre_width = self.mo_number * self.width_ratio
+
+            fstart = unix_dt
+            fend = unix_dt + self.granu * 60    
+            for item in self.blank_info:
+                start = item[0]
+                end = item[1]
+                mcount = item[2]
+
+                if fstart >= start and fend <= end:
+                    self.thre_width -= mcount * self.width_ratio
+
+            logging.info('self.thre_width=%f',self.thre_width)
+
             for f in fg:
                 self.read_a_file_event(self.middle_dir+f)
 
@@ -528,11 +558,11 @@ class Reaper():
                 elif col_del_score == -1 or row_del_score >= col_del_score:
                     self.bmatrix = np.delete(self.bmatrix,row_to_del,0)
                     now_den = (sum-row_dsum)/(size-row_dsize)
-                    print 'deleted row:', row_to_del
+                    #print 'deleted row:', row_to_del
                 else:
                     self.bmatrix = np.delete(self.bmatrix,col_to_del,1)
                     now_den = (sum-col_dsum)/(size-col_dsize)
-                    print 'deleted col:', col_to_del
+                    #print 'deleted col:', col_to_del
 
             sum = float(np.sum(self.bmatrix))
             size = float(self.bmatrix.size)
