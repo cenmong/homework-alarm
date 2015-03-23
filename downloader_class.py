@@ -537,9 +537,9 @@ class Downloader():
             for updt in old_f:
                 try:
                     attr = updt.rstrip('\n').split('|')
+                    pfx = attr[5]
                     if attr[3]==peer and stime_unix<=int(attr[1])<=endtime_unix:
                         time_found = True
-                        pfx = attr[5]
                         #rnode = self.counted_pfx.search_exact(pfx)
                         #if rnode is None: # cannot find, delete the update
                         #    rnode = self.counted_pfx.add(pfx)

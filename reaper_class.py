@@ -129,6 +129,10 @@ class Reaper():
         self.thre_width = None
         self.thre_den = None # density threshold
 
+        self.rows = dict() # row number: attribute dict 
+        self.cols = dict() #
+
+        self.submatrix = dict() # time: final submatrix feature list TODO
         self.events = dict() # time: event feature list
         self.pfx_number = self.period.get_fib_size()
 
@@ -408,6 +412,186 @@ class Reaper():
         #min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
         #logging.info('preprocess thresholds row %f col %f', min_row_sum, min_col_sum)
 
+    def analyze_bmatrix(self):
+        size = self.bmatrix.size
+        if size < self.thre_size:
+            logging.info('%d final submatrix info: too small', unix_dt)
+            return -1
+
+        #-------------------
+        # preprocess the matrix
+        height = self.bmatrix.shape[0]
+        width = self.bmatrix.shape[1]
+        row_must_del = []
+        col_must_del = []
+        
+        min_row_sum = 0.1 * self.thre_width # XXX good?
+        min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+
+        for i in xrange(0, height):
+            if self.bmatrix[i].sum() <= min_row_sum:
+                row_must_del.append(i)
+        for i in xrange(0, width):
+            if self.bmatrix[:,i].sum() <= min_col_sum:
+                col_must_del.append(i)
+
+        self.bmatrix = np.delete(self.bmatrix,row_must_del,0)
+        self.bmatrix = np.delete(self.bmatrix,col_must_del,1)
+
+        size = float(self.bmatrix.size)
+        width = self.bmatrix.shape[1]
+        if size < self.thre_size or width < self.thre_width:
+            logging.info('%d final submatrix info: too small after preprocess', unix_dt)
+            return -1
+
+        #--------------------
+        # process the matrix
+        sum = float(np.sum(self.bmatrix))
+        density = sum/size
+        height = self.bmatrix.shape[0]
+        width = self.bmatrix.shape[1]
+        now_den = density
+
+        row_del_score = None
+        col_del_score = None
+        while(now_den < self.thre_den):
+            #-------------------------
+            sum = float(np.sum(self.bmatrix))
+            size = float(self.bmatrix.size)
+            density = sum/size
+            height = self.bmatrix.shape[0]
+            width = self.bmatrix.shape[1]
+
+            #-----------------------------------------------
+            # obtain candidate prefixes to delete
+            if row_del_score != -1:
+                row_one = dict()
+                for i in xrange(0, height):
+                    row_one[i] = self.bmatrix[i].sum()
+
+                row_one = sorted(row_one.items(), key=operator.itemgetter(1))
+                min_row_one = row_one[0][1]
+
+                row_to_del = list()
+                for item in row_one:
+                    if item[1] == min_row_one:
+                        row_to_del.append(item[0])
+                    else:
+                        break
+
+                row_dsize = float(len(row_to_del) * width)
+                row_dsum = 0.0
+                for index in row_to_del:
+                    row_dsum += self.bmatrix[index].sum()
+                row_del_score = ((sum-row_dsum)/(size-row_dsize)-density)/row_dsize
+
+                new_rsize = size - len(row_to_del) * width
+                if new_rsize < self.thre_size:
+                    row_del_score = -1
+
+            #-----------------------------------------------
+            # obtain candidate monitors to delete
+            if col_del_score != -1:
+                col_one = dict()
+                for i in xrange(0, width):
+                    col_one[i] = self.bmatrix[:,i].sum()
+
+                col_one = sorted(col_one.items(), key=operator.itemgetter(1))
+                min_col_one = col_one[0][1]
+
+                col_to_del = list()
+                for item in col_one:
+                    if item[1] == min_col_one:
+                        col_to_del.append(item[0])
+                    else:
+                        break
+
+                col_dsize = float(len(col_to_del) * height)
+                col_dsum = 0.0
+                for index in col_to_del:
+                    col_dsum += self.bmatrix[:,index].sum()
+                col_del_score = ((sum-col_dsum)/(size-col_dsize)-density)/col_dsize
+
+                new_width = width - len(col_to_del)
+                if new_width < self.thre_width:
+                    col_del_score = -1 # never del col any more
+
+                new_csize = size - len(col_to_del) * height
+                if new_csize < self.thre_size:
+                    col_del_score = -1
+
+            #-------------------------------------------
+            # decide which to delete
+            if row_del_score == -1 and col_del_score == -1:
+                print 'fail to find such submatrix'
+                logging.info('%d, fail to find such submatrix', unix_dt)
+                return -1 # XXX note that now_den may still be small
+            elif col_del_score == -1 or row_del_score >= col_del_score:
+                self.bmatrix = np.delete(self.bmatrix,row_to_del,0)
+                now_den = (sum-row_dsum)/(size-row_dsize)
+                #print 'deleted row:', row_to_del
+            else:
+                self.bmatrix = np.delete(self.bmatrix,col_to_del,1)
+                now_den = (sum-col_dsum)/(size-col_dsize)
+                #print 'deleted col:', col_to_del
+
+        sum = float(np.sum(self.bmatrix))
+        size = float(self.bmatrix.size)
+        density = sum/size
+        height = self.bmatrix.shape[0]
+        width = self.bmatrix.shape[1]
+        # No matter size, density, etc now stores current bmatrix's info
+        logging.info('%d final submatrix info: %s', unix_dt,str([size, density, height, width]))
+        if size >= self.thre_size and density >= self.thre_den and width >= self.thre_width:
+            self.events[unix_dt] = [size, density, height, width]
+            logging.info('found event!')
+
+    def analyze_bmatrix_new(self):
+        size = self.bmatrix.size
+        if size < self.thre_size:
+            logging.info('%d final submatrix info: too small', unix_dt)
+            return -1
+
+        #-------------------
+        # preprocess the matrix
+        height = self.bmatrix.shape[0]
+        width = self.bmatrix.shape[1]
+        row_must_del = []
+        col_must_del = []
+        
+        min_row_sum = 0.1 * self.thre_width # XXX good?
+        min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+
+        for i in xrange(0, height):
+            if self.bmatrix[i].sum() <= min_row_sum:
+                row_must_del.append(i)
+        for i in xrange(0, width):
+            if self.bmatrix[:,i].sum() <= min_col_sum:
+                col_must_del.append(i)
+
+        self.bmatrix = np.delete(self.bmatrix,row_must_del,0)
+        self.bmatrix = np.delete(self.bmatrix,col_must_del,1)
+
+        size = float(self.bmatrix.size)
+        width = self.bmatrix.shape[1]
+        if size < self.thre_size or width < self.thre_width:
+            logging.info('%d final submatrix info: too small after preprocess', unix_dt)
+            return -1
+
+        #--------------------
+        # process the matrix
+        sum = float(np.sum(self.bmatrix))
+        density = sum/size
+        height = self.bmatrix.shape[0]
+        width = self.bmatrix.shape[1]
+        now_den = density
+
+        row_del_score = None
+        col_del_score = None
+        while(now_den < self.thre_den):
+        
+
+
     def detect_event(self):
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
@@ -442,141 +626,11 @@ class Reaper():
 
             print 'analyzing matrix...'
             self.bmatrix = np.array(blists)
-            size = self.bmatrix.size
-            if size < self.thre_size:
-                logging.info('%d final submatrix info: too small', unix_dt)
-                continue
-
-            #-------------------
-            # preprocess the matrix
-            height = self.bmatrix.shape[0]
-            width = self.bmatrix.shape[1]
-            row_must_del = []
-            col_must_del = []
-            
-            min_row_sum = 0.1 * self.thre_width # XXX good?
-            min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
-
-            for i in xrange(0, height):
-                if self.bmatrix[i].sum() <= min_row_sum:
-                    row_must_del.append(i)
-            for i in xrange(0, width):
-                if self.bmatrix[:,i].sum() <= min_col_sum:
-                    col_must_del.append(i)
-
-            self.bmatrix = np.delete(self.bmatrix,row_must_del,0)
-            self.bmatrix = np.delete(self.bmatrix,col_must_del,1)
-
-            size = float(self.bmatrix.size)
-            width = self.bmatrix.shape[1]
-            if size < self.thre_size or width < self.thre_width:
-                logging.info('%d final submatrix info: too small after preprocess', unix_dt)
-                continue
-
-            #--------------------
-            # process the matrix
-            sum = float(np.sum(self.bmatrix))
-            density = sum/size
-            height = self.bmatrix.shape[0]
-            width = self.bmatrix.shape[1]
-            now_den = density
-
-            row_del_score = None
-            col_del_score = None
-            while(now_den < self.thre_den):
-                #-------------------------
-                sum = float(np.sum(self.bmatrix))
-                size = float(self.bmatrix.size)
-                density = sum/size
-                height = self.bmatrix.shape[0]
-                width = self.bmatrix.shape[1]
-
-                #-----------------------------------------------
-                # obtain candidate prefixes to delete
-                if row_del_score != -1:
-                    row_one = dict()
-                    for i in xrange(0, height):
-                        row_one[i] = self.bmatrix[i].sum()
-
-                    row_one = sorted(row_one.items(), key=operator.itemgetter(1))
-                    min_row_one = row_one[0][1]
-
-                    row_to_del = list()
-                    for item in row_one:
-                        if item[1] == min_row_one:
-                            row_to_del.append(item[0])
-                        else:
-                            break
-
-                    row_dsize = float(len(row_to_del) * width)
-                    row_dsum = 0.0
-                    for index in row_to_del:
-                        row_dsum += self.bmatrix[index].sum()
-                    row_del_score = ((sum-row_dsum)/(size-row_dsize)-density)/row_dsize
-
-                    new_rsize = size - len(row_to_del) * width
-                    if new_rsize < self.thre_size:
-                        row_del_score = -1
-
-                #-----------------------------------------------
-                # obtain candidate monitors to delete
-                if col_del_score != -1:
-                    col_one = dict()
-                    for i in xrange(0, width):
-                        col_one[i] = self.bmatrix[:,i].sum()
-
-                    col_one = sorted(col_one.items(), key=operator.itemgetter(1))
-                    min_col_one = col_one[0][1]
-
-                    col_to_del = list()
-                    for item in col_one:
-                        if item[1] == min_col_one:
-                            col_to_del.append(item[0])
-                        else:
-                            break
-
-                    col_dsize = float(len(col_to_del) * height)
-                    col_dsum = 0.0
-                    for index in col_to_del:
-                        col_dsum += self.bmatrix[:,index].sum()
-                    col_del_score = ((sum-col_dsum)/(size-col_dsize)-density)/col_dsize
-
-                    new_width = width - len(col_to_del)
-                    if new_width < self.thre_width:
-                        col_del_score = -1 # never del col any more
-
-                    new_csize = size - len(col_to_del) * height
-                    if new_csize < self.thre_size:
-                        col_del_score = -1
-
-                #-------------------------------------------
-                # decide which to delete
-                if row_del_score == -1 and col_del_score == -1:
-                    print 'fail to find such submatrix'
-                    logging.info('%d, fail to find such submatrix', unix_dt)
-                    break # XXX note that now_den may still be small when breaking
-                elif col_del_score == -1 or row_del_score >= col_del_score:
-                    self.bmatrix = np.delete(self.bmatrix,row_to_del,0)
-                    now_den = (sum-row_dsum)/(size-row_dsize)
-                    #print 'deleted row:', row_to_del
-                else:
-                    self.bmatrix = np.delete(self.bmatrix,col_to_del,1)
-                    now_den = (sum-col_dsum)/(size-col_dsize)
-                    #print 'deleted col:', col_to_del
-
-            sum = float(np.sum(self.bmatrix))
-            size = float(self.bmatrix.size)
-            density = sum/size
-            height = self.bmatrix.shape[0]
-            width = self.bmatrix.shape[1]
-            # No matter size, density, etc now stores current bmatrix's info
-            logging.info('%d final submatrix info: %s', unix_dt,str([size, density, height, width]))
-            if size >= self.thre_size and density >= self.thre_den and width >= self.thre_width:
-                self.events[unix_dt] = [size, density, height, width]
-                logging.info('found event!')
+            #self.analyze_bmatrix() # old algorithm
+            self.analyze_bmatrix_new() # new algorithm
+            self.bmatrix = None
 
             self.c_pfx_data = radix.Radix()
-            self.bmatrix = None
 
         self.output_event()
 
@@ -621,7 +675,8 @@ class Reaper():
         print output_dir
         cmlib.make_dir(output_dir)
         
-        f = open(output_dir+'events.txt', 'w')
+        #f = open(output_dir+'events.txt', 'w') # first try deteting events
+        f = open(output_dir+'events_new.txt', 'w')
         for dt in self.events:
             f.write(str(dt)+':'+str(self.events[dt])+'\n')
         f.close()
