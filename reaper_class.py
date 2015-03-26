@@ -77,7 +77,8 @@ class Reaper():
         # XXX if memo too hard, scan two or more times
 
         # record all pfx and data in the current interval
-        self.c_pfx_data = radix.Radix()
+        ##self.c_pfx_data = radix.Radix()
+        self.c_pfx_data = dict()
 
         # recore time series of three types of prefixes. datetime: value
         self.hdv_ts = dict()
@@ -199,7 +200,8 @@ class Reaper():
             self.analyze_interval(unix_dt)
             self.p_hset = self.c_hset
             self.c_hset = radix.Radix() # set the current high radix to empty
-            self.c_pfx_data = radix.Radix()
+            ##self.c_pfx_data = radix.Radix()
+            self.c_pfx_data = dict()
             print 'Analyzed one interval.'
 
         self.output_pfx()
@@ -218,21 +220,30 @@ class Reaper():
             pfx = line.split(':')[0]
             datalist = ast.literal_eval(line.split(':')[1])
 
-            rnode = self.c_pfx_data.search_exact(pfx)
-            if rnode is None:
-                rnode = self.c_pfx_data.add(pfx)
-                rnode.data[0] = datalist
-            else:
-                c_datalist = rnode.data[0]
+            ##rnode = self.c_pfx_data.search_exact(pfx)
+            ##if rnode is None:
+            ##    rnode = self.c_pfx_data.add(pfx)
+            ##    rnode.data[0] = datalist
+            ##else:
+            ##    c_datalist = rnode.data[0]
+            ##    combined = [x+y for x,y in zip(datalist, c_datalist)]
+            ##    rnode.data[0] = combined
+            
+            try:
+                c_datalist = self.c_pfx_data[pfx]
                 combined = [x+y for x,y in zip(datalist, c_datalist)]
-                rnode.data[0] = combined
+                self.c_pfx_data[pfx] = combined
+            except:
+                self.c_pfx_data[pfx] = datalist
+
         fin.close()
 
     def analyze_interval(self, unix_dt):
         uq_total = 0
-        for rnode in self.c_pfx_data:
-            pfx = rnode.prefix
-            data = rnode.data[0]
+        for pfx in self.c_pfx_data:
+            ##pfx = rnode.prefix
+            ##data = rnode.data[0]
+            data = self.c_pfx_data[pfx]
 
             count = 0
             uq = 0 # update quantity
@@ -412,7 +423,7 @@ class Reaper():
         #min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
         #logging.info('preprocess thresholds row %f col %f', min_row_sum, min_col_sum)
 
-    def analyze_bmatrix(self):
+    def analyze_bmatrix(self, unix_dt):
         size = self.bmatrix.size
         if size < self.thre_size:
             logging.info('%d final submatrix info: too small', unix_dt)
@@ -589,6 +600,7 @@ class Reaper():
         row_del_score = None
         col_del_score = None
         while(now_den < self.thre_den):
+            pass
         
 
 
@@ -614,9 +626,9 @@ class Reaper():
 
             # convert integer lists to binary lists just before preprocessing
             blists = list()
-            for rnode in self.c_pfx_data:
+            for pfx in self.c_pfx_data:
                 blist = []
-                ilist = rnode.data[0]
+                ilist = self.c_pfx_data[pfx]
                 for value in ilist:
                     if value > 0:
                         blist.append(1)
@@ -626,11 +638,12 @@ class Reaper():
 
             print 'analyzing matrix...'
             self.bmatrix = np.array(blists)
-            #self.analyze_bmatrix() # old algorithm
-            self.analyze_bmatrix_new() # new algorithm
+            self.analyze_bmatrix(unix_dt) # old algorithm
+            #self.analyze_bmatrix_new() # new algorithm
             self.bmatrix = None
 
-            self.c_pfx_data = radix.Radix()
+            del self.c_pfx_data
+            self.c_pfx_data = dict()
 
         self.output_event()
 
@@ -647,14 +660,22 @@ class Reaper():
             pfx = line.split(':')[0]
             datalist = ast.literal_eval(line.split(':')[1])
 
-            rnode = self.c_pfx_data.search_exact(pfx)
-            if rnode is None:
-                rnode = self.c_pfx_data.add(pfx)
-                rnode.data[0] = datalist
-            else:
-                c_datalist = rnode.data[0]
+            ##rnode = self.c_pfx_data.search_exact(pfx)
+            ##if rnode is None:
+            ##    rnode = self.c_pfx_data.add(pfx)
+            ##    rnode.data[0] = datalist
+            ##else:
+            ##    c_datalist = rnode.data[0]
+            ##    combined = [x+y for x,y in zip(datalist, c_datalist)]
+            ##    rnode.data[0] = combined
+
+            try:
+                c_datalist = self.c_pfx_data[pfx]
                 combined = [x+y for x,y in zip(datalist, c_datalist)]
-                rnode.data[0] = combined
+                self.c_pfx_data[pfx] = combined
+            except:
+                self.c_pfx_data[pfx] = datalist
+
 
         fin.close()
 
