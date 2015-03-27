@@ -37,7 +37,6 @@ It's very strange that rrc3 and rrc14 in event 1 has empty update file lists. So
 rrc has no updates from 20081221 to 20081224, so I delete rrc03 from 1's rib info
 -----------------------------------------------------------------------
 sometimes we find some IPv4 peers with very very small FIB size, e.g., http://data.ris.ripe.net/rrc03/2005.09/bview.20050910.0000.gz,
-although it costs much time and artifact when deleting reset, it will not affect our measurement results because we ignore non-global peers
 -----------------------------------
 In practice I failed to delete some resets. But it will not affect our results because they are local events!
 ----------------------------------
@@ -45,18 +44,10 @@ Do not delete list and dict items while iterating them
 ---------------------------------
 When deleting reset the 2013 data quickly, we ignore non-global monitors (90% threshold). We continue with this policy in future work!
 ------------------------------------
-For 2013 month 1~4, I unlikely finished the deleting reset process, because when the program stopped, I thought that the work
-of finding reset start and end has finished, which is unlikely to be true. I should make up the missed collectors in future
-work!
--------------------------------------
-Calling subprocess too many time can cause memory issue likely because of fork()
-------------------------------------
-I found that rrc00 has several blank days in 2013.03 This will be a big problem because a single day of blank could omit the  
-whole month data. Let's see how frequent such things happen!
-------------------------------------
 route-views.isc has blank period from 20130308.0815 to 20130308.1807, but I do not want to delete this collector from analysis. 
 I should code: do not wait a collector for more than an hour!
 -----------------------------------
 in alarm class, using only one radix takes 1.5 length of time than before. But it saves memory
 ----------------------------------
 Python release memory better for integrated types like dict and list, but bad for external types like radix!
+Take care when using radix, its use of memory cannot be released.

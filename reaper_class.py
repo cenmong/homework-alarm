@@ -70,7 +70,7 @@ class Reaper():
         self.dv_thre = None
         self.uq_thre = None
 
-        self.pfx2as = radix.Radix()
+        self.pfx2as = dict()
         
         #--------------------------------------------------------------------
         # variables for analyzing all types of prefixes
@@ -158,8 +158,7 @@ class Reaper():
             line = line.rstrip('\n').split('|')
             pfx = line[5]
             origin_as = int(line[6].split()[-1])
-            rnode = self.pfx2as.add(pfx)
-            rnode.data[0] = origin_as
+            self.pfx2as[pfx]= origin_as
         f.close()
         
 
