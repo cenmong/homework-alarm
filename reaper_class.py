@@ -125,6 +125,7 @@ class Reaper():
         #---------------------------------------------------------------
         # variables for detecting events
         self.bmatrix = None # a binary matrix
+        self.size_ratio = None
         self.thre_size = None
         self.width_ratio = None
         self.thre_width = None
@@ -413,7 +414,7 @@ class Reaper():
     #----------------------------------------------------------------------
     # For detecting disruptive events
     def set_event_thre(self, size_ratio, width_ratio, density):
-        self.thre_size = size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
+        self.size_ratio = size_ratio
         self.width_ratio = width_ratio
         self.thre_den = density # recommand: 0.8 or 0.85?
         logging.info('thre_size:%d',self.thre_size)
@@ -607,6 +608,7 @@ class Reaper():
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
             self.thre_width = self.mo_number * self.width_ratio
+            self.thre_size = self.size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
 
             fstart = unix_dt
             fend = unix_dt + self.granu * 60    
@@ -617,8 +619,10 @@ class Reaper():
 
                 if fstart >= start and fend <= end:
                     self.thre_width -= mcount * self.width_ratio
+                    self.thre_size -= mcount * self.size_ratio * self.pfx_number
 
             logging.info('self.thre_width=%f',self.thre_width)
+            logging.info('self.thre_size=%f',self.thre_size)
 
             for f in fg:
                 self.read_a_file_event(self.middle_dir+f)
