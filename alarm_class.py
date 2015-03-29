@@ -166,7 +166,8 @@ class Alarm():
                 max_now = mydt
 
         # someone is lagging behind
-        if new_ceil != 0 and max_now - new_ceil >= 20 * (60*self.granu):
+        if (new_ceil != 0 and max_now - new_ceil >= 20 * (60*self.granu)) or\
+                (new_ceil == 0 and max_now - self.floor >= 20 * (60*self.granu)):
             new_min = 9999999999
             ignore_list = self.ignore_co
             for co in self.co_unix_dt:
@@ -357,6 +358,8 @@ class Alarm():
         for lst in self.blank_co:
             co = lst[0]
             mcount = len(self.period.co_mo[co])
+            if len(lst) == 2:
+                lst.append(999999999)
             f.write(str(lst)+','+str(mcount)+'\n')
         f.close()
 
