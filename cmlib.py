@@ -8,9 +8,9 @@ import matplotlib
 # This is useful. I can render figures thourgh ssh. (VNC viewer is unnecessary.)
 matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
 import datetime
-import patricia
 import socket
 import gzip
+import patricia
 import time as time_lib
 import operator
 from cStringIO import StringIO

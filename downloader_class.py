@@ -615,11 +615,11 @@ if __name__ == '__main__':
             listf = dl.get_listfile()
             listfiles.append(listf)
 
-    '''
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
 
+    '''
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)
