@@ -32,7 +32,7 @@ def parse_update_files(listfile): # all update files from one collectors/list
         if not os.path.exists(datadir+line+'.txt.gz'):
             cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
             cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
-            os.remove(datadir+line)  # remove the original .bz2/.gz file
+            #os.remove(datadir+line)  # remove the original .bz2/.gz file
         else:
             print 'Parsed file exists'
             pass
