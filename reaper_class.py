@@ -571,7 +571,7 @@ class Reaper():
         col_must_del = []
         
         min_row_sum = 0.1 * self.thre_width # XXX good?
-        min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+        min_col_sum = 0.1 * (float(self.thre_size) / float(self.thre_width)) # XXX 
 
         for i in xrange(0, height):
             if self.bmatrix[i].sum() <= min_row_sum:
