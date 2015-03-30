@@ -607,6 +607,8 @@ class Reaper():
     def detect_event(self):
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+
+            #reset size and width thresholds to cope with collector blank period
             self.thre_width = self.mo_number * self.width_ratio
             self.thre_size = self.size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
 
@@ -624,6 +626,7 @@ class Reaper():
             logging.info('self.thre_width=%f',self.thre_width)
             logging.info('self.thre_size=%f',self.thre_size)
 
+            #read a middle file into c_pfx_data
             for f in fg:
                 self.read_a_file_event(self.middle_dir+f)
 
@@ -640,6 +643,7 @@ class Reaper():
                 blists.append(blist)
 
             print 'analyzing matrix...'
+            #use our algorithm to detect events
             self.bmatrix = np.array(blists)
             self.analyze_bmatrix(unix_dt) # old algorithm
             #self.analyze_bmatrix_new() # new algorithm

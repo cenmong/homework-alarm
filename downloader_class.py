@@ -55,7 +55,7 @@ class Downloader():
 
         self.rib_list = list()
 
-        self.listfile = datadir + 'update_list/' + sdate + '_' + edate + '/' + co + '_list.txt'
+        self.listfile = update_list_dir + sdate + '_' + edate + '/' + co + '_list.txt'
         
         self.reset_info = reset_info_dir + self.sdate + '_' + self.edate + '.txt' # Do not change this
         #self.counted_pfx = None

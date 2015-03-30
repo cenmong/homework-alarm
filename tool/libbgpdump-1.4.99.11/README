@@ -1,0 +1,79 @@
+This is libbgpdump - a C library designed to help with analyzing dump
+files produced by Zebra/Quagga or MRT.
+
+
+
+=== SUPPORTED INPUT FORMAT ===
+
+- MRT RIB dump
+- Zebra/Quagga format
+- These may be gzipped and/or passed in through stdin
+
+- MRT routing table dump entries in TABLE_DUMP or TABLE_DUMP_V2 types
+- Zebra/Quagga BGP records:
+	- BGP messages (OPEN, UPDATE, NOTIFY, KEEPALIVE)
+	- BGP state changes
+
+
+
+=== COMPILING ===
+
+- ./configure [--disable-ipv6] ; make
+- Note that IPv6 is enabled by default, and if the library has IPv6
+  support your application must be able to handle or ignore the resulting
+  IPv6 data!
+- libbgpdump should compile on Linux, FreeBSD, Solaris, and Cygwin
+
+
+
+=== HOW TO USE THE LIBRARY YOURSELF ===
+
+- include the file bgpdump_lib.h
+- call bgpdump_open_dump() to open desired Zebra/MRT dump/update file
+- call bgpdump_read_next() to read an entry
+- analyze the entry
+- call bgdump_free_mem() to free up memory allocated by bgpdump_read_next()
+- repeat last 3 steps until EOF of input
+- call bgdump_close_dump() to close the dump file
+
+Please see bgdump_formats.h for a description of data structures used.
+
+An example is included - test.c - it lists all the information gathered
+from a dump/update file given as a command line parameter.
+
+
+
+=== NOTES ON TABLE_DUMP_V2 ===
+
+You might note that there are some strange loops in the code handling
+TABLE_DUMP_V2. The reason for this is that for one prefix, there is
+always only one TABLE_DUMP_V2 entry, possibly with multiple peers and
+atrributes. To keep output consistent, the code loops through every
+peer/attribute set and prints the prefix every time.
+As the code around the type-specific parsing usually prints out
+timestamps and newlines to seperate entries, this is done
+in these small loops too.
+
+Also, TABLE_DUMP_V2 was not finished yet when it was added to libbgpdump.
+Libbgpdump supports the format as defined in draft-ietf-grow-mrt-04,
+with the following exceptions:
+- INDEX_TABLE is named PEER_INDEX_TABLE in the code
+- BGP4MP_STATE_CHANGE_AS4 exists, it's like BGP4MP_STATE_CHANGE with a
+  4-byte AS field. Note that it's subtype is mentioned in section 5.9.
+- RIB_GENERIC and the multicast RIBs are not supported. IPv4 and IPv6
+  unicast prefixes will only be read from RIB_IPV4_UNICAST and
+  RIB_IPV6_UNICAST entries.
+
+As RIB_GENERIC may be supported in later versions and may then also
+contain IPv4 or IPv6 unicast prefixes, code using the library should
+check the address family by reading the contents of:
+  entry->body.mrtd_table_dump_v2_prefix.afi
+for AFI_IP or AFI_IP6 and *NOT* checking the contents of
+  entry->subtype
+for BGPDUMP_SUBTYPE_TABLE_DUMP_V2_RIB_IPV4_UNICAST etc.
+
+
+
+=== BUGS ===
+
+If you find a bug, please report it to ris@ripe.net.
