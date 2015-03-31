@@ -595,7 +595,7 @@ class Reaper():
 
             sum = 0
             for c in self.event_cols:
-                value = self.bmatrix[r][c]
+                value = self.bmatrix[r,c]
                 sum += value
                 self.col_ones[c] += value
                 total_sum += value
@@ -604,7 +604,7 @@ class Reaper():
             
         for r in self.event_rows:
             for c in self.event_cols:
-                if self.bmatrix[r][c] is 1:
+                if self.bmatrix[r,c]:
                     self.row_weight[r] += self.col_ones[c]
                     self.col_weight[c] += self.row_ones[r]
 
@@ -613,17 +613,7 @@ class Reaper():
 
 
     # get binary lists information
-    '''
-    def get_blists_height(self, blists):
-        return len(blists)
-
-    def get_blists_width(self, blists):
-        return len(blists[0])
-
-    def get_blists_size(self, blists):
-        return len(blists) * len(blists[0])
-    '''
-    def analyze_bmatrix_new(self):
+    def analyze_bmatrix_new(self, unix_dt):
         size = self.bmatrix.size
         if size < self.thre_size:
             logging.info('%d final submatrix info: too small', unix_dt)
@@ -631,7 +621,7 @@ class Reaper():
 
         #--------------------------
         #initialize the event submatrix
-        for index in (0, len(self.bmatrix.tolist())):
+        for index in xrange(0, len(self.bmatrix.tolist())):
             self.event_rows[index] = True
 
         for i in xrange(0, int(self.mo_number)):
@@ -673,22 +663,33 @@ class Reaper():
             cand_rows = self.get_dict_min_list(self.row_ones, None)
             cand_cols = self.get_dict_min_list(self.col_ones, None)
 
-            row_ones = float(self.row_ones(cand_rows[0]))
-            col_ones = float(self.col_ones(cand_cols[0]))
+            row_ones = float(self.row_ones[cand_rows[0]])
+            col_ones = float(self.col_ones[cand_cols[0]])
 
-            rows_eff = ((self.event_ones-row_ones)/(self.event_size-width)-self.event_den)/width
-            cols_eff = ((self.event_ones-col_ones)/(self.event_size-height)-self.event_den)/height
+            print row_ones,col_ones
+            print self.event_width,self.event_height,self.event_den
 
-            # XXX comment out the two lines when necessary
-            if self.event_width == self.thre_width:
+            rows_eff = ((self.event_ones-row_ones)/\
+                    (self.event_size-self.event_width)-self.event_den)/self.event_width
+            cols_eff = ((self.event_ones-col_ones)/\
+                    (self.event_size-self.event_height)-self.event_den)/self.event_height
+
+            print rows_eff, cols_eff
+
+            # consider the width threshold
+            if self.event_width - 1 < self.thre_width:
                 cols_eff = -1 # cannot delete any more columns
 
             if rows_eff >= cols_eff:
                 target_rows = self.get_dict_min_list(self.row_weight, cand_rows) 
+                #print target_rows
+                #for r in target_rows:
+                #    print self.row_weight[r]
                 self.event_rm_line(target_rows[0], 'row')
             else:
                 target_cols = self.get_dict_min_list(self.col_weight, cand_cols)
                 self.event_rm_line(target_cols[0], 'col')
+                #print target_cols
 
         relative_size = self.event_size / (self.mo_number * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
@@ -696,13 +697,14 @@ class Reaper():
         if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
                 and self.event_width >= self.thre_width:
             self.events[unix_dt] = [relative_size, size, density, height, width]
-            logging.info('found event!')
-            return True
+            logging.info('%d found event: %s', unix_dt,str([relative_size, self.event_size,\
+                    self.event_den, self.event_height, self.event_width]))
+            return 100
         
-        return False
+        return -1
 
 
-    def event_rm_line(index, option):
+    def event_rm_line(self, index, option):
         if option is 'row':
             self.event_size -= self.event_width
             self.event_height -= 1
@@ -711,7 +713,7 @@ class Reaper():
 
             one_indexes = []
             for j in self.event_cols:
-                if self.bmatrix[index][j] is 1:
+                if self.bmatrix[index, j] is 1:
                     one_indexes.append(j)
                     self.col_ones[j] -= 1
                     self.col_weight[j] -= self.row_ones[index]
@@ -719,7 +721,7 @@ class Reaper():
             del self.event_rows[index]
             for r in self.event_rows:
                 for i in one_indexes:
-                    if self.bmatrix[r][i] is 1:
+                    if self.bmatrix[r, i] is 1:
                         self.row_weight[r] -= 1
 
             # to save memory
@@ -734,7 +736,7 @@ class Reaper():
 
             one_indexes = []
             for j in self.event_rows:
-                if self.bmatrix[j][index] is 1:
+                if self.bmatrix[j,index] is 1:
                     one_indexes.append(j)
                     self.row_ones[j] -= 1
                     self.row_weight[j] -= self.col_ones[index]
@@ -742,7 +744,7 @@ class Reaper():
             del self.event_cols[index]
             for c in self.event_cols:
                 for i in one_indexes:
-                    if self.bmatrix[i][c] is 1:
+                    if self.bmatrix[i,c] is 1:
                         self.col_weight[c] -= 1
 
             # to save memory
@@ -770,7 +772,25 @@ class Reaper():
 
         return mylist
 
+    def get_dict_max_list(self, mydict, keylist):
+        if keylist is None:
+            keylist = mydict.keys()
+
+        mylist = list()
+        max = -9999999
+
+        for k in keylist:
+            value = mydict[k]
+            if value == max:
+                mylist.append(k)
+            elif value > max:
+                max = value
+                mylist = [k]
+
+        return mylist
+
     def detect_event(self):
+        #self.filegroups = self.filegroups[17:] # FIXME test
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
@@ -815,16 +835,16 @@ class Reaper():
             print 'Identifying event...'
             self.bmatrix = np.array(blists)
             #self.analyze_bmatrix(unix_dt) # old algorithm
-            success = self.analyze_bmatrix_new() # new algorithm
+            code = self.analyze_bmatrix_new(unix_dt) # new algorithm
 
             # note: output to unix_dt.txt event size not too small
-            if success:
+            if code == 100:
                 fname = str(unix_dt) + '.txt'
-                f = open(fname, 'w')
+                f = open(self.get_output_dir_event()+fname, 'w')
                 f.write('MonitorIndexes#' + str(self.event_cols) + '\n')
                 for r in self.event_rows:
                     pfx = self.index2pfx[r]
-                    f.write(pfx+':'+self.c_pfx_data[pfx]+'\n')
+                    f.write(pfx+':'+str(self.c_pfx_data[pfx])+'\n')
                 f.close()
 
             # release memory 
