@@ -51,3 +51,6 @@ in alarm class, using only one radix takes 1.5 length of time than before. But i
 ----------------------------------
 Python release memory better for integrated types like dict and list, but bad for external types like radix!
 Take care when using radix, its use of memory cannot be released.
+
+-------About tool----------------------
+After adding new tool, change its permission to 777

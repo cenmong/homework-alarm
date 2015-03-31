@@ -72,13 +72,14 @@ class Reaper():
 
         self.pfx2as = dict()
         
-        #--------------------------------------------------------------------
-        # variables for analyzing all types of prefixes
-        # XXX if memo too hard, scan two or more times
-
         # record all pfx and data in the current interval
         ##self.c_pfx_data = radix.Radix()
         self.c_pfx_data = dict()
+
+
+        #--------------------------------------------------------------------
+        # variables for analyzing all types of prefixes
+        # XXX if memo too hard, scan two or more times
 
         # recore time series of three types of prefixes. datetime: value
         self.hdv_ts = dict()
@@ -122,19 +123,42 @@ class Reaper():
         #self.uq_distr[period1] = dict()
 
 
-        #---------------------------------------------------------------
+
+        #============================================================
         # variables for detecting events
-        self.bmatrix = None # a binary matrix
+        self.bmatrix = None # the original prefix: list binary matrix
+        self.index2pfx = dict()
+
+        #------------------------------------------
+        # thresholds
         self.size_ratio = None
         self.thre_size = None
         self.width_ratio = None
         self.thre_width = None
         self.thre_den = None # density threshold
 
-        self.rows = dict() # row number: attribute dict 
-        self.cols = dict() #
+        #--------------------------------------
+        #event rows and cols (use dict for quicker speed)
+        self.event_rows = dict() # row number: True
+        self.event_cols = dict() # col number: True
 
-        self.submatrix = dict() # time: final submatrix feature list TODO
+        #--------------------------------------
+        # attributes for the event rows and cols
+        self.row_ones = dict() # row number: quantity of 1s
+        self.col_ones = dict() # col number: quantity of 1s
+        
+        self.row_weight = dict() # row number: weight
+        self.col_weight = dict() # col number: weight
+    
+        #---------------------------------------
+        # attributes for the event submatrix
+        self.event_size = None
+        self.event_ones = None
+        self.event_height = None
+        self.event_width = None
+        self.event_den = None
+
+
         self.events = dict() # time: event feature list
         self.pfx_number = self.period.get_fib_size()
 
@@ -417,7 +441,7 @@ class Reaper():
         self.size_ratio = size_ratio
         self.width_ratio = width_ratio
         self.thre_den = density # recommand: 0.8 or 0.85?
-        logging.info('thre_size:%d',self.thre_size)
+        logging.info('thre_size_ratio:%d', self.size_ratio)
 
         #min_row_sum = 0.1 * self.thre_width # XXX good?
         #min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
@@ -437,7 +461,7 @@ class Reaper():
         col_must_del = []
         
         min_row_sum = 0.1 * self.thre_width # XXX good?
-        min_col_sum = 0.1 * (float(self.thre_size) / float(self.mo_number)) # XXX 
+        min_col_sum = 0.1 * (float(self.thre_size) / float(self.thre_width)) # XXX 
 
         for i in xrange(0, height):
             if self.bmatrix[i].sum() <= min_row_sum:
@@ -557,52 +581,194 @@ class Reaper():
             self.events[unix_dt] = [size, density, height, width]
             logging.info('found event!')
 
+    # initialize event row and column attributes
+    def init_attri(self):
+
+        total_sum = 0.0
+
+        for c in self.event_cols:
+            self.col_ones[c] = 0
+            self.col_weight[c] = 0
+
+        for r in self.event_rows:
+            self.row_weight[r] = 0
+
+            sum = 0
+            for c in self.event_cols:
+                value = self.bmatrix[r][c]
+                sum += value
+                self.col_ones[c] += value
+                total_sum += value
+
+            self.row_ones[r] = sum
+            
+        for r in self.event_rows:
+            for c in self.event_cols:
+                if self.bmatrix[r][c] is 1:
+                    self.row_weight[r] += self.col_ones[c]
+                    self.col_weight[c] += self.row_ones[r]
+
+        self.event_ones = total_sum
+        self.event_den = total_sum / self.event_size
+
+
+    # get binary lists information
+    '''
+    def get_blists_height(self, blists):
+        return len(blists)
+
+    def get_blists_width(self, blists):
+        return len(blists[0])
+
+    def get_blists_size(self, blists):
+        return len(blists) * len(blists[0])
+    '''
     def analyze_bmatrix_new(self):
         size = self.bmatrix.size
         if size < self.thre_size:
             logging.info('%d final submatrix info: too small', unix_dt)
             return -1
 
+        #--------------------------
+        #initialize the event submatrix
+        for index in (0, len(self.bmatrix.tolist())):
+            self.event_rows[index] = True
+
+        for i in xrange(0, int(self.mo_number)):
+            self.event_cols[i] = True
+
+
         #-------------------
         # preprocess the matrix
-        height = self.bmatrix.shape[0]
-        width = self.bmatrix.shape[1]
-        row_must_del = []
-        col_must_del = []
+        self.event_height = self.bmatrix.shape[0]
+        self.event_width = self.bmatrix.shape[1]
         
         min_row_sum = 0.1 * self.thre_width # XXX good?
-        min_col_sum = 0.1 * (float(self.thre_size) / float(self.thre_width)) # XXX 
-
-        for i in xrange(0, height):
+        for i in xrange(0, self.event_height):
             if self.bmatrix[i].sum() <= min_row_sum:
-                row_must_del.append(i)
-        for i in xrange(0, width):
+                del self.event_rows[i]
+                self.event_height -= 1
+
+        min_col_sum = 0.1 * (float(self.thre_size) / float(self.thre_width)) # XXX 
+        for i in xrange(0, self.event_width):
             if self.bmatrix[:,i].sum() <= min_col_sum:
-                col_must_del.append(i)
+                del self.event_cols[i]
+                self.event_width -= 1
 
-        self.bmatrix = np.delete(self.bmatrix,row_must_del,0)
-        self.bmatrix = np.delete(self.bmatrix,col_must_del,1)
+        self.event_size = float(self.event_height * self.event_width)
 
-        size = float(self.bmatrix.size)
-        width = self.bmatrix.shape[1]
-        if size < self.thre_size or width < self.thre_width:
-            logging.info('%d final submatrix info: too small after preprocess', unix_dt)
+        if self.event_size < self.thre_size or self.event_width < self.thre_width:
+            logging.info('%d : too small after preprocess', unix_dt)
             return -1
+
+        self.init_attri() # initialize row and col attributes and event density
 
         #--------------------
         # process the matrix
-        sum = float(np.sum(self.bmatrix))
-        density = sum/size
-        height = self.bmatrix.shape[0]
-        width = self.bmatrix.shape[1]
-        now_den = density
+        while(self.event_den < self.thre_den):
 
-        row_del_score = None
-        col_del_score = None
-        while(now_den < self.thre_den):
-            pass
+            if self.event_size < self.thre_size:
+                break
+
+            cand_rows = self.get_dict_min_list(self.row_ones, None)
+            cand_cols = self.get_dict_min_list(self.col_ones, None)
+
+            row_ones = float(self.row_ones(cand_rows[0]))
+            col_ones = float(self.col_ones(cand_cols[0]))
+
+            rows_eff = ((self.event_ones-row_ones)/(self.event_size-width)-self.event_den)/width
+            cols_eff = ((self.event_ones-col_ones)/(self.event_size-height)-self.event_den)/height
+
+            # XXX comment out the two lines when necessary
+            if self.event_width == self.thre_width:
+                cols_eff = -1 # cannot delete any more columns
+
+            if rows_eff >= cols_eff:
+                target_rows = self.get_dict_min_list(self.row_weight, cand_rows) 
+                self.event_rm_line(target_rows[0], 'row')
+            else:
+                target_cols = self.get_dict_min_list(self.col_weight, cand_cols)
+                self.event_rm_line(target_cols[0], 'col')
+
+        relative_size = self.event_size / (self.mo_number * self.pfx_number)
+        logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
+                self.event_den, self.event_height, self.event_width]))
+        if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
+                and self.event_width >= self.thre_width:
+            self.events[unix_dt] = [relative_size, size, density, height, width]
+            logging.info('found event!')
+            return True
         
+        return False
 
+
+    def event_rm_line(index, option):
+        if option is 'row':
+            self.event_size -= self.event_width
+            self.event_height -= 1
+            self.event_ones -= self.row_ones[index]
+            self.event_den = self.event_ones / self.event_size
+
+            one_indexes = []
+            for j in self.event_cols:
+                if self.bmatrix[index][j] is 1:
+                    one_indexes.append(j)
+                    self.col_ones[j] -= 1
+                    self.col_weight[j] -= self.row_ones[index]
+            
+            del self.event_rows[index]
+            for r in self.event_rows:
+                for i in one_indexes:
+                    if self.bmatrix[r][i] is 1:
+                        self.row_weight[r] -= 1
+
+            # to save memory
+            del self.row_ones[index]
+            del self.row_weight[index]
+
+        elif option is 'col':
+            self.event_size -= self.event_height
+            self.event_width -= 1
+            self.event_ones -= self.col_ones[index]
+            self.event_den = self.event_ones / self.event_size
+
+            one_indexes = []
+            for j in self.event_rows:
+                if self.bmatrix[j][index] is 1:
+                    one_indexes.append(j)
+                    self.row_ones[j] -= 1
+                    self.row_weight[j] -= self.col_ones[index]
+            
+            del self.event_cols[index]
+            for c in self.event_cols:
+                for i in one_indexes:
+                    if self.bmatrix[i][c] is 1:
+                        self.col_weight[c] -= 1
+
+            # to save memory
+            del self.col_ones[index]
+            del self.col_weight[index]
+
+        else:
+            assert False
+
+
+    def get_dict_min_list(self, mydict, keylist):
+        if keylist is None:
+            keylist = mydict.keys()
+
+        mylist = list()
+        min = 9999999999
+
+        for k in keylist:
+            value = mydict[k]
+            if value == min:
+                mylist.append(k)
+            elif value < min:
+                min = value
+                mylist = [k]
+
+        return mylist
 
     def detect_event(self):
         for fg in self.filegroups:
@@ -632,7 +798,9 @@ class Reaper():
 
             # convert integer lists to binary lists just before preprocessing
             blists = list()
+            cindex = 0
             for pfx in self.c_pfx_data:
+                self.index2pfx[cindex] = pfx
                 blist = []
                 ilist = self.c_pfx_data[pfx]
                 for value in ilist:
@@ -641,16 +809,50 @@ class Reaper():
                     else:
                         blist.append(0)
                 blists.append(blist)
+                cindex += 1
 
-            print 'analyzing matrix...'
-            #use our algorithm to detect events
+
+            print 'Identifying event...'
             self.bmatrix = np.array(blists)
-            self.analyze_bmatrix(unix_dt) # old algorithm
-            #self.analyze_bmatrix_new() # new algorithm
-            self.bmatrix = None
+            #self.analyze_bmatrix(unix_dt) # old algorithm
+            success = self.analyze_bmatrix_new() # new algorithm
+
+            # note: output to unix_dt.txt event size not too small
+            if success:
+                fname = str(unix_dt) + '.txt'
+                f = open(fname, 'w')
+                f.write('MonitorIndexes#' + str(self.event_cols) + '\n')
+                for r in self.event_rows:
+                    pfx = self.index2pfx[r]
+                    f.write(pfx+':'+self.c_pfx_data[pfx]+'\n')
+                f.close()
+
+            # release memory 
+            del self.bmatrix
+
+            del self.event_rows
+            self.event_rows = dict()
+
+            del self.event_cols
+            self.event_cols = dict()
+
+            del self.row_ones
+            self.row_ones = dict()
+
+            del self.col_ones
+            self.col_ones = dict()
+
+            del self.row_weight
+            self.row_weight = dict()
+
+            del self.col_weight 
+            self.col_weight = dict()
 
             del self.c_pfx_data
             self.c_pfx_data = dict()
+
+            del self.index2pfx
+            self.index2pfx = dict()
 
         self.output_event()
 
@@ -687,12 +889,12 @@ class Reaper():
         fin.close()
 
     def get_output_dir_event(self):
-        s = str(self.thre_size)
+        s = str(self.size_ratio)
         tmp = s.index('.')
-        s = s[:tmp]
-        w = str(self.thre_width)
+        s = s[tmp+1:]
+        w = str(self.width_ratio)
         tmp = w.index('.')
-        w = w[:tmp]
+        w = w[tmp+1:]
         return self.final_dir + s + '_' + w +\
                 '_' + str(self.thre_den).lstrip('0.') + '_' + str(self.m_granu) +\
                 '_' + str(self.granu) + '_' + str(self.shift) + '/'
