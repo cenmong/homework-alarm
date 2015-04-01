@@ -54,3 +54,10 @@ Take care when using radix, its use of memory cannot be released.
 
 -------About tool----------------------
 After adding new tool, change its permission to 777
+
+-------Data changed?--------------------
+old detection algorithm record: 1167156000: 2976*91
+new detectino algorithm test: smaller than the above (shoudl not be)
+old algorithm again: smaller than the 2nd (reasonable!!)
+
+Now I have to assume the new algorithm is ready to work ...

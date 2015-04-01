@@ -633,13 +633,13 @@ class Reaper():
         self.event_height = self.bmatrix.shape[0]
         self.event_width = self.bmatrix.shape[1]
         
-        min_row_sum = 0.1 * self.thre_width # XXX good?
+        min_row_sum = 0.2 * self.thre_width # XXX good?
         for i in xrange(0, self.event_height):
             if self.bmatrix[i].sum() <= min_row_sum:
                 del self.event_rows[i]
                 self.event_height -= 1
 
-        min_col_sum = 0.1 * (float(self.thre_size) / float(self.thre_width)) # XXX 
+        min_col_sum = 0.2 * (float(self.thre_size) / float(self.thre_width)) # XXX 
         for i in xrange(0, self.event_width):
             if self.bmatrix[:,i].sum() <= min_col_sum:
                 del self.event_cols[i]
@@ -663,6 +663,8 @@ class Reaper():
             cand_rows = self.get_dict_min_list(self.row_ones, None)
             cand_cols = self.get_dict_min_list(self.col_ones, None)
 
+            #print self.col_ones
+
             row_ones = float(self.row_ones[cand_rows[0]])
             col_ones = float(self.col_ones[cand_cols[0]])
 
@@ -674,11 +676,14 @@ class Reaper():
             cols_eff = ((self.event_ones-col_ones)/\
                     (self.event_size-self.event_height)-self.event_den)/self.event_height
 
-            print rows_eff, cols_eff
-
             # consider the width threshold
             if self.event_width - 1 < self.thre_width:
                 cols_eff = -1 # cannot delete any more columns
+
+            print rows_eff, cols_eff
+
+            #if rows_eff < 0:
+            #    break
 
             if rows_eff >= cols_eff:
                 target_rows = self.get_dict_min_list(self.row_weight, cand_rows) 
@@ -696,7 +701,7 @@ class Reaper():
                 self.event_den, self.event_height, self.event_width]))
         if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
                 and self.event_width >= self.thre_width:
-            self.events[unix_dt] = [relative_size, size, density, height, width]
+            self.events[unix_dt]=[relative_size,self.event_size,self.event_den,self.event_height,self.event_width]
             logging.info('%d found event: %s', unix_dt,str([relative_size, self.event_size,\
                     self.event_den, self.event_height, self.event_width]))
             return 100
@@ -713,16 +718,17 @@ class Reaper():
 
             one_indexes = []
             for j in self.event_cols:
-                if self.bmatrix[index, j] is 1:
+                if self.bmatrix[index,j]: # XXX why 'is 1' does not work?
                     one_indexes.append(j)
                     self.col_ones[j] -= 1
                     self.col_weight[j] -= self.row_ones[index]
             
+            #print one_indexes
+
             del self.event_rows[index]
             for r in self.event_rows:
                 for i in one_indexes:
-                    if self.bmatrix[r, i] is 1:
-                        self.row_weight[r] -= 1
+                    self.row_weight[r] -= self.bmatrix[r,i]
 
             # to save memory
             del self.row_ones[index]
@@ -736,7 +742,7 @@ class Reaper():
 
             one_indexes = []
             for j in self.event_rows:
-                if self.bmatrix[j,index] is 1:
+                if self.bmatrix[j,index]:
                     one_indexes.append(j)
                     self.row_ones[j] -= 1
                     self.row_weight[j] -= self.col_ones[index]
@@ -744,8 +750,7 @@ class Reaper():
             del self.event_cols[index]
             for c in self.event_cols:
                 for i in one_indexes:
-                    if self.bmatrix[i,c] is 1:
-                        self.col_weight[c] -= 1
+                    self.col_weight[c] -= self.bmatrix[i,c]
 
             # to save memory
             del self.col_ones[index]
@@ -794,6 +799,9 @@ class Reaper():
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
+            #if unix_dt != 1167156000: # test
+            #    continue
+
             #reset size and width thresholds to cope with collector blank period
             self.thre_width = self.mo_number * self.width_ratio
             self.thre_size = self.size_ratio * self.pfx_number * self.mo_number # recommand: 0.5%
@@ -809,8 +817,7 @@ class Reaper():
                     self.thre_width -= mcount * self.width_ratio
                     self.thre_size -= mcount * self.size_ratio * self.pfx_number
 
-            logging.info('self.thre_width=%f',self.thre_width)
-            logging.info('self.thre_size=%f',self.thre_size)
+            logging.info('thre_width=%f,thre_size=%f',self.thre_width,self.thre_size)
 
             #read a middle file into c_pfx_data
             for f in fg:
@@ -915,15 +922,17 @@ class Reaper():
         w = str(self.width_ratio)
         tmp = w.index('.')
         w = w[tmp+1:]
-        return self.final_dir + s + '_' + w +\
+        mydir = self.final_dir + s + '_' + w +\
                 '_' + str(self.thre_den).lstrip('0.') + '_' + str(self.m_granu) +\
                 '_' + str(self.granu) + '_' + str(self.shift) + '/'
+
+        cmlib.make_dir(mydir)
+
+        return mydir
 
     def output_event(self):
         print 'Writing to final output...'
         output_dir = self.get_output_dir_event()
-        print output_dir
-        cmlib.make_dir(output_dir)
         
         #f = open(output_dir+'events.txt', 'w') # first try deteting events
         f = open(output_dir+'events_new.txt', 'w')
