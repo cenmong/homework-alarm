@@ -18,7 +18,7 @@ action = {'middle':0, 'final':1, 'plot':0}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [0]
+index_list = [8,10]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
@@ -70,6 +70,20 @@ for i in index_list:
         reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
         reaper.set_dv_uq_thre(dv_thre, uq_thre)
         plotter = Plotter(reaper)
+
+        # TODO plotter = Plotter(reaper_list) 
+        # plotter.TS_all_event_dot()
+        # plotter.scatter_all_rwidth_rsize()
+        # plotter.scatter_all_ASratio_rsize()
+        # plotter.scatter_all_pfxratio_rsize()    
+
+        # TODO plotter = Plotter(reaper_lol) # list of reaper lists
+        # plotter.TS_all_event_dot_compare()
+        # plotter.CDF_all_event_onepctg_CDnum_compare()
+        # plotter.CDF_all_event_updtpctg_CDnum_compare()
+
+        # plotter = Plotter(reaper)
+        # plotter.TS_event_dot()
 
     '''
     #------------------------------------------------------------

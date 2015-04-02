@@ -696,7 +696,7 @@ class Reaper():
                 self.event_rm_line(target_cols[0], 'col')
                 #print target_cols
 
-        relative_size = self.event_size / (self.mo_number * self.pfx_number)
+        relative_size = self.event_size / (self.thre_width * 2.5 * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
                 self.event_den, self.event_height, self.event_width]))
         if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
