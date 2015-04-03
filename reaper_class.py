@@ -23,6 +23,7 @@ class Reaper():
     def __init__(self, period, granu, shift):
         self.period = period
         self.mo_number = float(self.period.get_mo_number())
+        self.pfx_number = self.period.get_fib_size()
         self.shift = shift
 
         self.middle_dir = period.get_middle_dir()
@@ -158,9 +159,8 @@ class Reaper():
         self.event_width = None
         self.event_den = None
 
-
         self.events = dict() # time: event feature list
-        self.pfx_number = self.period.get_fib_size()
+        self.events_brief_fname = 'events_new.txt'
 
     # get prefix 2 as mapping from only RouteViews2 collector's RIB
     # TODO test needed
@@ -922,20 +922,21 @@ class Reaper():
         w = str(self.width_ratio)
         tmp = w.index('.')
         w = w[tmp+1:]
+
         mydir = self.final_dir + s + '_' + w +\
                 '_' + str(self.thre_den).lstrip('0.') + '_' + str(self.m_granu) +\
                 '_' + str(self.granu) + '_' + str(self.shift) + '/'
-
         cmlib.make_dir(mydir)
 
         return mydir
 
+    def get_output_fpath_event_brief(self):
+        return self.get_output_dir_event() + self.events_brief_fname
+
     def output_event(self):
-        print 'Writing to final output...'
-        output_dir = self.get_output_dir_event()
+        output_path = self.get_output_fpath_event_brief()
         
-        #f = open(output_dir+'events.txt', 'w') # first try deteting events
-        f = open(output_dir+'events_new.txt', 'w')
+        f = open(output_path, 'w')
         for dt in self.events:
             f.write(str(dt)+':'+str(self.events[dt])+'\n')
         f.close()

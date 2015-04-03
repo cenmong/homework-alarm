@@ -19,7 +19,6 @@ logging.info('Program starts!')
 index = 0 # the event to analyze
 sdt_obj = datetime.datetime(1989,10,24,0,0) # starting unix datetime
 edt_obj = datetime.datetime(1989,10,25,10,0) # ending unix datetime
-granu = 20
 
 #-------------------------------------------
 # Still, we only care about the peers with global view
@@ -30,7 +29,12 @@ my_period.mo_filter_same_as()
 
 #---------------------------------------------
 # TODO can analyze the original updates or middle files and generate reports
-micro_fighter = Micro_fighter(my_period, granu, sdt_obj, edt_obj)
-micro_fighter.analyze_pfx()
+reaper = Reaper(my_period, 20, 0)
+mf = Micro_fighter(reaper)
+#micro_fighter.set_sedate(sdt_obj, edt_obj)
+#micro_fighter.analyze_pfx()
+
+mf.analyze_event_origin(1344446400) # output to local dir
+
 # analyze certain prefixes (optional) define pfx_target = dict() for quick access
 # group prefixes into ASes (very meaningful)

@@ -1,4 +1,5 @@
 from os.path import expanduser
+import datetime
 
 datadir = '/media/usb/' # TODO add 'bgp_project/' at end and really change the directories
 homedir = expanduser('~') + '/'
@@ -7,6 +8,9 @@ projectdir = expanduser('~') + '/alarm/'
 #---------------------------------------------------------
 rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
+
+dt_anchor1 = datetime.datetime(2003,2,3,19,0)
+dt_anchor2 = datetime.datetime(2006,2,1,21,0)
 
 #--------------------------------------------------------
 spt_dir = datadir + 'support/'
