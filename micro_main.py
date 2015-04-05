@@ -16,7 +16,7 @@ logging.info('Program starts!')
 
 #-------------------------------------------------------------------
 # Specify the target to analyze
-index = 0 # the event to analyze
+index = 15 # the event to analyze
 sdt_obj = datetime.datetime(1989,10,24,0,0) # starting unix datetime
 edt_obj = datetime.datetime(1989,10,25,10,0) # ending unix datetime
 
@@ -28,8 +28,8 @@ my_period.rm_dup_mo() # rm multiple existence of the same monitor
 my_period.mo_filter_same_as()
 
 #---------------------------------------------
-# TODO can analyze the original updates or middle files and generate reports
 reaper = Reaper(my_period, 20, 0)
+reaper.set_event_thre(0.005, 0.4, 0.8)
 mf = Micro_fighter(reaper)
 #micro_fighter.set_sedate(sdt_obj, edt_obj)
 #micro_fighter.analyze_pfx()
