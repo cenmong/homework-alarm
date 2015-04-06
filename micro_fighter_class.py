@@ -77,7 +77,8 @@ class Micro_fighter():
 
     def analyze_event_origin(self, unix_dt):
 
-        as_link_count = dict() # [pfx,mon]:[as link]:True
+        as_link_count = dict()
+        as_count = dict()
 
         event_sdt = datetime.datetime.utcfromtimestamp(unix_dt)
         event_unix_sdt = unix_dt
@@ -86,7 +87,7 @@ class Micro_fighter():
 
         # get event prefix and monitor set
         pfx_set = set()
-        mon_set = set()
+        mon_index_set = set()
         event_detail_fname = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
         f = open(event_detail_fname, 'r')
         for line in f:
@@ -94,14 +95,43 @@ class Micro_fighter():
             if '#' in line: # monitor line
                 mondict = line.split('#')[1]
                 mondict = ast.literal_eval(mondict)
-                mon_set = set(mondict.keys())
+                mon_index_set = set(mondict.keys())
             else:
                 pfx = line.split(':')[0]
                 pfx_set.add(pfx)
         f.close()
 
         pfx_count = len(pfx_set)
-        mon_count = len(mon_set)
+        mon_count = len(mon_index_set)
+
+            
+        index2mon = dict()
+        mon2index_file = self.period.get_mon2index_file_path()
+        f = open(mon2index_file, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            ip = line.split(':')[0]
+            index = int(line.split(':')[1])
+            index2mon[index] = ip
+        f.close()
+
+        mon_set = set()
+        for i in mon_index_set:
+            mon_set.add(index2mon[i])
+
+        pfx2tag = dict()
+        mon2tag = dict()
+
+        # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx
+        start = 100000
+        for pfx in pfx_set:
+            pfx2tag[pfx] = str(start)
+            start += 1
+
+        start = 100
+        for mon in mon_set:
+            mon2tag[mon] = str(start)
+            start += 1
 
         # obtain the target update file list
         f = open(self.filelist, 'r')
@@ -153,25 +183,51 @@ class Micro_fighter():
             assert p.returncode == 0
             for line in myf:
                 try:
-                    attr = updt.rstrip('\n').split('|')
+                    attr = line.rstrip('\n').split('|')
                     pfx = attr[5]
                     mon = attr[3]
 
                     if not event_unix_sdt<=int(attr[1])<=event_unix_edt:
                         continue
 
-                    if pfx not in pfx_set or mon not in mon_set:
+                    if (pfx not in pfx_set) or (mon not in mon_set):
                         continue
 
                     # now do something
+                    the_tag = pfx2tag[pfx] + mon2tag[mon]
+
                     as_list = attr[6].split()
                     mylen = len(as_list)
                     for i in xrange(0, mylen-1):
-                        as_link = [as_list[i], as_list[i+1]]
+                        as1 = as_list[i]
+                        as2 = as_list[i+1]
+
+                        if as1 == as2:
+                            continue
+
+                        if int(as1) > int(as2):
+                            as_link = as2+'_'+as1
+                        else:
+                            as_link = as1+'_'+as2
+
                         try:
-                            as_link_count[as_link] += 1
+                            as_link_count[as_link].add(the_tag)
                         except:
-                            as_link_count[as_link] = 1
+                            as_link_count[as_link] = set()
+                            as_link_count[as_link].add(the_tag)
+
+                        try:
+                            as_count[as1].add(the_tag)
+                        except:
+                            as_count[as1] = set()
+                            as_count[as1].add(the_tag)
+
+                    try:
+                        as_count[as2].add(the_tag)
+                    except:
+                        as_count[as2] = set()
+                        as_count[as2].add(the_tag)
+
 
                 except Exception, err:
                     if line != '':
@@ -182,14 +238,32 @@ class Micro_fighter():
 
         f.close()
 
-        tmp_list = sorted(as_link_count.iteritems(),\
+        tmp_dict = dict()
+        for al in as_link_count:
+            tmp_dict[al] = len(as_link_count[al])
+
+        tmp_list = sorted(tmp_dict.iteritems(),\
                 key=operator.itemgetter(1), reverse=True)
         f = open('event_origin.txt', 'w')
         for item in tmp_list:
             as_link = item[0]
             count = item[1]
-            f.write(str(as_link)+':'+str(count))
+            f.write(str(as_link)+':'+str(count)+'\n')
         f.close()
+
+
+        tmp_dict = dict()
+        for a in as_count:
+            tmp_dict[a] = len(as_count[a])
+        tmp_list = sorted(tmp_dict.iteritems(),\
+                key=operator.itemgetter(1), reverse=True)
+        f = open('event_origin_AS.txt', 'w')
+        for item in tmp_list:
+            asn = item[0]
+            count = item[1]
+            f.write(str(asn)+':'+str(count)+'\n')
+        f.close()
+
         # read the unix_dt.txt file to get prefix and monitor set (a separate function)
         # read each update file to identify the interested pfx and mon
         # record the data we care

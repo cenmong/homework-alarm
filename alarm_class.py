@@ -50,7 +50,7 @@ class Alarm():
             self.mo2index[mo] = index
             index += 1
         # write this mapping to a file for future microscopic analysis
-        self.mo2index_file = rib_info_dir + self.sdate + '_' + self.edate + '_mo2index.txt'
+        self.mo2index_file = self.period.get_mon2index_file_path()
         f = open(self.mo2index_file, 'w')
         for mo in self.mo2index:
             f.write(mo+':'+str(self.mo2index[mo])+'\n')

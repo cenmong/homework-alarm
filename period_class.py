@@ -40,6 +40,9 @@ class Period():
         self.dt_anchor1 = datetime.datetime(2003,2,3,19,0) # up to now, never used data prior
         self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
 
+    def get_mon2index_file_path(self):
+        return rib_info_dir + self.sdate + '_' + self.edate + '_mo2index.txt'
+
     def get_middle_dir(self):
         return datadir+'middle_output/'+self.sdate+'_'+self.edate+'/'
 
