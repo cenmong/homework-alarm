@@ -677,8 +677,9 @@ class Reaper():
                     (self.event_size-self.event_height)-self.event_den)/self.event_height
 
             # consider the width threshold
-            if self.event_width - 1 < self.thre_width:
-                cols_eff = -1 # cannot delete any more columns
+            if self.event_width - 1 < self.thre_width: # cannot delete any more columns
+                self.event_rm_line_ronly(cand_rows[0])
+                continue
 
             print rows_eff, cols_eff
 
@@ -687,14 +688,10 @@ class Reaper():
 
             if rows_eff >= cols_eff:
                 target_rows = self.get_dict_min_list(self.row_weight, cand_rows) 
-                #print target_rows
-                #for r in target_rows:
-                #    print self.row_weight[r]
                 self.event_rm_line(target_rows[0], 'row')
             else:
                 target_cols = self.get_dict_min_list(self.col_weight, cand_cols)
                 self.event_rm_line(target_cols[0], 'col')
-                #print target_cols
 
         relative_size = self.event_size / (self.thre_width * 2.5 * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
@@ -708,6 +705,16 @@ class Reaper():
         
         return -1
 
+    
+    def event_rm_line_ronly(self, index): # do not remove column any more
+            self.event_size -= self.event_width
+            self.event_height -= 1
+            self.event_ones -= self.row_ones[index]
+            self.event_den = self.event_ones / self.event_size
+    
+            del self.event_rows[index]
+            del self.row_ones[index]
+            del self.row_weight[index]
 
     def event_rm_line(self, index, option):
         if option is 'row':
