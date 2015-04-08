@@ -61,3 +61,6 @@ new detectino algorithm test: smaller than the above (shoudl not be)
 old algorithm again: smaller than the 2nd (reasonable!!)
 
 Now I have to assume the new algorithm is ready to work ...
+
+-------Very careful about data pollution--------
+Downloading new data may pollute existing data! So be very careful!

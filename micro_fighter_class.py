@@ -87,8 +87,7 @@ class Micro_fighter():
 
         return pfx_set
 
-    def analyze_event_origin(self, unix_dt):
-
+    def event_as_link_rank(self, unix_dt):
         as_link_count = dict()
         as_count = dict()
 
@@ -115,15 +114,14 @@ class Micro_fighter():
 
         pfx_count = len(pfx_set)
         mon_count = len(mon_index_set)
+        event_size = pfx_count * mon_count
 
-        leak_pfx_set = self.bgp_leak_pfx()
-        
-        common_set = pfx_set & leak_pfx_set
-        common_count = len(common_set)
-
-        print 'pfx set in event:',pfx_count
-        print 'pfx set in leak',len(leak_pfx_set)
-        print 'common pfx set in leak:',common_count
+        #leak_pfx_set = self.bgp_leak_pfx()
+        #common_set = pfx_set & leak_pfx_set
+        #common_count = len(common_set)
+        #print 'pfx set in event:',pfx_count
+        #print 'pfx set in leak',len(leak_pfx_set)
+        #print 'common pfx set in leak:',common_count
             
         index2mon = dict()
         mon2index_file = self.period.get_mon2index_file_path()
@@ -139,10 +137,11 @@ class Micro_fighter():
         for i in mon_index_set:
             mon_set.add(index2mon[i])
 
+         
+        # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx, to save memory
         pfx2tag = dict()
         mon2tag = dict()
 
-        # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx
         start = 100000
         for pfx in pfx_set:
             pfx2tag[pfx] = str(start)
@@ -152,6 +151,7 @@ class Micro_fighter():
         for mon in mon_set:
             mon2tag[mon] = str(start)
             start += 1
+
 
         # obtain the target update file list
         f = open(self.filelist, 'r')
@@ -168,6 +168,7 @@ class Micro_fighter():
 
             fline = datadir + fline.split('|')[0]
 
+
             # get current file's collector name
             attributes = fline.split('/') 
             j = -1
@@ -180,6 +181,7 @@ class Micro_fighter():
             if co == 'bgpdata':  # route-views2, the special case
                 co = ''
 
+
             # Deal with several special time zone problems
             if co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # PST time
                 fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX (not 8)
@@ -190,6 +192,7 @@ class Micro_fighter():
                 shift = -10
             else:
                 shift = -30
+
 
             # Check whether the file is a possible target
             if not event_sdt+datetime.timedelta(minutes=shift)<=fname_dt_obj<=event_edt:
@@ -260,11 +263,11 @@ class Micro_fighter():
 
         tmp_dict = dict()
         for al in as_link_count:
-            tmp_dict[al] = len(as_link_count[al])
+            tmp_dict[al] = float(len(as_link_count[al])) / event_size
 
         tmp_list = sorted(tmp_dict.iteritems(),\
                 key=operator.itemgetter(1), reverse=True)
-        f = open('event_origin.txt', 'w')
+        f = open(self.reaper.get_output_dir_event()+'as_link_rank_'+str(unix_dt)+'.txt', 'w')
         for item in tmp_list:
             as_link = item[0]
             count = item[1]
@@ -274,10 +277,10 @@ class Micro_fighter():
 
         tmp_dict = dict()
         for a in as_count:
-            tmp_dict[a] = len(as_count[a])
+            tmp_dict[a] = float(len(as_count[a])) / event_size
         tmp_list = sorted(tmp_dict.iteritems(),\
                 key=operator.itemgetter(1), reverse=True)
-        f = open('event_origin_AS.txt', 'w')
+        f = open(self.reaper.get_output_dir_event()+'as_rank_'+str(unix_dt)+'.txt', 'w')
         for item in tmp_list:
             asn = item[0]
             count = item[1]

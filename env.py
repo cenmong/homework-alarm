@@ -9,8 +9,10 @@ projectdir = expanduser('~') + '/alarm/'
 rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
 
-dt_anchor1 = datetime.datetime(2003,2,3,19,0)
-dt_anchor2 = datetime.datetime(2006,2,1,21,0)
+#--------------------------------------------------------
+# when time zone changed
+dt_anchor1 = datetime.datetime(2003,2,3,19,0) # for all RV collectors. dt=fname_dt+8H
+dt_anchor2 = datetime.datetime(2006,2,1,21,0) # for route-views.eqix only. dt=fname_dt+7H
 
 #--------------------------------------------------------
 spt_dir = datadir + 'support/'
@@ -53,12 +55,13 @@ all_collectors = { # 17 in total
     'rrc13': '20050501',
     'rrc14': '20050101',
     'rrc15': '20060101',
-    #'route-views.kixp': '20051101', # RIB size too small
-    #'rrc06': '20010901', # too few peers with global table
-    #'rrc07': '20020501', # too few peers with global table
+    #'route-views.kixp': '20051101', # FIB size too small
+    #'rrc06': '20010901', # few peers with global view
+    #'rrc07': '20020501', # few peers with global view
 }
 
-# TODO omitting co in whole period abandoned. Rerun the affected results if necessary
+# TODO omitting co in WHOLE period abandoned. Rerun the affected results if necessary
+# note: do not change this list
 co_blank = {
     'rrc14': ['20090324', '20100326'],
     'rrc10': ['20110718', '20110914'],
@@ -70,22 +73,23 @@ co_blank = {
 
 #-------------------------------------------------------
 daterange = {
+    # June and July are not in the events
     0:('20061224','20061230'), #taiwan cable cut | SG
     1:('20081217','20081223'), #mediterranean cable cut 2 | SG
     2:('20030812','20030818'), #east coast blackout | SG
-    3:('20050910','20050916'), #LA blackout | SG
-    4:('20050823','20050905'), #Hurricane Katrina | SG
+    3:('20050910','20050916'), #LA blackout | XXX contained in 300
+    4:('20050823','20050905'), #Hurricane Katrina | XXX contained in 300
     5:('20080128','20080203'), #mediterranean cable cut 1 | SG
     6:('20100225','20100303'), #Chile earthquake | SG
-    7:('20110309','20110315'), #Japan Tsunami | SG (Note that 2011 data always cost time!)
+    7:('20110309','20110315'), #Japan Tsunami | SG (Note that 2011 data usually cost much time!)
     8:('20121020','20121102'), #Hurricane Sandy | SG
     9:('20130316','20130329'), # Spamhaus DDoS attack | WD XXX contained in 28
     10:('20080510','20080516'), #Sichuan Earthquake | SG
     11:('20110819','20110901'), #Hurricane Irene | SG
     12:('20130206','20130212'), #Northeastern US blackout | WD XXX contained in 28
     13:('20100412','20100418'), #Sea-Me undersea cable cut | SG
-    14:('20120220','20120226'), #Australia route leakage | todo: download updates + delete reset
-    15:('20120806','20120812'), #Canada route leakage | todo: download updates + delete reset
+    14:('20120220','20120226'), #Australia route leakage | SG
+    15:('20120806','20120812'), #Canada route leakage | SG
     16:('20030123','20030129'), #Slammer worm | SG
     17:('20130321','20130324'), #EASSy/SEACOM outages | WD XXX contained in 28
     18:('20130213','20130216'), #SEACOM outage | WD XXX contained in 28
@@ -94,7 +98,7 @@ daterange = {
     21:('20120223','20120229'), #TEAMS cable cut in east Africa | SG
     22:('20120424','20120430'), #TEAMS cable cut in east Africa again | SG
     23:('20110219','20110225'), # new zealand | SG
-    24:('20041224','20041230'), # Indian Ocean earthquake and Tsunami
+    24:('20041224','20041230'), # Indian Ocean earthquake and Tsunami | SG
 
     28:('20130101','20131231'), # WD
 
@@ -103,17 +107,18 @@ daterange = {
     287:('20130701','20130731'),288:('20130801','20130831'),289:('20130901','20130930'),
     2810:('20131001','20131031'),2811:('20131101','20131130'),2812:('20131201','20131231'),
 
-    29:('20050101','20051231'), # Downloading in TSB
+    29:('20050101','20051231'), # deprecated
 
-    # give up 2005 whole year
     291:('20050101','20050131'),292:('20050201','20050228'),293:('20050301','20050331'),
     294:('20050401','20050430'),295:('20050501','20050531'),296:('20050601','20050630'),
     297:('20050701','20050731'),298:('20050801','20050831'),299:('20050901','20050930'),
     2910:('20051001','20051031'),2911:('20051101','20051130'),2912:('20051201','20051231'),
 
-    300:('20050901','20050930'),301:('20060901','20060930'),302:('20070901','20070930'),
-    303:('20080901','20080930'),304:('20090901','20090930'),305:('20100901','20100930'),
-    306:('20110901','20110930'),307:('20120901','20120930'),308:('20140901','20140930'),
+    # still downloading
+    # note: be careful when downloading 306 (conflict with 11) and 300 (3,4)
+    300:('20050601','20050630'),301:('20060601','20060630'),302:('20070601','20070630'),
+    303:('20080601','20080630'),304:('20090601','20090630'),305:('20100601','20100630'),
+    306:('20110601','20110630'),307:('20120601','20120630'),308:('20140601','20140630'),
 
     9001:('20141130','20141201'), # test only
     9002:('20141115', '20141116'), # test only
