@@ -581,8 +581,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    #order_list = [286,287,288,289,2810,2811,2812]
-    order_list = [301]
+    order_list = [300]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -615,11 +614,11 @@ if __name__ == '__main__':
             listf = dl.get_listfile()
             listfiles.append(listf)
 
+    '''
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
 
-    '''
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)

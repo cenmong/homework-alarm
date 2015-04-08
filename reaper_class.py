@@ -688,10 +688,10 @@ class Reaper():
 
             if rows_eff >= cols_eff:
                 target_rows = self.get_dict_min_list(self.row_weight, cand_rows) 
-                self.event_rm_line(target_rows[0], 'row')
+                self.event_rm_line(target_rows[0], 0)
             else:
                 target_cols = self.get_dict_min_list(self.col_weight, cand_cols)
-                self.event_rm_line(target_cols[0], 'col')
+                self.event_rm_line(target_cols[0], 1)
 
         relative_size = self.event_size / (self.thre_width * 2.5 * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
@@ -717,7 +717,7 @@ class Reaper():
             del self.row_weight[index]
 
     def event_rm_line(self, index, option):
-        if option is 'row':
+        if option is 0:
             self.event_size -= self.event_width
             self.event_height -= 1
             self.event_ones -= self.row_ones[index]
@@ -741,7 +741,7 @@ class Reaper():
             del self.row_ones[index]
             del self.row_weight[index]
 
-        elif option is 'col':
+        elif option is 1:
             self.event_size -= self.event_height
             self.event_width -= 1
             self.event_ones -= self.col_ones[index]

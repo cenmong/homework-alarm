@@ -75,6 +75,18 @@ class Micro_fighter():
             self.mfilegroups.remove(gd)
 
 
+    def bgp_leak_pfx(self):
+        pfx_set = set()
+        fname = datadir + 'final_output/bell-leak.txt'
+        f = open(fname, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfx = line.split('=')[1]
+            pfx_set.add(pfx)
+        f.close()
+
+        return pfx_set
+
     def analyze_event_origin(self, unix_dt):
 
         as_link_count = dict()
@@ -104,6 +116,14 @@ class Micro_fighter():
         pfx_count = len(pfx_set)
         mon_count = len(mon_index_set)
 
+        leak_pfx_set = self.bgp_leak_pfx()
+        
+        common_set = pfx_set & leak_pfx_set
+        common_count = len(common_set)
+
+        print 'pfx set in event:',pfx_count
+        print 'pfx set in leak',len(leak_pfx_set)
+        print 'common pfx set in leak:',common_count
             
         index2mon = dict()
         mon2index_file = self.period.get_mon2index_file_path()
