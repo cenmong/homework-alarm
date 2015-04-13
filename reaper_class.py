@@ -678,7 +678,23 @@ class Reaper():
 
             # consider the width threshold
             if self.event_width - 1 < self.thre_width: # cannot delete any more columns
-                self.event_rm_line_ronly(cand_rows[0])
+                # if cutting off all row candidates
+                rlen = len(cand_rows)
+                one_quantity = rlen * rlen
+                size_sum = self.event_width * rlen
+                tmp_new_den = (self.event_ones - one_quantity) / (self.event_size - size_sum)
+
+                if tmp_new_den >= self.thre_den:
+                    self.event_size -= size_sum
+                    self.event_height -= rlen
+                    self.event_ones -= one_quantity 
+                    self.event_den = tmp_new_den
+                    for index in cand_rows:
+                        del self.event_rows[index]
+                        del self.row_ones[index]
+                        del self.row_weight[index]
+                else:
+                    self.event_rm_line_ronly(cand_rows[0])
                 continue
 
             print rows_eff, cols_eff
