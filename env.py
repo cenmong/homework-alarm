@@ -77,8 +77,8 @@ daterange = {
     0:('20061224','20061230'), #taiwan cable cut | SG
     1:('20081217','20081223'), #mediterranean cable cut 2 | SG
     2:('20030812','20030818'), #east coast blackout | SG
-    3:('20050910','20050916'), #LA blackout | XXX contained in 300
-    4:('20050823','20050905'), #Hurricane Katrina | XXX contained in 300
+    3:('20050910','20050916'), #LA blackout | XXX data polluted by resets, be careful in micro
+    4:('20050823','20050905'), #Hurricane Katrina | XXX data polluted by resets, be careful
     5:('20080128','20080203'), #mediterranean cable cut 1 | SG
     6:('20100225','20100303'), #Chile earthquake | SG
     7:('20110309','20110315'), #Japan Tsunami | SG (Note that 2011 data usually cost much time!)
