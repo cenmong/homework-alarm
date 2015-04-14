@@ -627,7 +627,6 @@ class Reaper():
         for i in xrange(0, int(self.mo_number)):
             self.event_cols[i] = True
 
-
         #-------------------
         # preprocess the matrix
         self.event_height = self.bmatrix.shape[0]
@@ -684,7 +683,7 @@ class Reaper():
                 size_sum = self.event_width * rlen
                 tmp_new_den = (self.event_ones - one_quantity) / (self.event_size - size_sum)
 
-                if tmp_new_den >= self.thre_den:
+                if tmp_new_den < self.thre_den and tmp_new_den > self.event_den:
                     self.event_size -= size_sum
                     self.event_height -= rlen
                     self.event_ones -= one_quantity 
@@ -693,6 +692,7 @@ class Reaper():
                         del self.event_rows[index]
                         del self.row_ones[index]
                         del self.row_weight[index]
+                    logging.info('Removed %f rows in one loop.', rlen)
                 else:
                     self.event_rm_line_ronly(cand_rows[0])
                 continue
@@ -708,6 +708,7 @@ class Reaper():
             else:
                 target_cols = self.get_dict_min_list(self.col_weight, cand_cols)
                 self.event_rm_line(target_cols[0], 1)
+
 
         relative_size = self.event_size / (self.thre_width * 2.5 * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
@@ -822,8 +823,8 @@ class Reaper():
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
-            #if unix_dt != 1167156000: # test
-            #    continue
+            if unix_dt != 1043311200: # test
+                continue
 
             #reset size and width thresholds to cope with collector blank period
             self.thre_width = self.mo_number * self.width_ratio
