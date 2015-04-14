@@ -14,11 +14,11 @@ logging.info('Program starts!')
 
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
-action = {'middle':0, 'final':1, 'plot':0}
+action = {'middle':0, 'final':0, 'plot':1}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [16,13]
+index_list = [0,1,2,3,4,5,6,7,8,10,11,15]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
@@ -27,9 +27,9 @@ for i in index_list:
     my_period.rm_dup_mo() # rm multiple existence of the same monitor
     my_period.mo_filter_same_as()
 
-    my_period.get_as2namenation()
-    my_period.get_mo2cc()
-    my_period.get_mo2tier()
+    #my_period.get_as2namenation()
+    #my_period.get_mo2cc()
+    #my_period.get_mo2tier()
 
     '''
     #show monitor name and nation
@@ -47,11 +47,14 @@ for i in index_list:
 
     dv_thre = 0.2 # HDVP
     uq_thre = 200 # HUQP
+
+    reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
+    reaper.set_dv_uq_thre(dv_thre, uq_thre)
+    reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
+
     if action['final']:
-        reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
         #----------------------------------
         # for the prefix paper 
-        #reaper.set_dv_uq_thre(dv_thre, uq_thre)
         #reaper.analyze_pfx()
 
         #periods = [[],[],[],[],[],[]]
@@ -61,15 +64,12 @@ for i in index_list:
 
         #-----------------------------------
         # for the event detection paper
-        #reaper.set_event_thre(0.01, 0.4, 0.8)
-        reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
         reaper.detect_event()
 
 
     if action['plot']:
-        reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-        reaper.set_dv_uq_thre(dv_thre, uq_thre)
         plotter = Plotter(reaper)
+        plotter.TS_event_dot()
 
         # TODO plotter = Plotter(reaper_list) 
         # plotter.TS_all_event_dot()
@@ -81,9 +81,6 @@ for i in index_list:
         # plotter.TS_all_event_dot_compare()
         # plotter.CDF_all_event_onepctg_CDnum_compare()
         # plotter.CDF_all_event_updtpctg_CDnum_compare()
-
-        # plotter = Plotter(reaper)
-        # plotter.TS_event_dot()
 
     '''
     #------------------------------------------------------------

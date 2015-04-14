@@ -9,6 +9,7 @@ import logging
 import subprocess
 import re
 import os
+import ast
 
 from cStringIO import StringIO
 from netaddr import *
@@ -28,28 +29,76 @@ from matplotlib.patches import Rectangle
 class Plotter():
 
     def __init__(self, reaper):
-        input_dir = reaper.get_output_dir()
-        plot_dir = reaper.get_output_dir() + 'plot/'
-        cmlib.make_dir(plot_dir)
+        self.reaper = reaper
+        self.pfx_input_dir = reaper.get_output_dir_pfx()
+        self.event_input_dir = reaper.get_output_dir_event()
+        self.pfx_plot_dir = reaper.get_output_dir_pfx() + 'plot/'
+        self.event_plot_dir = reaper.get_output_dir_event() + 'plot/'
+        cmlib.make_dir(self.pfx_plot_dir)
+        cmlib.make_dir(self.event_plot_dir)
 
-        files = os.listdir(input_dir)
+    def TS_event_dot(self):
+        value = list()
+        dt = list()
+
+        file = self.event_input_dir + 'events_new.txt'
+        f = open(file, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            unix_dt = float(line.split(':')[0])
+            the_dt = datetime.datetime.utcfromtimestamp(unix_dt)
+            dt.append(the_dt)
+            the_list = ast.literal_eval(line.split(':')[1])
+            rsize = the_list[0]
+            value.append(rsize)
+        f.close()
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        #ax.plot(dt, value, 'k-')
+        plt.scatter(dt, value)
+        ax.set_ylabel('Relative size')
+        ax.set_xlabel('Date and time')
+        myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
+        ax.xaxis.set_major_formatter(myFmt)
+        plt.xticks(rotation=45)
+
+        sdate = self.reaper.period.sdate
+        year = int(sdate[0:4])
+        month = int(sdate[4:6])
+        day = int(sdate[6:8])
+        sdate = datetime.datetime(year, month, day)
+        edate = self.reaper.period.edate
+        year = int(edate[0:4])
+        month = int(edate[4:6])
+        day = int(edate[6:8])
+        edate = datetime.datetime(year, month, day)
+        ax.set_xlim([mpldates.date2num(sdate), mpldates.date2num(edate)])
+
+        output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def plot_pfx_all(self):
+        files = os.listdir(self.pfx_input_dir)
         print files
         for f in files:
-            if os.path.isfile(input_dir+f):
+            if os.path.isfile(self.pfx_input_dir+f):
                 files.remove(f)
-                files.insert(0, input_dir+f)
+                files.insert(0, self.pfx_input_dir+f)
             else:
                 files.remove(f)
 
         for f in files:
             if '_ts' in f:
                 pdfname = f.split('/')[-1].split('.')[0] + '.pdf'
-                print 'Plotting ', plot_dir+pdfname
-                self.basic_ts(f, plot_dir+pdfname)
+                print 'Plotting ', self.pfx_plot_dir+pdfname
+                self.basic_ts(f, self.pfx_plot_dir+pdfname)
             elif '_distr' in f:
                 pdfname = f.split('/')[-1].split('.')[0] + '.pdf'
-                print 'Plotting ', plot_dir+pdfname
-                self.basic_distr(f, plot_dir+pdfname)
+                print 'Plotting ', self.pfx_plot_dir+pdfname
+                self.basic_distr(f, self.pfx_plot_dir+pdfname)
             else:
                 print 'Did not plot ', f
 

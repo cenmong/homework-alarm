@@ -16,6 +16,7 @@ logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, form
 class Period():
 
     def __init__(self, index):
+        self.index = index
         self.sdate = daterange[index][0] 
         self.edate = daterange[index][1] 
         

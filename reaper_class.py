@@ -823,8 +823,8 @@ class Reaper():
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
-            if unix_dt != 1043311200: # test
-                continue
+            #if unix_dt != 1043311200: # test
+            #    continue
 
             #reset size and width thresholds to cope with collector blank period
             self.thre_width = self.mo_number * self.width_ratio
