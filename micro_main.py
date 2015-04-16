@@ -16,7 +16,7 @@ logging.info('Program starts!')
 
 #-------------------------------------------------------------------
 # Specify the target to analyze
-index = 3 # the event to analyze
+index = 284 # the event to analyze
 sdt_obj = datetime.datetime(1989,10,24,0,0) # starting unix datetime
 edt_obj = datetime.datetime(1989,10,25,10,0) # ending unix datetime
 
@@ -34,7 +34,14 @@ mf = Micro_fighter(reaper) # initialize
 #micro_fighter.set_sedate(sdt_obj, edt_obj)
 #micro_fighter.analyze_pfx()
 
-mf.event_as_link_rank(1126566000)
+#mf.event_as_link_rank(1365604200)
+#mf.event_analyze_pfx(1365604200)
+
+
+ASes = [9121, 47331]
+sdt_obj = datetime.datetime(2013,4,10,0,0)
+edt_obj = datetime.datetime(2013,4,12,0,0)
+mf.analyze_ASes(ASes, sdt_obj, edt_obj)
 
 # analyze certain prefixes (optional) define pfx_target = dict() for quick access
 # group prefixes into ASes (very meaningful)

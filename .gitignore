@@ -8,5 +8,6 @@
 *.psd
 *.log
 *.json
+*.txt
 tmpfile
 result_tmp

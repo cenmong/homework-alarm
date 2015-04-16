@@ -10,6 +10,9 @@ import traceback
 import logging
 import subprocess
 import ast
+import calendar
+import os
+import urllib
 
 from netaddr import *
 from env import *
@@ -19,6 +22,7 @@ class Micro_fighter():
 
     def __init__(self, reaper):
         self.reaper = reaper
+        self.sdate = self.reaper.period.sdate
         self.granu = self.reaper.granu
         self.period = reaper.period
         self.sdt_obj = None
@@ -86,6 +90,316 @@ class Micro_fighter():
         f.close()
 
         return pfx_set
+
+    def get_pfx2as_file(self):
+        location = datadir + 'support/' + self.sdate + '/'
+        cmlib.make_dir(location)
+
+        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
+        for line in tmp:
+            if 'pfx2as' in line:
+                return 0 # we already have a prefix2as file
+
+        print 'Downloading prefix to AS file ...'
+        year, month = self.sdate[:4], self.sdate[4:6] # YYYY, MM
+        webloc = 'http://data.caida.org/datasets/routing/routeviews-prefix2as' +\
+                '/' + year + '/' + month + '/'
+
+        webraw = cmlib.get_weblist(webloc)
+        target_line = ''
+        for line in webraw.split('\n'):
+            if self.sdate in line:
+                target_line = line
+                break
+
+        if target_line == '':
+            print 'Downloading prefix to AS file fails: no such date!'
+            return 0
+
+        fname = target_line.split()[0]
+        urllib.urlretrieve(webloc+fname, location+fname)
+        subprocess.call('gunzip -c '+location+fname+' > '+\
+                location+fname.replace('.gz', ''), shell=True)
+        os.remove(location+fname)
+
+        return 0
+
+    def get_pfx2as(self):
+        self.get_pfx2as_file()
+
+        print 'Calculating prefix to AS number trie...'
+        pfx2as = dict()
+
+        if int(self.sdate) >= 20050509:
+            self.get_pfx2as_file()
+
+            pfx2as_file = ''
+            tmp = os.listdir(datadir+'support/'+self.sdate+'/')
+            for line in tmp:
+                if 'pfx2as' in line:
+                    pfx2as_file = line
+                    break
+
+            f = open(datadir+'support/'+self.sdate+'/'+pfx2as_file)
+            for line in f:
+                line = line.rstrip('\n')
+                attr = line.split()
+                if '_' in attr[2] or ',' in attr[2]:
+                    continue
+                pfx = attr[0]+'/'+attr[1]
+                try:
+                    pfx2as[pfx] = int(attr[2]) # pfx: origin AS
+                except: # When will this happen?
+                    pfx2as[pfx] = -1
+
+            f.close()
+        else:
+            # Extract info from RIB of the monitor route-views2
+            mydate = self.sdate[0:4] + '.' + self.sdate[4:6]
+            rib_location = datadir+'archive.routeviews.org/bgpdata/'+mydate+'/RIBS/'
+            dir_list = os.listdir(datadir+'archive.routeviews.org/bgpdata/'+mydate+'/RIBS/')
+
+
+            for f in dir_list:
+                if not f.startswith('.'):
+                    rib_location = rib_location + f # if RIB is of the same month. That's OK.
+                    break
+            
+            if rib_location.endswith('txt.gz'):
+                subprocess.call('gunzip '+rib_location, shell=True)  # unpack                        
+                rib_location = rib_location.replace('.txt.gz', '.txt')
+            elif not rib_location.endswith('txt'):  # .bz2/.gz file exists
+                cmlib.parse_mrt(rib_location, rib_location+'.txt')
+                os.remove(rib_location)  # then remove .bz2/.gz
+                rib_location = rib_location + '.txt'
+            # now rib file definitely ends with .txt, let's rock and roll
+            with open(rib_location, 'r') as f:
+                for line in f:
+                    try:
+                        tmp = line.split('|')[5]
+                        pfx = tmp
+                        ASlist = line.split('|')[6]
+                        originAS = ASlist.split()[-1]
+                        try:
+                            pfx2as[pfx] = int(originAS)
+                        except:
+                            pfx2as[pfx] = -1
+                    except:
+                        pass
+
+            f.close()
+            # compress RIB into .gz
+            if not os.path.exists(rib_location+'.gz'):
+                cmlib.pack_gz(rib_location)
+
+        return pfx2as
+
+    def analyze_ASes(self, ASes, sdt_obj, edt_obj):
+        fmy = open(self.filelist, 'r')
+        sdt_unix = calendar.timegm(sdt_obj.utctimetuple())
+        edt_unix = calendar.timegm(edt_obj.utctimetuple())
+        print sdt_unix, edt_unix
+
+        #pfx_set = set() # 2156 prefixes in total
+
+        target_mon = (['195.66.224.138', '89.149.178.10'])
+        target_pfx = set()
+        f = open('target_pfx.txt','r')
+        for line in f:
+            line = line.rstrip('\n')
+            target_pfx.add(line)
+        f.close()
+
+        #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4,AW:5
+        target_dict = dict() # mon: prefix: successive update type series (0~5)
+        target_record = dict() # mon: prefix: latest full update
+        for m in target_mon:
+            target_dict[m] = dict()
+            target_record[m] = dict()
+
+        for fline in fmy:
+            # get date from file name
+            updatefile = fline.split('|')[0]
+
+            file_attr = updatefile.split('.')
+            fattr_date, fattr_time = file_attr[-5], file_attr[-4]
+            fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
+                    int(fattr_date[4:6]), int(fattr_date[6:8]),\
+                    int(fattr_time[0:2]), int(fattr_time[2:4]))
+            
+            fline = datadir + fline.split('|')[0]
+
+            # get current file's collector name
+            attributes = fline.split('/') 
+            j = -1
+            for a in attributes:
+                j += 1
+                if a.startswith('data.ris') or a.startswith('archi'):
+                    break
+
+            co = fline.split('/')[j + 1]
+            if co == 'bgpdata':  # route-views2, the special case
+                co = ''
+
+
+            # Deal with several special time zone problems
+            if co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # PST time
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX (not 8)
+            elif not co.startswith('rrc') and fname_dt_obj <= dt_anchor1:
+                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX here is 8
+
+            if co.startswith('rrc'):
+                shift = -10
+            else:
+                shift = -30
+
+
+            # Check whether the file is a possible target
+            if not sdt_obj+datetime.timedelta(minutes=shift)<=fname_dt_obj<=edt_obj:
+                continue
+
+            # read the update file
+            print 'Reading ', fline
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    #if type == 'W':
+                    #    continue
+                    if mon not in target_mon:
+                        continue
+                        
+                    if pfx not in target_pfx:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+                        #as_list = as_path.split()
+                        #mylen = len(as_list)
+                        #for i in xrange(0, mylen-1):
+                        #    as1 = int(as_list[i])
+                        #    as2 = int(as_list[i+1])
+
+                        #    if as1 == as2:
+                        #        continue
+                        #    
+                        #    if as1 in ASes and as2 in ASes and i == mylen-2: # last hop
+                        #        analyze = True
+                        #        break
+
+                    #pfx_set.add(pfx)
+                    try:
+                        test = target_dict[mon][pfx]
+                    except:
+                        target_dict[mon][pfx] = list() # list of 0~5
+
+                    try:
+                        last_update = target_record[mon][pfx]
+                        last_attr = last_update.split('|')
+                        last_type = last_attr[2]
+                        if last_type is 'A':
+                            last_as_path = last_attr[6]
+                    except:
+                        last_type = 'W'
+                        last_as_path = 'Nothing'
+
+                    if last_type is 'W':
+                        if type is 'W':
+                            print 'WW'
+                            target_dict[mon][pfx].append(0)
+                        elif type is 'A':
+                            print 'WA'
+                            target_dict[mon][pfx].append(4)
+                            target_record[mon][pfx] = line
+                
+                    elif last_type is 'A':
+                        if type is 'W':
+                            print 'AW'
+                            target_dict[mon][pfx].append(5)
+                            target_record[mon][pfx] = 'Nothing'
+                        elif type is 'A':
+                            if line == last_update:
+                                print 'AAdu1'
+                                target_dict[mon][pfx].append(1)
+                            elif as_path == last_as_path:
+                                print 'AAdu2'
+                                target_dict[mon][pfx].append(2)
+                                target_record[mon][pfx] = line
+                            else:
+                                print 'AAdiff'
+                                target_dict[mon][pfx].append(3)
+                                target_record[mon][pfx] = line
+                
+                    else: # abnormal
+                        continue
+                        
+                except Exception, err:
+                    if line != '':
+                        logging.info(traceback.format_exc())
+                        logging.info(line)
+                print len(target_dict['195.66.224.138'])
+            myf.close()
+            '''
+            f3 = open('target_pfx.txt', 'w')
+            for pfx in pfx_set:
+                f3.write(pfx+'\n')
+            f3.close()
+            '''
+        for mon in target_dict:
+            print len(target_dict[mon])
+            ff = open(mon+'result.txt','w')
+            for pfx in target_dict[mon]:
+                ff.write(pfx+':'+str(target_dict[mon][pfx])+'\n')
+            ff.close()
+
+        f.close()
+
+    def event_analyze_pfx(self, unix_dt):
+
+        pfx2as = self.get_pfx2as()
+        as2count = dict()
+        odd_pfx = set()
+
+        event_detail_fname = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+        f = open(event_detail_fname, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            if '#' in line: # monitor line
+                pass
+            else:
+                pfx = line.split(':')[0]
+                try:
+                    asn = pfx2as[pfx]
+                except:
+                    asn = -1
+                    odd_pfx.add(pfx)
+                try:
+                    as2count[asn] += 1
+                except:
+                    as2count[asn] = 1
+        f.close()
+
+        tmp_list = sorted(as2count.iteritems(),\
+                key=operator.itemgetter(1), reverse=True)
+        f2 = open('as_result.txt','w')
+        for item in tmp_list:
+            asn = item[0]
+            count = item[1]
+            f2.write(str(asn)+':'+str(count)+'\n')
+        f2.close()
+
+        f = open('odd_pfx.txt', 'w')
+        for pfx in odd_pfx:
+            f.write(pfx+'\n')
+        f.close()
+        
 
     def event_as_link_rank(self, unix_dt):
         as_link_count = dict()
