@@ -26,6 +26,14 @@ from matplotlib.dates import DayLocator
 from matplotlib.patches import Ellipse
 from matplotlib.patches import Rectangle
 
+line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
+font = {'size': 28,}
+
+matplotlib.rc('font', **font)
+plt.rc('legend',**{'fontsize':18})
+
+colors = ['r', 'b', 'g', 'y', 'm', 'k']
+
 class Plotter():
 
     def __init__(self, reaper):
@@ -38,6 +46,15 @@ class Plotter():
         cmlib.make_dir(self.event_plot_dir)
 
     def TS_event_dot(self):
+        index = self.reaper.period.index
+        try:
+            occur_unix = occur_unix_dt[index]
+            occur_dt = datetime.datetime.utcfromtimestamp(occur_unix)
+        except:
+            occur_dt = None
+
+        y_high = 0.03
+
         value = list()
         dt = list()
 
@@ -55,13 +72,11 @@ class Plotter():
 
         fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)
-        #ax.plot(dt, value, 'k-')
-        plt.scatter(dt, value)
+        plt.scatter(dt, value, s=100, facecolor='r', edgecolors='none')
         ax.set_ylabel('Relative size')
-        ax.set_xlabel('Date and time')
-        myFmt = mpldates.DateFormatter('%Y-%m-%d %H%M')
+        ax.set_xlabel('Date')
+        myFmt = mpldates.DateFormatter('%b\n%d')
         ax.xaxis.set_major_formatter(myFmt)
-        plt.xticks(rotation=45)
 
         sdate = self.reaper.period.sdate
         year = int(sdate[0:4])
@@ -74,6 +89,15 @@ class Plotter():
         day = int(edate[6:8])
         edate = datetime.datetime(year, month, day)
         ax.set_xlim([mpldates.date2num(sdate), mpldates.date2num(edate)])
+        ax.set_ylim([0,y_high])
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+        # polt a line
+        if occur_dt is not None:
+            plt.plot((occur_dt, occur_dt), (0, y_high), 'k--', lw=4)
 
         output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -124,7 +148,8 @@ class Plotter():
         # plot
         fig = plt.figure(figsize=(16,10))
         ax = fig.add_subplot(111)
-        ax.plot(counter, valuelist, 'k-')
+
+        ax.plot(counter, valuelist, 'k--')
 
         # set the parameters
         ax.set_xlabel('time slots since ...')
