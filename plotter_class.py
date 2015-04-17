@@ -27,10 +27,10 @@ from matplotlib.patches import Ellipse
 from matplotlib.patches import Rectangle
 
 line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
-font = {'size': 28,}
+font = {'size': 38,}
 
 matplotlib.rc('font', **font)
-plt.rc('legend',**{'fontsize':18})
+plt.rc('legend',**{'fontsize':28})
 
 colors = ['r', 'b', 'g', 'y', 'm', 'k']
 
@@ -53,7 +53,10 @@ class Plotter():
         except:
             occur_dt = None
 
-        y_high = 0.03
+        if index in ([0,16]):
+            y_high = 0.1
+        else:
+            y_high = 0.03
 
         value = list()
         dt = list()
