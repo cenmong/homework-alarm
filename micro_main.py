@@ -16,9 +16,7 @@ logging.info('Program starts!')
 
 #-------------------------------------------------------------------
 # Specify the target to analyze
-index = 284 # the event to analyze
-sdt_obj = datetime.datetime(1989,10,24,0,0) # starting unix datetime
-edt_obj = datetime.datetime(1989,10,25,10,0) # ending unix datetime
+index = 16
 
 #-------------------------------------------
 # Still, we only care about the peers with global view

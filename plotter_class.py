@@ -45,6 +45,58 @@ class Plotter():
         cmlib.make_dir(self.pfx_plot_dir)
         cmlib.make_dir(self.event_plot_dir)
 
+
+    def TS_all_event_curve(self, rlist):
+        #labels = [r'$\theta_d=0.75$',r'$\theta_d=0.8$',r'$\theta_d=0.85$']
+        labels = ['10 min','20 min','30 min']
+
+        xlists = list() # list of lists
+        ylists = list()
+
+        for r in rlist:
+            dt = list()
+            value = list()
+
+            event_input_dir = r.get_output_dir_event()
+            file = event_input_dir + 'events_new.txt'
+            f = open(file, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix_dt = float(line.split(':')[0])
+                the_dt = datetime.datetime.utcfromtimestamp(unix_dt)
+                dt.append(the_dt)
+                the_list = ast.literal_eval(line.split(':')[1])
+                rsize = the_list[0]
+                value.append(rsize)
+            f.close()
+
+            xlists.append(dt)
+            ylists.append(value)
+
+
+        for i in xrange(0, len(xlists)):
+            ylists[i] = [y for (x,y) in sorted(zip(xlists[i],ylists[i]))]
+            xlists[i] = sorted(xlists[i])
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        for i in xrange(0, len(xlists)):
+            ax.plot(xlists[i],ylists[i],colors[i]+'-',label=labels[i])
+
+        legend = ax.legend(loc='upper right',shadow=False)
+        ax.set_ylabel('Relative size')
+        ax.set_xlabel('Date')
+        myFmt = mpldates.DateFormatter('%b\n%d')
+        ax.xaxis.set_major_formatter(myFmt)
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+        plt.savefig('TS_combined.pdf', bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
     def TS_event_dot(self):
         index = self.reaper.period.index
         try:

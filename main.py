@@ -18,7 +18,7 @@ action = {'middle':0, 'final':0, 'plot':1}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [283]
+index_list = [16]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
@@ -52,6 +52,7 @@ for i in index_list:
     reaper.set_dv_uq_thre(dv_thre, uq_thre)
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
 
+
     if action['final']:
         #----------------------------------
         # for the prefix paper 
@@ -69,10 +70,23 @@ for i in index_list:
 
     if action['plot']:
         plotter = Plotter(reaper)
-        plotter.TS_event_dot()
+        #plotter.set_reaper(reaper)
+        #plotter.TS_event_dot()
 
-        # TODO plotter = Plotter(reaper_list) 
-        # plotter.TS_all_event_dot()
+        reaper21 = Reaper(my_period,20,0)
+        reaper21.set_event_thre(0.005, 0.4, 0.75) # set this threshold to a small value
+        reaper22 = Reaper(my_period,20,0)
+        reaper22.set_event_thre(0.005, 0.4, 0.85) # set this threshold to a small value
+
+        reaper31 = Reaper(my_period,10,0)
+        reaper31.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
+        reaper32 = Reaper(my_period,30,0)
+        reaper32.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
+
+
+        #reaper_list = [reaper21, reaper, reaper22]
+        reaper_list = [reaper31, reaper, reaper32]
+        plotter.TS_all_event_curve(reaper_list)
         # plotter.scatter_all_rwidth_rsize()
         # plotter.scatter_all_ASratio_rsize()
         # plotter.scatter_all_pfxratio_rsize()    
