@@ -108,7 +108,7 @@ class Plotter():
         if index in ([0,16]):
             y_high = 0.1
         else:
-            y_high = 0.03
+            y_high = 0.03 # Be careful! Setting this may miss some points!
 
         value = list()
         dt = list()
@@ -127,7 +127,7 @@ class Plotter():
 
         fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)
-        plt.scatter(dt, value, s=100, facecolor='r', edgecolors='none')
+        plt.scatter(dt, value, s=150, facecolor='r', edgecolors='none')
         ax.set_ylabel('Relative size')
         ax.set_xlabel('Date')
         myFmt = mpldates.DateFormatter('%b\n%d')
@@ -144,7 +144,7 @@ class Plotter():
         day = int(edate[6:8])
         edate = datetime.datetime(year, month, day)
         ax.set_xlim([mpldates.date2num(sdate), mpldates.date2num(edate)])
-        ax.set_ylim([0,y_high])
+        ax.set_ylim([0,y_high]) # Be careful!
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)

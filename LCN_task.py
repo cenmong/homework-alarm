@@ -24,7 +24,12 @@ from matplotlib.dates import HourLocator
 from matplotlib.dates import DayLocator
 from matplotlib.patches import Ellipse
 from matplotlib.patches import Rectangle
+import matplotlib.patches as mpatches
 from matplotlib import cm
+font = {'size': 28,}
+matplotlib.rc('font', **font)
+
+
 
 len2count = dict()
 pfx2list = dict()
@@ -64,23 +69,35 @@ for item in sorted_pfx2len:
 value2color = {-1:'white',0:'cyan',1:'green',2:'red',3:'yellow',4:'blue',5:'black'}
 
 #-------plot----------
-fig = plt.figure(figsize=(10,11))
+fig = plt.figure(figsize=(12,11))
 ax = fig.add_subplot(111)
 
-cmap = matplotlib.colors.ListedColormap(['white','blue','cyan','springgreen','yellow','violet','black'])
+cmap = matplotlib.colors.ListedColormap(['white','cyan','blue','springgreen','yellow','violet','black'])
 cmap.set_over('0.25')
 cmap.set_under('0.75')
 
 cax = ax.imshow(lol, interpolation='nearest', aspect='auto', cmap=cmap)
 #cbar = fig.colorbar(cax)
 
+c_patch = mpatches.Patch(color='cyan',label='WW')
+b_patch = mpatches.Patch(color='blue',label='AADup1')
+s_patch = mpatches.Patch(color='springgreen',label='AADup2')
+y_patch = mpatches.Patch(color='yellow',label='AADiff')
+v_patch = mpatches.Patch(color='violet',label='WA')
+k_patch = mpatches.Patch(color='black',label='AW')
+plt.legend(handles=[c_patch,b_patch,s_patch,y_patch,v_patch,k_patch], loc='upper right', fontsize=14)
+
+ax.set_ylabel('2029 prefixes')
+ax.set_xlabel('Update pattern')
+ax.get_yaxis().set_ticks([])
+#ax.label_params(axis='y',pad=50)
+
 plt.savefig('pattern.pdf', bbox_inches='tight')
 plt.clf() # clear the figure
 plt.close()
 
-
-#============================================
 '''
+#============================================
 pfx2AS = dict()
 RIB_pfx_set = set()
 
@@ -109,6 +126,17 @@ f.close()
 print len(RIB_pfx_set)
 
 
+event_pfx_set = set()
+f = open('1365661800.txt', 'r')
+for line in f:
+    if '#' in line:
+        continue
+    pfx = line.split(':')[0]
+    event_pfx_set.add(pfx)
+f.close()
+
+print 'event pfx count:', len(event_pfx_set)
+
 
 my_pfx_set = set()
 f = open('target_pfx.txt', 'r')
@@ -119,7 +147,10 @@ for line in f:
     my_pfx_set.add(line)
 f.close()
 
-print len(my_pfx_set)
+print 'target pfx count:', len(my_pfx_set)
+
+event_included = event_pfx_set & my_pfx_set
+print 'event included:', len(event_included)
 
 begin_set = set()
 for p in my_pfx_set:
