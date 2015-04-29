@@ -194,7 +194,7 @@ class Micro_fighter():
 
         return pfx2as
 
-    def analyze_ASes(self, ASes, sdt_obj, edt_obj):
+    def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
         fmy = open(self.filelist, 'r')
         sdt_unix = calendar.timegm(sdt_obj.utctimetuple())
         edt_unix = calendar.timegm(edt_obj.utctimetuple())
@@ -216,6 +216,8 @@ class Micro_fighter():
         for m in target_mon:
             target_dict[m] = dict()
             target_record[m] = dict()
+
+        #fpath_list = cmlib.get_file_list_indate(self.filelist, sdt_obj, edt_obj)
 
         for fline in fmy:
             # get date from file name

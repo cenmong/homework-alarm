@@ -393,3 +393,53 @@ def get_all_ascount(sdate):
             break
 
     return goal
+
+def get_file_list_indate(updtlist_file, sdt_obj, edt_obj):
+    filepath_list = list()
+
+    f = open(updtlist_file, 'r')
+    for fline in f:
+        # get date from file name
+        updatefile = fline.split('|')[0]
+
+        file_attr = updatefile.split('.')
+        fattr_date, fattr_time = file_attr[-5], file_attr[-4]
+        fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
+                int(fattr_date[4:6]), int(fattr_date[6:8]),\
+                int(fattr_time[0:2]), int(fattr_time[2:4]))
+        
+        fline = datadir + fline.split('|')[0]
+
+        # get current file's collector name
+        attributes = fline.split('/') 
+        j = -1
+        for a in attributes:
+            j += 1
+            if a.startswith('data.ris') or a.startswith('archi'):
+                break
+
+        co = fline.split('/')[j + 1]
+        if co == 'bgpdata':  # route-views2, the special case
+            co = ''
+
+
+        # Deal with several special time zone problems
+        if co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # PST time
+            fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX (not 8)
+        elif not co.startswith('rrc') and fname_dt_obj <= dt_anchor1:
+            fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX here is 8
+
+        if co.startswith('rrc'):
+            shift = -10
+        else:
+            shift = -30
+
+
+        # Check whether the file is a possible target
+        if not sdt_obj+datetime.timedelta(minutes=shift)<=fname_dt_obj<=edt_obj:
+            continue
+
+        filepath_list.append(fline)
+
+    f.close()
+    return filepath_list

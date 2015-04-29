@@ -1,3 +1,7 @@
+#########################################
+# Delete all files for some indexes (e.g., after the data are polluted)
+###########################################
+
 from period_class import Period
 from env import *
 from alarm_class import Alarm

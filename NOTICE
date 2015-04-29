@@ -44,9 +44,6 @@ Do not delete list and dict items while iterating them
 ---------------------------------
 When deleting reset the 2013 data quickly, we ignore non-global monitors (90% threshold). We continue with this policy in future work!
 ------------------------------------
-route-views.isc has blank period from 20130308.0815 to 20130308.1807, but I do not want to delete this collector from analysis. 
-I should code: do not wait a collector for more than an hour!
------------------------------------
 in alarm class, using only one radix takes 1.5 length of time than before. But it saves memory
 ----------------------------------
 Python release memory better for integrated types like dict and list, but bad for external types like radix!
