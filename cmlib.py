@@ -1,3 +1,4 @@
+import signal
 import os
 import urllib
 import urllib2 # use this instead of urllib
@@ -133,11 +134,31 @@ def get_weblist(url):
 
     return webraw
 
-def parse_mrt(old_loc_fname, new_loc_fname):
+class TO(Exception):
+    pass
+
+def TO_handler(signum, frame):
+    raise TO
+
+def parse_mrt(old_loc_fname, new_loc_fname, fsize):
     print 'Parsing: '+old_loc_fname
     if not os.path.exists(new_loc_fname):
-        subprocess.call(projectdir + 'tool/libbgpdump-1.4.99.11/bgpdump -m '+\
-                old_loc_fname+' > '+new_loc_fname, shell=True)
+        
+        signal.signal(signal.SIGALRM, TO_handler)
+        time_s = fsize / float(60000) * 5
+        if time_s < 1:
+            time_s = 1
+
+        signal.alarm(int(time_s+1))
+        while(1):
+            try:
+                subprocess.call(projectdir + 'tool/libbgpdump-1.4.99.11/bgpdump -m '+\
+                        old_loc_fname+' > '+new_loc_fname, shell=True)
+                break
+            except TO:
+                print 'Time out! Retry...'
+                signal.alarm(int(time_s+1))
+
     else:  # file already exists
         pass
 

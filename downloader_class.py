@@ -28,13 +28,17 @@ scanner.dump_all_objects('memory.json')
 def parse_update_files(listfile): # all update files from one collectors/list
     flist = open(listfile, 'r')
     for line in flist:
+        line = line.rstrip('\n')
+        fsize = float(line.split('|')[1])
+        print 'fsize=',fsize
         line = line.split('|')[0].replace('.txt.gz', '') # get the original .bz2/gz file name
         if not os.path.exists(datadir+line+'.txt.gz'):
-            cmlib.parse_mrt(datadir+line, datadir+line+'.txt') # .bz2/gz => .bz2/gz.txt
+            cmlib.parse_mrt(datadir+line, datadir+line+'.txt', fsize) # .bz2/gz => .bz2/gz.txt
             cmlib.pack_gz(datadir+line+'.txt') # .bz2/gz.txt => .bz2/gz.txt.gz
             #os.remove(datadir+line)  # remove the original .bz2/.gz file
         else:
             print 'Parsed file exists'
+            print datadir+line+'.txt.gz'
             pass
     flist.close()
     return 0
@@ -581,7 +585,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [305]
+    order_list = [302]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -610,15 +614,15 @@ if __name__ == '__main__':
         edate = daterange[order][1]
         for co in collector_list[order]:
             dl = Downloader(sdate, edate, co)
-            dl.download_updates_starter() # Download updates here
+            #dl.download_updates_starter() # Download updates here
             listf = dl.get_listfile()
             listfiles.append(listf)
 
-    '''
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
 
+    '''
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)
