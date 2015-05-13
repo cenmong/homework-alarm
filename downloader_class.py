@@ -314,13 +314,13 @@ class Downloader():
             if os.path.getsize(full_loc) <= 0.95 * fsize:
                 os.remove(full_loc)
             else: # Good!
-                cmlib.parse_mrt(full_loc, full_loc+'.txt')
+                cmlib.parse_mrt(full_loc, full_loc+'.txt', fsize)
                 cmlib.pack_gz(full_loc+'.txt')
                 return full_loc+'.txt.gz'
 
 
         cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
-        cmlib.parse_mrt(full_loc, full_loc+'.txt')
+        cmlib.parse_mrt(full_loc, full_loc+'.txt', fsize)
         cmlib.pack_gz(full_loc+'.txt')
         os.remove(full_loc) # remove the original file
 
@@ -585,7 +585,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [302]
+    order_list = [300,301,302,303]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -618,11 +618,12 @@ if __name__ == '__main__':
             listf = dl.get_listfile()
             listfiles.append(listf)
 
+    '''
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
-
     '''
+
     # Download and record RIB and get peer info 
     for order in order_list:
         co_ribs = dict() # co: a list of rib files (full path)
@@ -646,7 +647,7 @@ if __name__ == '__main__':
                 f.write(r+'|')
             f.write(co_ribs[co][-1]+'\n')
         f.close()
-
+    '''
     # Delete reset updates
     for order in order_list:
         sdate = daterange[order][0]
