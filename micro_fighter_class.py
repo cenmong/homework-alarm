@@ -37,20 +37,39 @@ class Micro_fighter():
 
 
     def all_events_ratios(self):
-        # get events information
-        event_list = self.get_events_list()
+        event_dict = self.get_events_list()
+        for unix_dt in event_dict:
+            rel_size = event_dict[unix_dt][0]
+            ones_number = event_dict[unix_dt][1]
+            height = event_dict[unix_dt][3]
+            width = event_dict[unix_dt][4]
+
+            # obtain detailed info for the event
+            # get the prefix set
+            # get the monitor set
+            # read the middle files to get the update quantity/ratio, 1s outside the event
+            udt_numer = 0
+            udt_out_number = 0
+            ones_out_numner = 0
+
+            
+            # append result to a file
 
 
     def get_events_list(self):
-        event_list = list()
+        event_dict = dict()
 
         path = self.reaper.get_output_dir_event() + self.reaper.events_brief_fname
         f = open(path, 'r')
         for line in f:
             line = line.rstrip('\n')
+            unix_dt = int(line.split(':')[0])
+            content = line.split(':')[1]
+            thelist = ast.literal_eval(content)
+            event_dict[unix_dt] = thelist
         f.close()
 
-        return event_list
+        return event_dict
 
 
     def set_sedate(self, sdt_obj, edt_obj):

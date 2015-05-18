@@ -35,6 +35,8 @@ mf = Micro_fighter(reaper) # initialize
 
 #mf.event_as_link_rank(1365604200)
 #mf.event_analyze_pfx(1365604200)
+
+#TODO remove the result file if exists
 mf.all_events_ratios()
 
 
