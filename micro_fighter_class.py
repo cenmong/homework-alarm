@@ -36,6 +36,23 @@ class Micro_fighter():
         self.final_dir = self.period.get_final_dir()
 
 
+    def all_events_ratios(self):
+        # get events information
+        event_list = self.get_events_list()
+
+
+    def get_events_list(self):
+        event_list = list()
+
+        path = self.reaper.get_output_dir_event() + self.reaper.events_brief_fname
+        f = open(path, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+        f.close()
+
+        return event_list
+
+
     def set_sedate(self, sdt_obj, edt_obj):
         self.sdt_obj = sdt_obj
         self.edt_obj = edt_obj

@@ -27,13 +27,15 @@ my_period.mo_filter_same_as()
 
 #---------------------------------------------
 reaper = Reaper(my_period, 20, 0)
-reaper.set_event_thre(0.005, 0.4, 0.8)
+reaper.set_event_thre(0.005, 0.4, 0.8) # to find the correct directory
+
 mf = Micro_fighter(reaper) # initialize
 #micro_fighter.set_sedate(sdt_obj, edt_obj)
 #micro_fighter.analyze_pfx()
 
 #mf.event_as_link_rank(1365604200)
 #mf.event_analyze_pfx(1365604200)
+mf.all_events_ratios()
 
 
 ASes = [9121, 47331]

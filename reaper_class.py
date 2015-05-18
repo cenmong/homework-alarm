@@ -801,29 +801,65 @@ class Reaper():
             cand_event_row = self.get_dict_min_list(self.row_ones, self.event_rows)[0]
             cand_event_col = self.get_dict_min_list(self.col_ones, self.event_cols)[0]
 
-            #print self.col_ones
-
             er_1s = float(self.row_ones[cand_event_row])
             ec_1s = float(self.col_ones[cand_event_col])
 
-            rows_eff = ((self.event_ones-er_1s)/\
+            # deletion utility
+            rows_du = ((self.event_ones-er_1s)/\
                     (self.event_size-self.event_width)-self.event_den)/self.event_width
-            cols_eff = ((self.event_ones-ec_1s)/\
+            cols_du = ((self.event_ones-ec_1s)/\
                     (self.event_size-self.event_height)-self.event_den)/self.event_height
 
             # consider the width threshold
             # we ignore any height threshold because the size threshold will be adequate
             if self.event_width - 1 < self.thre_width: # cannot delete any more columns
-                cols_eff = -1
+                cols_du = -1
 
-            if rows_eff >= cols_eff:
+            if rows_du >= cols_du:
                 self.event_del_row(cand_event_row)
             else:
                 self.event_del_col(cand_event_col)
 
             print self.event_den
 
-        # TODO: add more
+
+        # addition in the end
+        while(self.event_den >= self.thre_den):
+            cand_out_row = self.get_dict_max_list(self.row_ones, self.out_rows)[0]
+            or_1s = float(self.row_ones[cand_out_row])
+            print or_1s
+            row_au = (self.event_ones+or_1s)/(self.event_size+self.event_width)\
+                    - self.event_den
+            if (self.event_ones+or_1s)/(self.event_size+self.event_width) < self.thre_den:
+                row_au = None # addition utility
+
+            try:
+                cand_out_col = self.get_dict_max_list(self.col_ones, self.out_cols)[0]
+                oc_1s = float(self.col_ones[cand_out_col])
+                print oc_1s
+                col_au = (self.event_ones+oc_1s)/(self.event_size+self.event_height)\
+                        - self.event_den
+                if (self.event_ones+oc_1s)/(self.event_size+self.event_height) < self.thre_den:
+                    col_au = None
+            except: # all columns are in event.
+                col_au = None
+            
+
+            if row_au is None and col_au is None:
+                break
+            elif col_au is None and row_au is not None:
+                self.event_add_row(cand_out_row)
+                print 'end adding'
+            elif row_au is None and col_au is not None:
+                self.event_add_col(cand_out_col)
+                print 'end adding'
+            elif col_au is not None and row_au is not None:
+                print 'end adding'
+                if row_au >= col_au:
+                    self.event_add_row(cand_out_row)
+                else:
+                    self.event_add_col(cand_out_col)
+
 
         relative_size = self.event_size / (self.thre_width * 2.5 * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
@@ -972,7 +1008,7 @@ class Reaper():
             keylist = mydict.keys()
 
         mylist = list()
-        max = -9999999
+        max = -999999999
 
         for k in keylist:
             value = mydict[k]
@@ -1138,3 +1174,4 @@ class Reaper():
         for dt in self.events:
             f.write(str(dt)+':'+str(self.events[dt])+'\n')
         f.close()
+            
