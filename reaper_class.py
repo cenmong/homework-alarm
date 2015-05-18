@@ -163,7 +163,8 @@ class Reaper():
         self.event_den = None
 
         self.events = dict() # time: event feature list
-        self.events_brief_fname = 'events_new.txt'
+        #self.events_brief_fname = 'events_new.txt'
+        self.events_brief_fname = 'events_plusminus.txt'
 
     # get prefix 2 as mapping from only RouteViews2 collector's RIB
     # TODO test needed
@@ -595,7 +596,6 @@ class Reaper():
 
         for r in self.event_rows:
             #self.row_weight[r] = 0
-
             sum = 0
             for c in self.event_cols:
                 value = self.bmatrix[r,c]
@@ -726,9 +726,9 @@ class Reaper():
         return -1
 
 
-    def analyze_bmatrix_plusminus(self, unix_dt): # TODO change output dir
+    def analyze_bmatrix_plusminus(self, unix_dt):
         #--------------------------
-        #initialize the event submatrix
+        #initialize the event submatrix to the original matrix
         for index in xrange(0, len(self.bmatrix.tolist())):
             self.event_rows.add(index)
 
@@ -749,7 +749,7 @@ class Reaper():
         min_col_sum = 0.2 * (float(self.thre_size) / float(self.thre_width))
         for i in xrange(0, self.event_width):
             if self.bmatrix[:,i].sum() <= min_col_sum:
-                self.event_cols.remove(j)
+                self.event_cols.remove(i)
                 self.event_width -= 1
 
         self.event_size = float(self.event_height * self.event_width)
@@ -793,12 +793,13 @@ class Reaper():
                 else:
                     self.event_add_col(cand_out_col)
                 
+                print 'Plus *************************'
                 continue
 
             #----------------------------------
             # deletion
-            cand_event_row = self.get_dict_min_list(self.row_ones, None)[0]
-            cand_event_col = self.get_dict_min_list(self.col_ones, None)[0]
+            cand_event_row = self.get_dict_min_list(self.row_ones, self.event_rows)[0]
+            cand_event_col = self.get_dict_min_list(self.col_ones, self.event_cols)[0]
 
             #print self.col_ones
 
@@ -819,6 +820,8 @@ class Reaper():
                 self.event_del_row(cand_event_row)
             else:
                 self.event_del_col(cand_event_col)
+
+            print self.event_den
 
         # TODO: add more
 
@@ -882,7 +885,7 @@ class Reaper():
         self.event_cols.remove(index)
         self.out_cols.add(index)
 
-        for i in row_ones:
+        for i in self.row_ones:
             self.row_ones[i] -= self.bmatrix[i, index]
 
 
@@ -1029,9 +1032,11 @@ class Reaper():
             print 'Identifying event...'
             self.bmatrix = np.array(blists)
             #self.analyze_bmatrix(unix_dt) # old algorithm
-            code = self.analyze_bmatrix_new(unix_dt) # new algorithm
+            #code = self.analyze_bmatrix_new(unix_dt) # new algorithm
+            code = self.analyze_bmatrix_plusminus(unix_dt)
 
             # note: output to unix_dt.txt event size not too small
+            '''
             if code == 100:
                 fname = str(unix_dt) + '.txt'
                 f = open(self.get_output_dir_event()+fname, 'w')
@@ -1040,15 +1045,22 @@ class Reaper():
                     pfx = self.index2pfx[r]
                     f.write(pfx+':'+str(self.c_pfx_data[pfx])+'\n')
                 f.close()
+            '''
 
             # release memory 
             del self.bmatrix
 
             del self.event_rows
-            self.event_rows = dict()
+            self.event_rows = set()
 
             del self.event_cols
-            self.event_cols = dict()
+            self.event_cols = set()
+
+            del self.out_rows
+            self.out_rows = set()
+
+            del self.out_cols
+            self.out_cols = set()
 
             del self.row_ones
             self.row_ones = dict()
@@ -1056,11 +1068,10 @@ class Reaper():
             del self.col_ones
             self.col_ones = dict()
 
-            del self.row_weight
-            self.row_weight = dict()
-
-            del self.col_weight 
-            self.col_weight = dict()
+            #del self.row_weight
+            #self.row_weight = dict()
+            #del self.col_weight 
+            #self.col_weight = dict()
 
             del self.c_pfx_data
             self.c_pfx_data = dict()
