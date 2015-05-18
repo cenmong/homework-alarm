@@ -585,7 +585,7 @@ class Downloader():
 #----------------------------------------------------------------------------
 # The main function
 if __name__ == '__main__':
-    order_list = [300,301,302,303]
+    order_list = [303]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
     for i in order_list:
@@ -622,7 +622,6 @@ if __name__ == '__main__':
     # parse all the updates
     for listf in listfiles:
         parse_update_files(listf)
-    '''
 
     # Download and record RIB and get peer info 
     for order in order_list:
@@ -658,4 +657,3 @@ if __name__ == '__main__':
             dl.set_period(order)
             dl.delete_reset()
             del dl
-    '''
