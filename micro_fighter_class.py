@@ -37,22 +37,97 @@ class Micro_fighter():
 
 
     def all_events_ratios(self):
+
         event_dict = self.get_events_list()
+
         for unix_dt in event_dict:
-            rel_size = event_dict[unix_dt][0]
-            ones_number = event_dict[unix_dt][1]
-            height = event_dict[unix_dt][3]
+            rel_size = event_dict[unix_dt][0] # relative size
+
+            height = event_dict[unix_dt][3] # or prefix number
+            prefix_ratio = 0.0
+            originAS_ratio = 0.0
+
             width = event_dict[unix_dt][4]
+            size = event_dict[unix_dt][1]
 
-            # obtain detailed info for the event
-            # get the prefix set
-            # get the monitor set
-            # read the middle files to get the update quantity/ratio, 1s outside the event
-            udt_numer = 0
-            udt_out_number = 0
-            ones_out_numner = 0
 
-            
+            #---------------------------------------------
+            # obtain the prefix and monitor(index) sets of the event
+            pfx_set = set()
+            mon_set = set()
+
+            event_fpath = self.reaper.final_dir + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                else:
+                    pfx_set.add(line.split(':')[0])
+            f.close()
+
+
+            #-----------------------------------
+            # read the middle files
+            target_fg = None
+            for fg in self.reaper.filegroups:
+                if int(fg[0].rstrip('.txt.gz')) == unix_dt:
+                    target_fg = fg
+                    break
+
+            pfx_int_data = dict()
+            for fname in target_fg:
+                floc = self.reaper.middle_dir + fname
+                print 'Reading ', floc
+                p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+                fin = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in fin:
+                    line = line.rstrip('\n')
+                    if line == '':
+                        continue
+
+                    pfx = line.split(':')[0]
+                    datalist = ast.literal_eval(line.split(':')[1])
+
+                    try:
+                        c_list = pfx_int_data[pfx]
+                        combined = [x+y for x,y in zip(datalist, c_list)]
+                        pfx_int_data[pfx] = combined
+                    except:
+                        pfx_int_data[pfx] = datalist
+
+            #------------------------------------------
+            # get the number of updates and 1s in and out of the event
+            udt_num = 0
+            for pfx in pfx_int_data:
+                the_sum = sum(pfx_int_data[pfx])
+                udt_num += the_sum
+
+            udt_in_num = 0
+            for pfx in pfx_set:
+                for mon_index in mon_set:
+                    udt_in_num += pfx_int_data[pfx][mon_index]
+
+            udt_out_num = udt_num - udt_in_num
+
+            ones_num = 0
+            for pfx in pfx_int_data:
+                for i in pfx_int_data[pfx]:
+                    if pfx_int_data[pfx][i] > 0:
+                        ones_num += 1
+
+            ones_in_num = 0
+            for pfx in pfx_set:
+                for mon_index in mon_set:
+                    if pfx_int_data[pfx][mon_index] > 0:
+                        ones_in_num += 1
+
+            ones_out_num = ones_num - ones_in_num
+
+            # TODO analyze prefixes and ASes
+
+            #-----------------------------------------
             # append result to a file
 
 
