@@ -145,7 +145,7 @@ def parse_mrt(old_loc_fname, new_loc_fname, fsize):
     if not os.path.exists(new_loc_fname):
         
         signal.signal(signal.SIGALRM, TO_handler)
-        time_s = fsize / float(60000) * 5
+        time_s = fsize / float(60000) * 10
         if time_s < 1:
             time_s = 1
 
