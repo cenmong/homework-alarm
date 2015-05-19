@@ -825,13 +825,16 @@ class Reaper():
 
         # addition in the end
         while(self.event_den >= self.thre_den):
-            cand_out_row = self.get_dict_max_list(self.row_ones, self.out_rows)[0]
-            or_1s = float(self.row_ones[cand_out_row])
-            print or_1s
-            row_au = (self.event_ones+or_1s)/(self.event_size+self.event_width)\
-                    - self.event_den
-            if (self.event_ones+or_1s)/(self.event_size+self.event_width) < self.thre_den:
-                row_au = None # addition utility
+            try:
+                cand_out_row = self.get_dict_max_list(self.row_ones, self.out_rows)[0]
+                or_1s = float(self.row_ones[cand_out_row])
+                print or_1s
+                row_au = (self.event_ones+or_1s)/(self.event_size+self.event_width)\
+                        - self.event_den
+                if (self.event_ones+or_1s)/(self.event_size+self.event_width) < self.thre_den:
+                    row_au = None # addition utility
+            except: # self.out_rows is empty (rather rare)
+                break
 
             try:
                 cand_out_col = self.get_dict_max_list(self.col_ones, self.out_cols)[0]
@@ -1025,8 +1028,8 @@ class Reaper():
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
-            #if unix_dt != 1043311200: # test
-            #    continue
+            if unix_dt != 1229733600: # test
+                continue
 
             #reset size and width thresholds to cope with collector blank period
             self.thre_width = self.mo_number * self.width_ratio
@@ -1072,7 +1075,6 @@ class Reaper():
             code = self.analyze_bmatrix_plusminus(unix_dt)
 
             # note: output to unix_dt.txt event size not too small
-            '''
             if code == 100:
                 fname = str(unix_dt) + '.txt'
                 f = open(self.get_output_dir_event()+fname, 'w')
@@ -1081,7 +1083,6 @@ class Reaper():
                     pfx = self.index2pfx[r]
                     f.write(pfx+':'+str(self.c_pfx_data[pfx])+'\n')
                 f.close()
-            '''
 
             # release memory 
             del self.bmatrix
