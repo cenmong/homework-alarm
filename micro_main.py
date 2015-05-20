@@ -37,7 +37,9 @@ mf = Micro_fighter(reaper) # initialize
 #mf.event_analyze_pfx(1365604200)
 
 #TODO remove the result file if exists
-mf.all_events_ratios()
+#mf.all_events_ratios()
+
+mf.all_events_tpattern()
 
 '''
 ASes = [9121, 47331]
