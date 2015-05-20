@@ -36,6 +36,32 @@ class Micro_fighter():
         self.final_dir = self.period.get_final_dir()
 
 
+    def all_events_cluster(self):
+        pfx_set_dict = dict()
+
+        event_dict = self.get_events_list()
+        for unix_dt in event_dict:
+
+            #---------------------------------------------
+            # obtain the prefix and monitor(index) sets of the event
+            pfx_set = set()
+            mon_set = set()
+
+            event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                else:
+                    pfx_set.add(line.split(':')[0])
+            f.close()
+
+            pfx_set_dict[unix_dt] = pfx_set
+
+        # a simple clustering way
+
+
     def all_events_tpattern(self): # time patterns of all events
         event_dict = self.get_events_list()
         for unix_dt in event_dict:
@@ -126,7 +152,6 @@ class Micro_fighter():
 
             #---------------------------
             #TODO: output to a file
-            break
 
 
     def all_events_ratios(self):

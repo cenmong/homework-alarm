@@ -39,7 +39,8 @@ mf = Micro_fighter(reaper) # initialize
 #TODO remove the result file if exists
 #mf.all_events_ratios()
 
-mf.all_events_tpattern()
+#mf.all_events_tpattern()
+mf.all_events_cluster()
 
 '''
 ASes = [9121, 47331]
