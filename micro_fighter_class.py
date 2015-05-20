@@ -42,13 +42,9 @@ class Micro_fighter():
 
         for unix_dt in event_dict:
             rel_size = event_dict[unix_dt][0] # relative size
-
-            height = event_dict[unix_dt][3] # or prefix number
-            prefix_ratio = 0.0
-            originAS_ratio = 0.0
-
             width = event_dict[unix_dt][4]
             size = event_dict[unix_dt][1]
+            height = event_dict[unix_dt][3] # or prefix number
 
 
             #---------------------------------------------
@@ -56,7 +52,7 @@ class Micro_fighter():
             pfx_set = set()
             mon_set = set()
 
-            event_fpath = self.reaper.final_dir + str(unix_dt) + '.txt'
+            event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
             f = open(event_fpath, 'r')
             for line in f:
                 line = line.rstrip('\n')
@@ -110,11 +106,14 @@ class Micro_fighter():
                     udt_in_num += pfx_int_data[pfx][mon_index]
 
             udt_out_num = udt_num - udt_in_num
+            print udt_num
+            print udt_in_num
 
             ones_num = 0
             for pfx in pfx_int_data:
-                for i in pfx_int_data[pfx]:
-                    if pfx_int_data[pfx][i] > 0:
+                datalist = pfx_int_data[pfx]
+                for data in datalist:
+                    if data > 0:
                         ones_num += 1
 
             ones_in_num = 0
@@ -124,8 +123,34 @@ class Micro_fighter():
                         ones_in_num += 1
 
             ones_out_num = ones_num - ones_in_num
+            print ones_num
+            print ones_in_num
 
-            # TODO analyze prefixes and ASes
+            #--------------------------------------------
+            # analyze prefixes
+            all_pfx_num = self.reaper.period.get_fib_size()
+            prefix_ratio = float(height) / float(all_pfx_num)
+            print prefix_ratio
+
+            #-------------------------------------------
+            # distribution of origin ASes TODO: move to somewhere else
+            all_AS_num = self.reaper.period.get_AS_num()
+
+            pfx2as = self.get_pfx2as()
+            asn_dict = dict()
+            for pfx in pfx_set:
+                try:
+                    asn = pfx2as[pfx]
+                except:
+                    asn = -1
+                try:
+                    asn_dict[asn] += 1
+                except:
+                    asn_dict[asn] = 1
+
+            #for asn in asn_dict:
+            #    asn_dict[asn] = float(asn_dict[asn]) / float(all_AS_num)
+            print asn_dict
 
             #-----------------------------------------
             # append result to a file

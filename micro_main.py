@@ -16,7 +16,7 @@ logging.info('Program starts!')
 
 #-------------------------------------------------------------------
 # Specify the target to analyze
-index = 16
+index = 1
 
 #-------------------------------------------
 # Still, we only care about the peers with global view
@@ -39,11 +39,12 @@ mf = Micro_fighter(reaper) # initialize
 #TODO remove the result file if exists
 mf.all_events_ratios()
 
-
+'''
 ASes = [9121, 47331]
 sdt_obj = datetime.datetime(2013,4,10,0,0)
 edt_obj = datetime.datetime(2013,4,12,0,0)
 mf.analyze_pfx_indate(ASes, sdt_obj, edt_obj)
+'''
 
 # analyze certain prefixes (optional) define pfx_target = dict() for quick access
 # group prefixes into ASes (very meaningful)

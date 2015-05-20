@@ -35,8 +35,9 @@ class Period():
         self.as2nation = dict()
         self.as2name = dict()
 
-        # Note: Occassionally run it to get the latest data. (Now up to 20141225)
+        # Note: Occassionally run to get the latest data. (Now up to 20141225)
         #self.get_fib_size_file()
+        #self.get_AS_num_file()
 
         self.dt_anchor1 = datetime.datetime(2003,2,3,19,0) # up to now, never used data prior
         self.dt_anchor2 = datetime.datetime(2006,2,1,21,0)
@@ -52,6 +53,45 @@ class Period():
 
     def get_blank_dir(self):
         return blank_indo_dir+self.sdate+'_'+self.edate+'/'
+
+    def get_AS_num_file(self):
+        url = 'http://bgp.potaroo.net/as2.0/'
+        cmlib.force_download_file(url, pub_spt_dir, 'bgp-as-count.txt')
+        return 0
+
+    def get_AS_num(self):
+        objdt = datetime.datetime.strptime(self.sdate, '%Y%m%d') 
+        intdt = calendar.timegm(objdt.timetuple())
+
+        dtlist = []
+        datalist = []
+        ASnum_f = pub_spt_dir + 'bgp-as-count.txt'
+        f = open(ASnum_f, 'r')
+        for line in f:
+            dt = line.split()[0]
+            count = line.split()[1]
+            dtlist.append(int(dt))
+            datalist.append(int(count))
+        f.close()
+
+        least = 9999999999
+        loc = 0
+        for i in xrange(0, len(dtlist)):
+            if abs(dtlist[i]-intdt) < least:
+                least = abs(dtlist[i]-intdt)
+                loc = i
+
+        goal = 0
+        for j in xrange(loc, len(dtlist)-1):
+            prev = datalist[j-1]
+            goal = datalist[j]
+            nex = datalist[j+1]
+            if abs(goal-prev) > prev/7 or abs(goal-nex) > nex/7: # outlier
+                continue
+            else:
+                break
+
+        return goal
 
     def get_fib_size_file(self):
         url = 'http://bgp.potaroo.net/as2.0/'
