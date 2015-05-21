@@ -18,7 +18,7 @@ action = {'middle':0, 'final':1, 'plot':0}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [1,0,5,6,7,15,16]
+index_list = [2,3,4,8,10,11,13,14,19,20,21,22,23,24]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!

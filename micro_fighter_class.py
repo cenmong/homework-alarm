@@ -13,6 +13,7 @@ import ast
 import calendar
 import os
 import urllib
+from sklearn.cluster import DBSCAN
 
 from netaddr import *
 from env import *
@@ -59,7 +60,24 @@ class Micro_fighter():
 
             pfx_set_dict[unix_dt] = pfx_set
 
-        # a simple clustering way
+        # obtain the jaccard distance between these events
+        d_matrix = list()
+        unix_dt_list = sorted(event_dict.keys()) # sorted list
+
+        for unix_dt in unix_dt_list:
+            the_list = list()
+            for unix_dt2 in unix_dt_list:
+                pset1 = pfx_set_dict[unix_dt]
+                pset2 = pfx_set_dict[unix_dt2]
+                JD = 1 - float(len(pset1&pset2)) / float(len(pset1|pset2)) # jaccard distance
+                the_list.append(JD)
+
+            d_matrix.append(the_list)
+
+        print unix_dt_list
+        print d_matrix
+        db = DBSCAN(eps=0.8, min_samples=1, metric='precomputed').fit(d_matrix)
+        print db.labels_
 
 
     def all_events_tpattern(self): # time patterns of all events
