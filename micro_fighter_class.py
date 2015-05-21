@@ -39,6 +39,7 @@ class Micro_fighter():
 
     def all_events_cluster(self):
         pfx_set_dict = dict()
+        mon_set_dict = dict()
 
         event_dict = self.get_events_list()
         for unix_dt in event_dict:
@@ -54,13 +55,16 @@ class Micro_fighter():
                 line = line.rstrip('\n')
                 if line.startswith('Mo'):
                     mon_set = ast.literal_eval(line.split('set')[1])
+                    mon_set = set(mon_set)
                 else:
                     pfx_set.add(line.split(':')[0])
             f.close()
 
             pfx_set_dict[unix_dt] = pfx_set
+            mon_set_dict[unix_dt] = mon_set
 
         # obtain the jaccard distance between these events
+        # TODO consider monitor sets and assign lighter weight
         d_matrix = list()
         unix_dt_list = sorted(event_dict.keys()) # sorted list
 
@@ -69,14 +73,24 @@ class Micro_fighter():
             for unix_dt2 in unix_dt_list:
                 pset1 = pfx_set_dict[unix_dt]
                 pset2 = pfx_set_dict[unix_dt2]
-                JD = 1 - float(len(pset1&pset2)) / float(len(pset1|pset2)) # jaccard distance
+                JD_p = 1 - float(len(pset1&pset2)) / float(len(pset1|pset2)) # jaccard distance
+
+                mset1 = mon_set_dict[unix_dt]
+                mset2 = mon_set_dict[unix_dt2]
+                JD_m = 1 - float(len(mset1&mset2)) / float(len(mset1|mset2))
+
+                JD = 0.9 * JD_p + 0.1 * JD_m
+
+                #the_list.append(JD_p)
                 the_list.append(JD)
 
             d_matrix.append(the_list)
 
         print unix_dt_list
         print d_matrix
-        db = DBSCAN(eps=0.8, min_samples=1, metric='precomputed').fit(d_matrix)
+        db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(d_matrix)
+        print db.core_sample_indices_
+        print db.components_
         print db.labels_
 
 

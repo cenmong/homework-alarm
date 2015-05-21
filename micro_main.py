@@ -16,7 +16,7 @@ logging.info('Program starts!')
 
 #-------------------------------------------------------------------
 # Specify the target to analyze
-index = 1
+index = 15
 
 #-------------------------------------------
 # Still, we only care about the peers with global view
