@@ -32,7 +32,10 @@ for i in index_list:
                 name = my_period.as2name[asn]
             except:
                 name = '-1'
-            nation = my_period.as2nation[asn]
+            try:
+                nation = my_period.as2nation[asn]
+            except:
+                nation = '-1'
             try:
                 nation_count[nation] += 1
             except:
@@ -43,7 +46,7 @@ for i in index_list:
                 tier_count[tier] += 1
             except:
                 tier_count[tier] = 1
-            print m,asn,name,my_period.as2nation[asn],my_period.mo_cc[m],my_period.mo_tier[m]
+            print m,asn,name,nation,cc,tier
 
     print count
     print nation_count
