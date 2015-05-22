@@ -151,7 +151,10 @@ class Period():
             name = content[0]
             nation = content[1].rstrip('\n')
             asn = int(line[0].split('>AS')[1])
-            as2nation[asn] = nation
+            if asn in tier1_asn:
+                as2nation[asn] = 'global'
+            else:
+                as2nation[asn] = nation
             as2name[asn] = name
         f.close()
 

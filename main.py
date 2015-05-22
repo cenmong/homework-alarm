@@ -3,8 +3,6 @@ from env import *
 from alarm_class import Alarm
 from reaper_class import Reaper
 from plotter_class import Plotter
-from meliae import scanner
-scanner.dump_all_objects('memory.json')
 from plot_matrix import plot_matrix
 
 import cmlib
@@ -27,23 +25,9 @@ for i in index_list:
     my_period.rm_dup_mo() # rm multiple existence of the same monitor
     my_period.mo_filter_same_as()
 
-    #my_period.get_as2namenation()
-    #my_period.get_mo2cc()
-    #my_period.get_mo2tier()
-
-    '''
-    #show monitor name and nation
-    for co in my_period.co_mo:
-        for m in my_period.co_mo[co]:
-            asn = my_period.mo_asn[m]
-            print m,asn,my_period.as2name[asn],my_period.as2nation[asn],my_period.mo_cc[m],my_period.mo_tier[m]
-    '''
-
-
     if action['middle']:
         alarm = Alarm(my_period, option['mid_granu'])
         alarm.analyze_to_middle() # analyze all updates and store to middle output files
-
 
     dv_thre = 0.2 # HDVP
     uq_thre = 200 # HUQP
@@ -51,7 +35,6 @@ for i in index_list:
     reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
     reaper.set_dv_uq_thre(dv_thre, uq_thre)
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
-
 
     if action['final']:
         #----------------------------------
@@ -66,7 +49,6 @@ for i in index_list:
         #-----------------------------------
         # for the event detection paper
         reaper.detect_event()
-
 
     if action['plot']:
         plotter = Plotter(reaper)
