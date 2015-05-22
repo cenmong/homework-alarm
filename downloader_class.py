@@ -12,7 +12,7 @@ import gzip
 import traceback
 import cmlib
 import datetime
-import subprocess32 as subprocess
+import subprocess
 import os
 import logging
 import shutil
@@ -21,8 +21,6 @@ logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, forma
 
 from env import *
 from cStringIO import StringIO
-from meliae import scanner
-scanner.dump_all_objects('memory.json')
 #from guppy import hpy
 
 def parse_update_files(listfile): # all update files from one collectors/list
