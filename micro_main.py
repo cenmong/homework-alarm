@@ -6,7 +6,6 @@ from plotter_class import Plotter
 from micro_fighter_class import Micro_fighter
 from meliae import scanner
 scanner.dump_all_objects('memory.json')
-from plot_matrix import plot_matrix
 
 import datetime
 import cmlib

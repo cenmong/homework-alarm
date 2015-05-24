@@ -139,18 +139,32 @@ class Reaper():
         self.thre_den = None # density threshold
 
         #--------------------------------------
-        #event rows and cols
-        self.event_rows = set() 
-        self.event_cols = set()
+        # For detection algorithm
+        #self.in_rows = set() 
+        #self.in_cols = set()
 
-        self.out_rows = set() # deleted rows
-        self.out_cols = set()
+        #self.out_rows = set() # deleted rows
+        #self.out_cols = set()
 
-        #--------------------------------------
-        # attributes for the event rows and cols
-        self.row_ones = dict() # row number: quantity of 1s
-        self.col_ones = dict() # col number: quantity of 1s
+        self.in_value_rset = dict()
+        self.in_value_cset = dict()
+
+        self.in_row_ones = dict() # row number: quantity of 1s
+        self.in_col_ones = dict() # col number: quantity of 1s
+        self.out_row_ones = dict() # row number: quantity of 1s
+        self.out_col_ones = dict() # col number: quantity of 1s
+
+        # update these 4 attributes after each matrix manipulation
+        self.in_candi_row = -1
+        self.in_candi_col = -1
+        self.out_candi_row = -1
+        self.out_candi_col = -1
         
+        self.in_cr_ones = -1
+        self.in_cc_ones = -1
+        self.out_cr_ones = -1
+        self.out_cc_ones = -1
+
         #self.row_weight = dict() # row number: weight
         #self.col_weight = dict() # col number: weight
     
@@ -585,31 +599,45 @@ class Reaper():
             self.events[unix_dt] = [size, density, height, width]
             logging.info('found event!')
 
+
+    def min_key_random_value(self, value_set_dict): 
+        min = -999999999
+        for v in value_set_dict.keys():
+            if v < min:
+                min = v
+        return min, value_set_dict[min][0]
+
+
     # initialize event row and column attributes
     def init_attri(self):
 
         total_sum = 0.0
 
-        for c in self.event_cols:
-            self.col_ones[c] = 0 # quantity of ones
-            #self.col_weight[c] = 0 # SW (not used anymore)
-
-        for r in self.event_rows:
+        for r in self.in_row_ones.keys():
             #self.row_weight[r] = 0
             sum = 0
-            for c in self.event_cols:
+            for c in self.in_col_ones.keys():
                 value = self.bmatrix[r,c]
                 sum += value
-                self.col_ones[c] += value
+                self.in_col_ones[c] += value
                 total_sum += value
 
-            self.row_ones[r] = sum
+            self.in_row_ones[r] = sum
+
+            try:
+                self.in_value_rset[sum].add(r)
+            except:
+                self.in_value_rset[sum] = ([r])
+
+        for c in self.in_col_ones.keys():
+            value = self.in_col_ones[c]
+            try:
+                self.in_value_cset[value].add(c)
+            except:
+                self.in_value_cset[value] = ([c])
             
-        #for r in self.event_rows:
-            #for c in self.event_cols:
-                #if self.bmatrix[r,c]:
-                    #self.row_weight[r] += self.col_ones[c]
-                    #self.col_weight[c] += self.row_ones[r]
+        self.in_cr_ones, self.in_candi_row = self.min_key_random_value(self.in_value_rset)
+        self.in_cc_ones, self.in_candi_col = self.min_key_random_value(self.in_value_cset)
 
         self.event_ones = total_sum
         self.event_den = total_sum / self.event_size
@@ -625,10 +653,10 @@ class Reaper():
         #--------------------------
         #initialize the event submatrix
         for index in xrange(0, len(self.bmatrix.tolist())):
-            self.event_rows[index] = True
+            self.in_rows[index] = True
 
         for i in xrange(0, int(self.mo_number)):
-            self.event_cols[i] = True
+            self.in_cols[i] = True
 
         #-------------------
         # preprocess the matrix
@@ -638,13 +666,13 @@ class Reaper():
         min_row_sum = 0.2 * self.thre_width # XXX good?
         for i in xrange(0, self.event_height):
             if self.bmatrix[i].sum() <= min_row_sum:
-                del self.event_rows[i]
+                del self.in_rows[i]
                 self.event_height -= 1
 
         min_col_sum = 0.2 * (float(self.thre_size) / float(self.thre_width)) # XXX 
         for i in xrange(0, self.event_width):
             if self.bmatrix[:,i].sum() <= min_col_sum:
-                del self.event_cols[i]
+                del self.in_cols[i]
                 self.event_width -= 1
 
         self.event_size = float(self.event_height * self.event_width)
@@ -692,7 +720,7 @@ class Reaper():
                     self.event_ones -= one_quantity 
                     self.event_den = tmp_new_den
                     for index in cand_rows:
-                        del self.event_rows[index]
+                        del self.in_rows[index]
                         del self.row_ones[index]
                         del self.row_weight[index]
                     logging.info('Removed %f rows in one loop.', rlen)
@@ -730,10 +758,10 @@ class Reaper():
         #--------------------------
         #initialize the event submatrix to the original matrix
         for index in xrange(0, len(self.bmatrix.tolist())):
-            self.event_rows.add(index)
+            self.in_row_ones[index] = 0
 
-        for i in xrange(0, int(self.mo_number)):
-            self.event_cols.add(i)
+        for index in xrange(0, int(self.mo_number)):
+            self.in_col_ones[index] = 0
 
         #-------------------
         # preprocess the matrix
@@ -743,13 +771,14 @@ class Reaper():
         min_row_sum = 0.2 * self.thre_width
         for i in xrange(0, self.event_height):
             if self.bmatrix[i].sum() <= min_row_sum:
-                self.event_rows.remove(i)
+                del self.in_row_ones[i]
                 self.event_height -= 1
 
         min_col_sum = 0.2 * (float(self.thre_size) / float(self.thre_width))
         for i in xrange(0, self.event_width):
             if self.bmatrix[:,i].sum() <= min_col_sum:
-                self.event_cols.remove(i)
+                self.in_cols.remove(i)
+                del self.in_col_ones[i]
                 self.event_width -= 1
 
         self.event_size = float(self.event_height * self.event_width)
@@ -765,49 +794,38 @@ class Reaper():
         while(self.event_den < self.thre_den):
             #-----------------------------
             # addition
-            try:
-                cand_out_row = self.get_dict_max_list(self.row_ones, self.out_rows)[0]
-                cand_out_col = self.get_dict_max_list(self.col_ones, self.out_cols)[0]
-                or_1s = float(self.row_ones[cand_out_row])
-                oc_1s = float(self.col_ones[cand_out_col])
-            except: # initial empty list
-                or_1s = -1
-                oc_1s = -1
 
             can_add_r = False
             can_add_c = False
             
-            if (self.event_ones+or_1s)/(self.event_size+self.event_width) >= self.event_den:
+            if (self.event_ones+self.out_cr_ones)/(self.event_size+self.event_width) >=\
+                    self.event_den:
                 can_add_r = True
-            if (self.event_ones+oc_1s)/(self.event_size+self.event_height) >= self.event_den:
+            if (self.event_ones+self.out_cc_ones)/(self.event_size+self.event_height) >=\
+                    self.event_den:
                 can_add_c = True
 
             if can_add_r is True or can_add_c is True:
                 if can_add_r is True and can_add_c is True:
-                    if or_1s >= oc_1s:
-                        self.event_add_row(cand_out_row)
+                    if self.out_cr_ones >= self.out_cc_ones:
+                        self.event_add_row()
                     else:
-                        self.event_add_col(cand_out_col)
+                        self.event_add_col()
                 elif can_add_r is True:
-                    self.event_add_row(cand_out_row)
+                    self.event_add_row()
                 else:
-                    self.event_add_col(cand_out_col)
+                    self.event_add_col()
                 
                 print 'Plus *************************'
                 continue
 
             #----------------------------------
             # deletion
-            cand_event_row = self.get_dict_min_list(self.row_ones, self.event_rows)[0]
-            cand_event_col = self.get_dict_min_list(self.col_ones, self.event_cols)[0]
-
-            er_1s = float(self.row_ones[cand_event_row])
-            ec_1s = float(self.col_ones[cand_event_col])
 
             # deletion utility
-            rows_du = ((self.event_ones-er_1s)/\
+            rows_du = ((self.event_ones-self.in_cr_ones)/\
                     (self.event_size-self.event_width)-self.event_den)/self.event_width
-            cols_du = ((self.event_ones-ec_1s)/\
+            cols_du = ((self.event_ones-self.in_cc_ones)/\
                     (self.event_size-self.event_height)-self.event_den)/self.event_height
 
             # consider the width threshold
@@ -816,20 +834,19 @@ class Reaper():
                 cols_du = -1
 
             if rows_du >= cols_du:
-                self.event_del_row(cand_event_row)
+                self.event_del_row()
             else:
-                self.event_del_col(cand_event_col)
+                self.event_del_col()
 
             print self.event_den
 
 
         # addition in the end
+        # TODO code here
         while(self.event_den >= self.thre_den):
             try:
-                cand_out_row = self.get_dict_max_list(self.row_ones, self.out_rows)[0]
-                or_1s = float(self.row_ones[cand_out_row])
-                print or_1s
-                row_au = (self.event_ones+or_1s)/(self.event_size+self.event_width)\
+                print self.out_cr_ones
+                row_au = (self.event_ones+self.out_cr_ones)/(self.event_size+self.event_width)\
                         - self.event_den
                 if (self.event_ones+or_1s)/(self.event_size+self.event_width) < self.thre_den:
                     row_au = None # addition utility
@@ -837,9 +854,7 @@ class Reaper():
                 break
 
             try:
-                cand_out_col = self.get_dict_max_list(self.col_ones, self.out_cols)[0]
-                oc_1s = float(self.col_ones[cand_out_col])
-                print oc_1s
+                print self.out_cc_ones
                 col_au = (self.event_ones+oc_1s)/(self.event_size+self.event_height)\
                         - self.event_den
                 if (self.event_ones+oc_1s)/(self.event_size+self.event_height) < self.thre_den:
@@ -876,56 +891,154 @@ class Reaper():
         
         return -1
 
-    def event_add_row(self, index):
+    def event_add_row(self):
+        index = self.out_candi_row
+
         self.event_size += self.event_width
         self.event_height += 1
         self.event_ones += self.row_ones[index]
         self.event_den = self.event_ones / self.event_size
 
-        self.event_rows.add(index)
-        self.out_rows.remove(index)
+        value = self.out_row_ones[index]
+        del self.out_row_ones[index]
+        self.in_row_ones[index] = value
 
-        for j in self.col_ones:
-            self.col_ones[j] += self.bmatrix[index, j]
+        out_max = -999999999
+        for j in self.out_col_ones.keys():
+            new_value = self.out_col_ones[j] + self.bmatrix[index, j]
+            self.out_col_ones[j] = new_value
+            if new_value > out_max:
+                out_max = new_value
+                self.out_candi_col = j
+                self.out_cc_ones = out_max
 
+        in_min = 999999999
+        self.in_value_cset = {}
+        for j in self.in_col_ones.keys():
+            new_value = self.in_col_ones[j] + self.bmatrix[index, j]
+            self.in_col_ones[j] = new_value
+            try:
+                self.in_value_cset[new_value].add(j)
+            except:
+                self.in_value_cset[new_value] = ([j])
 
-    def event_add_col(self, index):
-        self.event_size += self.event_height
-        self.event_width += 1
-        self.event_ones += self.col_ones[index]
-        self.event_den = self.event_ones / self.event_size
-
-        self.event_cols.add(index)
-        self.out_cols.remove(index)
-
-        for i in self.row_ones:
-            self.row_ones[i] += self.bmatrix[i, index]
-
+            if new_value < in_min:
+                in_min = new_value
+                self.in_candi_col = j
+                self.in_cc_ones = in_min
 
     def event_del_row(self, index):
+        index = self.in_candi_row
+
         self.event_size -= self.event_width
         self.event_height -= 1
         self.event_ones -= self.row_ones[index]
         self.event_den = self.event_ones / self.event_size
 
-        self.event_rows.remove(index)
-        self.out_rows.add(index)
+        value = self.in_row_ones[index]
+        del self.in_row_ones[index]
+        self.out_row_ones[index] = value
 
-        for j in self.col_ones:
-            self.col_ones[j] -= self.bmatrix[index, j]
+        out_max = -999999999
+        for j in self.out_col_ones.keys():
+            new_value = self.out_col_ones[j] + self.bmatrix[index, j]
+            self.out_col_ones[j] = new_value
+            if new_value > out_max:
+                out_max = new_value
+                self.out_candi_col = j
+                self.out_cc_ones = out_max
 
+        in_min = 999999999
+        self.in_value_cset = {}
+        for j in self.in_col_ones.keys():
+            new_value = self.in_col_ones[j] + self.bmatrix[index, j]
+            self.in_col_ones[j] = new_value
+            try:
+                self.in_value_cset[new_value].add(j)
+            except:
+                self.in_value_cset[new_value] = ([j])
+
+            if new_value < in_min:
+                in_min = new_value
+                self.in_candi_col = j
+                self.in_cc_ones = in_min
+
+
+
+    def event_add_col(self, index):
+        index = self.out_candi_col
+
+        self.event_size += self.event_height
+        self.event_width += 1
+        self.event_ones += self.col_ones[index]
+        self.event_den = self.event_ones / self.event_size
+
+        self.in_cols.add(index)
+        self.out_cols.remove(index)
+
+        value = self.out_col_ones[index]
+        del self.out_col_ones[index]
+        self.in_col_ones[index] = value
+
+        out_max = -999999999
+        for i in self.out_row_ones.keys():
+            new_value = self.out_row_ones[i] + self.bmatrix[i, index]
+            self.out_row_ones[i] = new_value
+            if new_value > out_max:
+                out_max = new_value
+                self.out_candi_row = i
+                self.out_cr_ones = out_max
+
+        in_min = 999999999
+        self.in_value_rset = {}
+        for i in self.in_row_ones.keys():
+            new_value = self.in_row_ones[i] + self.bmatrix[i, index]
+            self.in_row_ones[i] = new_value
+            try:
+                self.in_value_rset[new_value].add(i)
+            except:
+                self.in_value_rset[new_value] = ([i])
+
+            if new_value < in_min:
+                in_min = new_value
+                self.in_candi_row = i
+                self.in_cr_ones = in_min
 
     def event_del_col(self, index):
+        index = self.in_candi_col
+
         self.event_size -= self.event_height
         self.event_width -= 1
         self.event_ones -= self.col_ones[index]
         self.event_den = self.event_ones / self.event_size
     
-        self.event_cols.remove(index)
-        self.out_cols.add(index)
+        value = self.in_col_ones[index]
+        del self.in_col_ones[index]
+        self.out_col_ones[index] = value
 
-        for i in self.row_ones:
-            self.row_ones[i] -= self.bmatrix[i, index]
+        out_max = -999999999
+        for i in self.out_row_ones.keys():
+            new_value = self.out_row_ones[i] + self.bmatrix[i, index]
+            self.out_row_ones[i] = new_value
+            if new_value > out_max:
+                out_max = new_value
+                self.out_candi_row = i
+                self.out_cr_ones = out_max
+
+        in_min = 999999999
+        self.in_value_rset = {}
+        for i in self.in_row_ones.keys():
+            new_value = self.in_row_ones[i] + self.bmatrix[i, index]
+            self.in_row_ones[i] = new_value
+            try:
+                self.in_value_rset[new_value].add(i)
+            except:
+                self.in_value_rset[new_value] = ([i])
+
+            if new_value < in_min:
+                in_min = new_value
+                self.in_candi_row = i
+                self.in_cr_ones = in_min
 
 
     def event_rm_line_ronly(self, index): # do not remove column any more
@@ -934,7 +1047,7 @@ class Reaper():
         self.event_ones -= self.row_ones[index]
         self.event_den = self.event_ones / self.event_size
 
-        del self.event_rows[index]
+        del self.in_rows[index]
         del self.row_ones[index]
         del self.row_weight[index]
 
@@ -946,7 +1059,7 @@ class Reaper():
             self.event_den = self.event_ones / self.event_size
 
             one_indexes = []
-            for j in self.event_cols:
+            for j in self.in_cols:
                 if self.bmatrix[index,j]: # XXX why 'is 1' does not work?
                     one_indexes.append(j)
                     self.col_ones[j] -= 1
@@ -954,8 +1067,8 @@ class Reaper():
             
             #print one_indexes
 
-            del self.event_rows[index]
-            for r in self.event_rows:
+            del self.in_rows[index]
+            for r in self.in_rows:
                 for i in one_indexes:
                     self.row_weight[r] -= self.bmatrix[r,i]
 
@@ -970,14 +1083,14 @@ class Reaper():
             self.event_den = self.event_ones / self.event_size
 
             one_indexes = []
-            for j in self.event_rows:
+            for j in self.in_rows:
                 if self.bmatrix[j,index]:
                     one_indexes.append(j)
                     self.row_ones[j] -= 1
                     self.row_weight[j] -= self.col_ones[index]
             
-            del self.event_cols[index]
-            for c in self.event_cols:
+            del self.in_cols[index]
+            for c in self.in_cols:
                 for i in one_indexes:
                     self.col_weight[c] -= self.bmatrix[i,c]
 
@@ -1078,8 +1191,8 @@ class Reaper():
             if code == 100:
                 fname = str(unix_dt) + '.txt'
                 f = open(self.get_output_dir_event()+fname, 'w')
-                f.write('MonitorIndexes#' + str(self.event_cols) + '\n')
-                for r in self.event_rows:
+                f.write('MonitorIndexes#' + str(self.in_cols) + '\n')
+                for r in self.in_rows:
                     pfx = self.index2pfx[r]
                     f.write(pfx+':'+str(self.c_pfx_data[pfx])+'\n')
                 f.close()
@@ -1087,11 +1200,11 @@ class Reaper():
             # release memory 
             del self.bmatrix
 
-            del self.event_rows
-            self.event_rows = set()
+            del self.in_rows
+            self.in_rows = set()
 
-            del self.event_cols
-            self.event_cols = set()
+            del self.in_cols
+            self.in_cols = set()
 
             del self.out_rows
             self.out_rows = set()

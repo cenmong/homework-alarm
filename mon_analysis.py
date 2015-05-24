@@ -9,7 +9,7 @@ import os
 import subprocess
 from cStringIO import StringIO
 
-index_list = [20]
+index_list = [16]
 
 for i in index_list:
     my_period = Period(i)
