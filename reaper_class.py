@@ -162,10 +162,10 @@ class Reaper():
         self.out_candi_row = -1
         self.out_candi_col = -1
         
-        self.in_cr_ones = -1
-        self.in_cc_ones = -1
-        self.out_cr_ones = -1
-        self.out_cc_ones = -1
+        self.in_candirow_ones = -1
+        self.in_candicol_ones = -1
+        self.out_candirow_ones = -1
+        self.out_candicol_ones = -1
 
         #self.row_weight = dict() # row number: weight
         #self.col_weight = dict() # col number: weight
@@ -634,9 +634,12 @@ class Reaper():
         small = min(self.in_value2rowset.keys())
         self.in_candi_row = self.in_value2rowset[small].pop()
         self.in_value2rowset[small].add(self.in_candi_row)
-        self.in_cr_ones = small
+        self.in_candirow_ones = small
 
-        self.in_cc_ones, self.in_candi_col = self.min_key_random_value(self.in_value2colset)
+        small = min(self.in_value2colset.keys())
+        self.in_candi_col = self.in_value2colset[small].pop()
+        self.in_value2colset[small].add(self.in_candi_col)
+        self.in_candicol_ones = small
 
         self.event_ones = total_sum
         self.event_den = total_sum / self.event_size
@@ -794,21 +797,21 @@ class Reaper():
         # process the matrix
         while(self.event_den < self.thre_den):
             #-----------------------------
-            # addition
+            # addition (initially, out candidates are -1, ones are also -1, no addtion conducted)
 
             can_add_r = False
             can_add_c = False
             
-            if (self.event_ones+self.out_cr_ones)/(self.event_size+self.event_width) >=\
+            if (self.event_ones+self.out_candirow_ones)/(self.event_size+self.event_width) >=\
                     self.event_den:
                 can_add_r = True
-            if (self.event_ones+self.out_cc_ones)/(self.event_size+self.event_height) >=\
+            if (self.event_ones+self.out_candicol_ones)/(self.event_size+self.event_height) >=\
                     self.event_den:
                 can_add_c = True
 
             if can_add_r is True or can_add_c is True:
                 if can_add_r is True and can_add_c is True:
-                    if self.out_cr_ones >= self.out_cc_ones:
+                    if self.out_candirow_ones >= self.out_candicol_ones:
                         self.event_add_row()
                     else:
                         self.event_add_col()
@@ -817,24 +820,22 @@ class Reaper():
                 else:
                     self.event_add_col()
                 
-                print 'Plus *************************'
+                print 'Row or column added ***********************************************'
                 continue
 
             #----------------------------------
-            # deletion
+            # deletion 1) compare deletion utility 2) check width threshold
 
-            # deletion utility
-            rows_du = ((self.event_ones-self.in_cr_ones)/\
+            rows_du = ((self.event_ones-self.in_candirow_ones)/\
                     (self.event_size-self.event_width)-self.event_den)/self.event_width
-            cols_du = ((self.event_ones-self.in_cc_ones)/\
+            cols_du = ((self.event_ones-self.in_candicol_ones)/\
                     (self.event_size-self.event_height)-self.event_den)/self.event_height
 
-            # consider the width threshold
             # we ignore any height threshold because the size threshold will be adequate
             if self.event_width - 1 < self.thre_width: # cannot delete any more columns
                 cols_du = -999
 
-            if rows_du >= cols_du:
+            if rows_du >= cols_du: # if cols_du is -999 this will definitly be true
                 self.event_del_row()
             else:
                 self.event_del_col()
@@ -843,96 +844,103 @@ class Reaper():
 
 
         # addition in the end
-        # TODO code here deal with no possible addition
+        # XXX Note: it is possible that no element in out column set
         while(self.event_den >= self.thre_den):
-            try:
-                print self.out_cr_ones
-                row_au = (self.event_ones+self.out_cr_ones)/(self.event_size+self.event_width)\
-                        - self.event_den
-                if (self.event_ones+or_1s)/(self.event_size+self.event_width) < self.thre_den:
-                    row_au = None # addition utility
-            except: # self.out_rows is empty (rather rare)
-                break
+            print self.out_candirow_ones
+            # addition utility
+            row_au = (self.event_ones+self.out_candirow_ones)/(self.event_size+\
+                    self.event_width)-self.event_den
+            if (self.event_ones+self.out_candirow_ones)/(self.event_size+\
+                    self.event_width)<self.thre_den or self.out_candirow_ones==-1:
+                row_au = None
 
-            try:
-                print self.out_cc_ones
-                col_au = (self.event_ones+oc_1s)/(self.event_size+self.event_height)\
-                        - self.event_den
-                if (self.event_ones+oc_1s)/(self.event_size+self.event_height) < self.thre_den:
-                    col_au = None
-            except: # all columns are in event.
-                col_au = None
+            print self.out_candicol_ones
+            # addition utility
+            row_au = (self.event_ones+self.out_candicol_ones)/(self.event_size+\
+                    self.event_height)-self.event_den
+            if (self.event_ones+self.out_candicol_ones)/(self.event_size+\
+                    self.event_height)<self.thre_den or self.out_candicol_ones==-1:
+                row_au = None
             
-
-            if row_au is None and col_au is None:
+            if row_au is None and col_au is None: # no addition is possible
                 break
             elif col_au is None and row_au is not None:
-                self.event_add_row(cand_out_row)
-                print 'end adding'
+                self.event_add_row()
+                print 'end adding*****************'
             elif row_au is None and col_au is not None:
-                self.event_add_col(cand_out_col)
-                print 'end adding'
+                self.event_add_col()
+                print 'end adding***************'
             elif col_au is not None and row_au is not None:
-                print 'end adding'
+                print 'end adding******************'
                 if row_au >= col_au:
-                    self.event_add_row(cand_out_row)
+                    self.event_add_row()
                 else:
-                    self.event_add_col(cand_out_col)
+                    self.event_add_col()
 
 
+        #----------------------------------------------------------
+        # summary
         relative_size = self.event_size / (self.thre_width * 2.5 * self.pfx_number)
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
                 self.event_den, self.event_height, self.event_width]))
+
         if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
                 and self.event_width >= self.thre_width:
-            self.events[unix_dt]=[relative_size,self.event_size,self.event_den,self.event_height,self.event_width]
-            logging.info('%d found event: %s', unix_dt,str([relative_size, self.event_size,\
-                    self.event_den, self.event_height, self.event_width]))
+            self.events[unix_dt]=[relative_size,self.event_size,\
+                    self.event_den,self.event_height,self.event_width]
+            logging.info('%d this is an event!')
             return 100
         
         return -1
 
     def event_add_row(self):
         index = self.out_candi_row
-        ones_value = self.out_cr_ones
+        ones_value = self.out_candirow_ones
 
         self.event_size += self.event_width
         self.event_height += 1
         self.event_ones += ones_value
         self.event_den = self.event_ones / self.event_size
 
-
-        # new in candidate remains
-        try:
-            self.in_value2rowset[ones_value].add(index)
-        except:
-            self.in_value2rowset[ones_value] = ([index])
-
         # get new out candidate
         self.out_value2rowset[ones_value].remove(index)
-        if len(self.out_value2rowset[ones_value]) is 0:
+        if self.out_value2rowset[ones_value] is ([]):
             del self.out_value2rowset[ones_value]
 
-            max = max(self.out_value2rowset.keys())
-            self.out_candi_row = self.out_value2rowset[max].pop()
-            self.out_value2rowset[max].add(self.out_candi_row)
+            large = max(self.out_value2rowset.keys())
+            self.out_candi_row = self.out_value2rowset[large].pop()
+            self.out_value2rowset[large].add(self.out_candi_row)
         else:
             self.out_candi_row = self.out_value2rowset[ones_value].pop()
             self.out_value2rowset.add(self.out_candi_row) # must
 
-        # get new out column candidate
-        tmpdict = dict()
-        for v in self.out_value2colset:
-            for col in self.out_value2colset[v]:
-                new_value = v + self.bmatrix[index, col]
-                try:
-                    tmpdict[new_value].add(col)
-                except:
-                    tmpdict[new_value] = ([col])
-        self.out_value2colset = tmpdict
-        max = max(self.out_value2colset.keys())
-        self.out_candi_col = self.out_value2colset[max].pop()
-        self.out_value2colset.add(self.out_candi_col)
+        # new in row candidate
+        try:
+            self.in_value2rowset[ones_value].add(index)
+        except:
+            self.in_value2rowset[ones_value] = ([index])
+        small = min(self.in_value2rowset.keys())
+        self.in_candi_row = self.in_value2rowset[small].pop()
+        self.in_value2rowset[small].add(self.in_candi_row)
+        self.in_candirow_ones = small
+
+        # get new out column candidate 
+        if self.out_value2colset is {}: #it is possible that out column set is empty. must?
+            self.out_candi_col = -1
+            self.out_candicol_ones = -1
+        else:
+            tmpdict = dict()
+            for v in self.out_value2colset:
+                for col in self.out_value2colset[v]:
+                    new_value = v + self.bmatrix[index, col]
+                    try:
+                        tmpdict[new_value].add(col)
+                    except:
+                        tmpdict[new_value] = ([col])
+            self.out_value2colset = tmpdict
+            large = max(tmpdict.keys())
+            self.out_candi_col = tmpdict[large].pop()
+            self.out_candicol_ones = large
 
 
         # get new in column candidate
@@ -945,54 +953,63 @@ class Reaper():
                 except:
                     tmpdict[new_value] = ([col])
         self.in_value2colset = tmpdict
-        small = min(self.in_value2colset.keys())
-        self.in_candi_col = self.in_value2colset[small].pop()
-        self.in_value2colset.add(self.in_candi_col)
+        small = min(tmpdict.keys())
+        self.in_candi_col = tmpdict[small].pop()
+        self.in_candicol_ones = small
 
 
-    def event_del_row(self):
+    def event_del_row(self): # the most common action
         index = self.in_candi_row
-        ones_value = self.in_cr_ones
+        ones_value = self.in_candirow_ones
 
+        # obtain the new values for the basic attributes
         self.event_size -= self.event_width
         self.event_height -= 1
         self.event_ones -= ones_value
         self.event_den = self.event_ones / self.event_size
 
-
-        # get new in row candidate
+        # get new in_candi_row and in_candirow_ones
         self.in_value2rowset[ones_value].remove(index)
-        if len(self.in_value2rowset[ones_value]) is 0:
+        if self.in_value2rowset[ones_value] is ([]): # empty set
             del self.in_value2rowset[ones_value]
 
             small = min(self.in_value2rowset.keys())
             self.in_candi_row = self.in_value2rowset[small].pop()
-            self.in_value2rowset[min].add(self.in_candi_row)
+            self.in_value2rowset[small].add(self.in_candi_row)
+            self.in_candirow_ones = small
         else: # this condition holds most of the time, which is efficient
             self.in_candi_row = self.in_value2rowset[ones_value].pop()
-            self.in_value2rowset.add(self.in_candi_row) # must
+            self.in_value2rowset[ones_value].add(self.in_candi_row) # must
 
 
-        # out row candidate does not change
+        # actually, out row candidate does not change (except when out candi is empty)
         try:
             self.out_value2rowset[ones_value].add(index)
         except:
             self.out_value2rowset[ones_value] = ([index])
+        big = max(self.out_value2rowset.keys())
+        self.out_candi_row = self.out_value2rowset[big].pop()
+        self.out_value2rowset[big].add(self.out_candi_row)
+        self.out_candirow_ones = big
 
 
-        # get new out column candidate
-        tmpdict = dict()
-        for v in self.out_value2colset:
-            for col in self.out_value2colset[v]:
-                new_value = v - self.bmatrix[index, col]
-                try:
-                    tmpdict[new_value].add(col)
-                except:
-                    tmpdict[new_value] = ([col])
-        self.out_value2colset = tmpdict
-        max = max(self.out_value2colset.keys())
-        self.out_candi_col = self.out_value2colset[max].pop()
-        self.out_value2colset.add(self.out_candi_col)
+        # get new out column candidate 
+        if self.out_value2colset is {}: #it is possible that out column set is empty. must?
+            self.out_candi_col = -1
+            self.out_candicol_ones = -1
+        else:
+            tmpdict = dict()
+            for v in self.out_value2colset:
+                for col in self.out_value2colset[v]:
+                    new_value = v - self.bmatrix[index, col]
+                    try:
+                        tmpdict[new_value].add(col)
+                    except:
+                        tmpdict[new_value] = ([col])
+            self.out_value2colset = tmpdict
+            large = max(tmpdict.keys())
+            self.out_candi_col = tmpdict[large].pop()
+            self.out_candicol_ones = large
 
 
         # get new in column candidate
@@ -1005,14 +1022,15 @@ class Reaper():
                 except:
                     tmpdict[new_value] = ([col])
         self.in_value2colset = tmpdict
-        small = min(self.in_value2colset.keys())
-        self.in_candi_col = self.in_value2colset[small].pop()
-        self.in_value2colset.add(self.in_candi_col)
+        small = min(tmpdict.keys())
+        self.in_candi_col = tmpdict[small].pop()
+        self.in_candicol_ones = small
 
 
+    # TODO: coding the following functinos and test
     def event_add_col(self):
         index = self.out_candi_col
-        ones_value = self.out_cc_ones
+        ones_value = self.out_candicol_ones
 
         self.event_size += self.event_height
         self.event_width += 1
@@ -1026,7 +1044,7 @@ class Reaper():
         except:
             self.in_value2colset[ones_value] = ([index])
 
-        # get new out candidate
+        # get new out candidate XXX note: it is possible that out column set is empty
         self.out_value2colset[ones_value].remove(index)
         if len(self.out_value2colset[ones_value]) is 0:
             del self.out_value2colset[ones_value]
@@ -1070,7 +1088,7 @@ class Reaper():
 
     def event_del_col(self):
         index = self.in_candi_col
-        ones_value = self.in_cc_ones
+        ones_value = self.in_candicol_ones
 
         self.event_size -= self.event_height
         self.event_width -= 1
@@ -1126,7 +1144,6 @@ class Reaper():
         small = min(self.in_value2rowset.keys())
         self.in_candi_row = self.in_value2rowset[small].pop()
         self.in_value2rowset.add(self.in_candi_row)
-
 
     def event_rm_line_ronly(self, index): # do not remove column any more
         self.event_size -= self.event_width
@@ -1274,8 +1291,7 @@ class Reaper():
             #code = self.analyze_bmatrix_new(unix_dt) # new algorithm
             code = self.analyze_bmatrix_plusminus(unix_dt)
 
-            # note: output to unix_dt.txt event size not too small
-            if code == 100:
+            if code == 100: # found an event
                 fname = str(unix_dt) + '.txt'
                 f = open(self.get_output_dir_event()+fname, 'w')
                 f.write('MonitorIndexes#' + str(self.in_cols) + '\n')
