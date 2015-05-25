@@ -146,13 +146,15 @@ class Reaper():
         #self.out_rows = set() # deleted rows
         #self.out_cols = set()
 
-        self.in_value_rset = dict()
-        self.in_value_cset = dict()
+        self.in_value2rowset = dict()
+        self.in_value2colset = dict()
+        self.out_value2rowset = dict()
+        self.out_value2colset = dict()
 
-        self.in_row_ones = dict() # row number: quantity of 1s
-        self.in_col_ones = dict() # col number: quantity of 1s
-        self.out_row_ones = dict() # row number: quantity of 1s
-        self.out_col_ones = dict() # col number: quantity of 1s
+        #self.in_row_ones = dict() # row number: quantity of 1s
+        #self.in_col_ones = dict() # col number: quantity of 1s
+        #self.out_row_ones = dict() # row number: quantity of 1s
+        #self.out_col_ones = dict() # col number: quantity of 1s
 
         # update these 4 attributes after each matrix manipulation
         self.in_candi_row = -1
@@ -600,44 +602,41 @@ class Reaper():
             logging.info('found event!')
 
 
-    def min_key_random_value(self, value_set_dict): 
-        min = -999999999
-        for v in value_set_dict.keys():
-            if v < min:
-                min = v
-        return min, value_set_dict[min][0]
-
-
     # initialize event row and column attributes
-    def init_attri(self):
+    def init_attri(self, all_rows, all_cols):
+        col2ones = dict()
+        for c in all_cols:
+            col2ones[c] = 0
 
         total_sum = 0.0
-
-        for r in self.in_row_ones.keys():
-            #self.row_weight[r] = 0
+        for r in all_rows:
             sum = 0
-            for c in self.in_col_ones.keys():
-                value = self.bmatrix[r,c]
+            for c in all_cols:
+                value = self.bmatrix[r, c]
                 sum += value
-                self.in_col_ones[c] += value
+                col2ones[c] += value
                 total_sum += value
 
-            self.in_row_ones[r] = sum
-
             try:
-                self.in_value_rset[sum].add(r)
+                self.in_value2rowset[sum].add(r)
             except:
-                self.in_value_rset[sum] = ([r])
+                self.in_value2rowset[sum] = ([r])
 
-        for c in self.in_col_ones.keys():
-            value = self.in_col_ones[c]
+
+        for c in all_cols:
+            value = self.col2ones[c]
             try:
-                self.in_value_cset[value].add(c)
+                self.in_value2colset[value].add(c)
             except:
-                self.in_value_cset[value] = ([c])
+                self.in_value2colset[value] = ([c])
             
-        self.in_cr_ones, self.in_candi_row = self.min_key_random_value(self.in_value_rset)
-        self.in_cc_ones, self.in_candi_col = self.min_key_random_value(self.in_value_cset)
+
+        small = min(self.in_value2rowset.keys())
+        self.in_candi_row = self.in_value2rowset[small].pop()
+        self.in_value2rowset[small].add(self.in_candi_row)
+        self.in_cr_ones = small
+
+        self.in_cc_ones, self.in_candi_col = self.min_key_random_value(self.in_value2colset)
 
         self.event_ones = total_sum
         self.event_den = total_sum / self.event_size
@@ -755,30 +754,32 @@ class Reaper():
 
 
     def analyze_bmatrix_plusminus(self, unix_dt):
-        #--------------------------
-        #initialize the event submatrix to the original matrix
+        #------------------------------
+        # record the rows and columns after pre-processing
+        all_rows = set()
+        all_cols = set()
+
         for index in xrange(0, len(self.bmatrix.tolist())):
-            self.in_row_ones[index] = 0
+            all_rows.add(index)
 
         for index in xrange(0, int(self.mo_number)):
-            self.in_col_ones[index] = 0
+            all_cols.add(index)
 
         #-------------------
-        # preprocess the matrix
-        self.event_height = self.bmatrix.shape[0]
-        self.event_width = self.bmatrix.shape[1]
+        # preprocessing the matrix
         
+        self.event_height = len(all_rows)
         min_row_sum = 0.2 * self.thre_width
         for i in xrange(0, self.event_height):
             if self.bmatrix[i].sum() <= min_row_sum:
-                del self.in_row_ones[i]
+                all_rows.remove(i)
                 self.event_height -= 1
 
+        self.event_width = len(all_cols)
         min_col_sum = 0.2 * (float(self.thre_size) / float(self.thre_width))
         for i in xrange(0, self.event_width):
             if self.bmatrix[:,i].sum() <= min_col_sum:
-                self.in_cols.remove(i)
-                del self.in_col_ones[i]
+                all_cols,remove(i)
                 self.event_width -= 1
 
         self.event_size = float(self.event_height * self.event_width)
@@ -787,7 +788,7 @@ class Reaper():
             logging.info('%d : too small after preprocessing', unix_dt)
             return -1
 
-        self.init_attri() # initialize row and col attributes and event density
+        self.init_attri(all_rows, all_cols)
 
         #--------------------
         # process the matrix
@@ -831,7 +832,7 @@ class Reaper():
             # consider the width threshold
             # we ignore any height threshold because the size threshold will be adequate
             if self.event_width - 1 < self.thre_width: # cannot delete any more columns
-                cols_du = -1
+                cols_du = -999
 
             if rows_du >= cols_du:
                 self.event_del_row()
@@ -842,7 +843,7 @@ class Reaper():
 
 
         # addition in the end
-        # TODO code here
+        # TODO code here deal with no possible addition
         while(self.event_den >= self.thre_den):
             try:
                 print self.out_cr_ones
@@ -893,152 +894,238 @@ class Reaper():
 
     def event_add_row(self):
         index = self.out_candi_row
+        ones_value = self.out_cr_ones
 
         self.event_size += self.event_width
         self.event_height += 1
-        self.event_ones += self.row_ones[index]
+        self.event_ones += ones_value
         self.event_den = self.event_ones / self.event_size
 
-        value = self.out_row_ones[index]
-        del self.out_row_ones[index]
-        self.in_row_ones[index] = value
 
-        out_max = -999999999
-        for j in self.out_col_ones.keys():
-            new_value = self.out_col_ones[j] + self.bmatrix[index, j]
-            self.out_col_ones[j] = new_value
-            if new_value > out_max:
-                out_max = new_value
-                self.out_candi_col = j
-                self.out_cc_ones = out_max
+        # new in candidate remains
+        try:
+            self.in_value2rowset[ones_value].add(index)
+        except:
+            self.in_value2rowset[ones_value] = ([index])
 
-        in_min = 999999999
-        self.in_value_cset = {}
-        for j in self.in_col_ones.keys():
-            new_value = self.in_col_ones[j] + self.bmatrix[index, j]
-            self.in_col_ones[j] = new_value
-            try:
-                self.in_value_cset[new_value].add(j)
-            except:
-                self.in_value_cset[new_value] = ([j])
+        # get new out candidate
+        self.out_value2rowset[ones_value].remove(index)
+        if len(self.out_value2rowset[ones_value]) is 0:
+            del self.out_value2rowset[ones_value]
 
-            if new_value < in_min:
-                in_min = new_value
-                self.in_candi_col = j
-                self.in_cc_ones = in_min
+            max = max(self.out_value2rowset.keys())
+            self.out_candi_row = self.out_value2rowset[max].pop()
+            self.out_value2rowset[max].add(self.out_candi_row)
+        else:
+            self.out_candi_row = self.out_value2rowset[ones_value].pop()
+            self.out_value2rowset.add(self.out_candi_row) # must
 
-    def event_del_row(self, index):
+        # get new out column candidate
+        tmpdict = dict()
+        for v in self.out_value2colset:
+            for col in self.out_value2colset[v]:
+                new_value = v + self.bmatrix[index, col]
+                try:
+                    tmpdict[new_value].add(col)
+                except:
+                    tmpdict[new_value] = ([col])
+        self.out_value2colset = tmpdict
+        max = max(self.out_value2colset.keys())
+        self.out_candi_col = self.out_value2colset[max].pop()
+        self.out_value2colset.add(self.out_candi_col)
+
+
+        # get new in column candidate
+        tmpdict = dict()
+        for v in self.in_value2colset:
+            for col in self.in_value2colset[v]:
+                new_value = v + self.bmatrix[index, col]
+                try:
+                    tmpdict[new_value].add(col)
+                except:
+                    tmpdict[new_value] = ([col])
+        self.in_value2colset = tmpdict
+        small = min(self.in_value2colset.keys())
+        self.in_candi_col = self.in_value2colset[small].pop()
+        self.in_value2colset.add(self.in_candi_col)
+
+
+    def event_del_row(self):
         index = self.in_candi_row
+        ones_value = self.in_cr_ones
 
         self.event_size -= self.event_width
         self.event_height -= 1
-        self.event_ones -= self.row_ones[index]
+        self.event_ones -= ones_value
         self.event_den = self.event_ones / self.event_size
 
-        value = self.in_row_ones[index]
-        del self.in_row_ones[index]
-        self.out_row_ones[index] = value
 
-        out_max = -999999999
-        for j in self.out_col_ones.keys():
-            new_value = self.out_col_ones[j] + self.bmatrix[index, j]
-            self.out_col_ones[j] = new_value
-            if new_value > out_max:
-                out_max = new_value
-                self.out_candi_col = j
-                self.out_cc_ones = out_max
+        # get new in row candidate
+        self.in_value2rowset[ones_value].remove(index)
+        if len(self.in_value2rowset[ones_value]) is 0:
+            del self.in_value2rowset[ones_value]
 
-        in_min = 999999999
-        self.in_value_cset = {}
-        for j in self.in_col_ones.keys():
-            new_value = self.in_col_ones[j] + self.bmatrix[index, j]
-            self.in_col_ones[j] = new_value
-            try:
-                self.in_value_cset[new_value].add(j)
-            except:
-                self.in_value_cset[new_value] = ([j])
-
-            if new_value < in_min:
-                in_min = new_value
-                self.in_candi_col = j
-                self.in_cc_ones = in_min
+            small = min(self.in_value2rowset.keys())
+            self.in_candi_row = self.in_value2rowset[small].pop()
+            self.in_value2rowset[min].add(self.in_candi_row)
+        else: # this condition holds most of the time, which is efficient
+            self.in_candi_row = self.in_value2rowset[ones_value].pop()
+            self.in_value2rowset.add(self.in_candi_row) # must
 
 
+        # out row candidate does not change
+        try:
+            self.out_value2rowset[ones_value].add(index)
+        except:
+            self.out_value2rowset[ones_value] = ([index])
 
-    def event_add_col(self, index):
+
+        # get new out column candidate
+        tmpdict = dict()
+        for v in self.out_value2colset:
+            for col in self.out_value2colset[v]:
+                new_value = v - self.bmatrix[index, col]
+                try:
+                    tmpdict[new_value].add(col)
+                except:
+                    tmpdict[new_value] = ([col])
+        self.out_value2colset = tmpdict
+        max = max(self.out_value2colset.keys())
+        self.out_candi_col = self.out_value2colset[max].pop()
+        self.out_value2colset.add(self.out_candi_col)
+
+
+        # get new in column candidate
+        tmpdict = dict()
+        for v in self.in_value2colset:
+            for col in self.in_value2colset[v]:
+                new_value = v - self.bmatrix[index, col]
+                try:
+                    tmpdict[new_value].add(col)
+                except:
+                    tmpdict[new_value] = ([col])
+        self.in_value2colset = tmpdict
+        small = min(self.in_value2colset.keys())
+        self.in_candi_col = self.in_value2colset[small].pop()
+        self.in_value2colset.add(self.in_candi_col)
+
+
+    def event_add_col(self):
         index = self.out_candi_col
+        ones_value = self.out_cc_ones
 
         self.event_size += self.event_height
         self.event_width += 1
-        self.event_ones += self.col_ones[index]
+        self.event_ones += ones_value
         self.event_den = self.event_ones / self.event_size
 
-        self.in_cols.add(index)
-        self.out_cols.remove(index)
 
-        value = self.out_col_ones[index]
-        del self.out_col_ones[index]
-        self.in_col_ones[index] = value
+        # new in candidate remains
+        try:
+            self.in_value2colset[ones_value].add(index)
+        except:
+            self.in_value2colset[ones_value] = ([index])
 
-        out_max = -999999999
-        for i in self.out_row_ones.keys():
-            new_value = self.out_row_ones[i] + self.bmatrix[i, index]
-            self.out_row_ones[i] = new_value
-            if new_value > out_max:
-                out_max = new_value
-                self.out_candi_row = i
-                self.out_cr_ones = out_max
+        # get new out candidate
+        self.out_value2colset[ones_value].remove(index)
+        if len(self.out_value2colset[ones_value]) is 0:
+            del self.out_value2colset[ones_value]
 
-        in_min = 999999999
-        self.in_value_rset = {}
-        for i in self.in_row_ones.keys():
-            new_value = self.in_row_ones[i] + self.bmatrix[i, index]
-            self.in_row_ones[i] = new_value
-            try:
-                self.in_value_rset[new_value].add(i)
-            except:
-                self.in_value_rset[new_value] = ([i])
+            max = max(self.out_value2colset.keys())
+            self.out_candi_col = self.out_value2colset[max].pop()
+            self.out_value2colset[max].add(self.out_candi_col)
+        else:
+            self.out_candi_col = self.out_value2colset[ones_value].pop()
+            self.out_value2colset.add(self.out_candi_col) # must
 
-            if new_value < in_min:
-                in_min = new_value
-                self.in_candi_row = i
-                self.in_cr_ones = in_min
+        # get new out row candidate
+        tmpdict = dict()
+        for v in self.out_value2rowset:
+            for row in self.out_value2rowset[v]:
+                new_value = v + self.bmatrix[row, index]
+                try:
+                    tmpdict[new_value].add(row)
+                except:
+                    tmpdict[new_value] = ([row])
+        self.out_value2rowset = tmpdict
+        max = max(self.out_value2rowset.keys())
+        self.out_candi_row = self.out_value2rowset[max].pop()
+        self.out_value2rowset.add(self.out_candi_row)
 
-    def event_del_col(self, index):
+
+        # get new in row candidate
+        tmpdict = dict()
+        for v in self.in_value2rowset:
+            for row in self.in_value2rowset[v]:
+                new_value = v + self.bmatrix[row, index]
+                try:
+                    tmpdict[new_value].add(row)
+                except:
+                    tmpdict[new_value] = ([row])
+        self.in_value2rowset = tmpdict
+        small = min(self.in_value2rowset.keys())
+        self.in_candi_row = self.in_value2rowset[small].pop()
+        self.in_value2rowset.add(self.in_candi_row)
+
+
+    def event_del_col(self):
         index = self.in_candi_col
+        ones_value = self.in_cc_ones
 
         self.event_size -= self.event_height
         self.event_width -= 1
-        self.event_ones -= self.col_ones[index]
+        self.event_ones -= ones_value
         self.event_den = self.event_ones / self.event_size
-    
-        value = self.in_col_ones[index]
-        del self.in_col_ones[index]
-        self.out_col_ones[index] = value
 
-        out_max = -999999999
-        for i in self.out_row_ones.keys():
-            new_value = self.out_row_ones[i] + self.bmatrix[i, index]
-            self.out_row_ones[i] = new_value
-            if new_value > out_max:
-                out_max = new_value
-                self.out_candi_row = i
-                self.out_cr_ones = out_max
 
-        in_min = 999999999
-        self.in_value_rset = {}
-        for i in self.in_row_ones.keys():
-            new_value = self.in_row_ones[i] + self.bmatrix[i, index]
-            self.in_row_ones[i] = new_value
-            try:
-                self.in_value_rset[new_value].add(i)
-            except:
-                self.in_value_rset[new_value] = ([i])
+        # get new in col candidate
+        self.in_value2colset[ones_value].remove(index)
+        if len(self.in_value2colset[ones_value]) is 0:
+            del self.in_value2colset[ones_value]
 
-            if new_value < in_min:
-                in_min = new_value
-                self.in_candi_row = i
-                self.in_cr_ones = in_min
+            small = min(self.in_value2colset.keys())
+            self.in_candi_col = self.in_value2colset[small].pop()
+            self.in_value2colset[small].add(self.in_candi_col)
+        else:
+            self.in_candi_col = self.in_value2colset[ones_value].pop()
+            self.in_value2colset.add(self.in_candi_col) # must
+
+
+        # out col candidate does not change
+        try:
+            self.out_value2colset[ones_value].add(index)
+        except:
+            self.out_value2colset[ones_value] = ([index])
+
+
+        # get new out row candidate
+        tmpdict = dict()
+        for v in self.out_value2rowset:
+            for row in self.out_value2rowset[v]:
+                new_value = v - self.bmatrix[row, index]
+                try:
+                    tmpdict[new_value].add(row)
+                except:
+                    tmpdict[new_value] = ([row])
+        self.out_value2rowset = tmpdict
+        max = max(self.out_value2rowset.keys())
+        self.out_candi_row = self.out_value2rowset[max].pop()
+        self.out_value2rowset.add(self.out_candi_row)
+
+
+        # get new in row candidate
+        tmpdict = dict()
+        for v in self.in_value2rowset:
+            for row in self.in_value2rowset[v]:
+                new_value = v - self.bmatrix[row, index]
+                try:
+                    tmpdict[new_value].add(row)
+                except:
+                    tmpdict[new_value] = ([row])
+        self.in_value2rowset = tmpdict
+        small = min(self.in_value2rowset.keys())
+        self.in_candi_row = self.in_value2rowset[small].pop()
+        self.in_value2rowset.add(self.in_candi_row)
 
 
     def event_rm_line_ronly(self, index): # do not remove column any more
@@ -1107,14 +1194,14 @@ class Reaper():
             keylist = mydict.keys()
 
         mylist = list()
-        min = 9999999999
+        small = 9999999999
 
         for k in keylist:
             value = mydict[k]
-            if value == min:
+            if value == small:
                 mylist.append(k)
-            elif value < min:
-                min = value
+            elif value < small:
+                small = value
                 mylist = [k]
 
         return mylist
