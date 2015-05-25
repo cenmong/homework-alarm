@@ -844,7 +844,6 @@ class Reaper():
 
 
         # addition in the end
-        # XXX Note: it is possible that no element in out column set
         while(self.event_den >= self.thre_den):
             print self.out_candirow_ones
             # addition utility
@@ -1027,7 +1026,6 @@ class Reaper():
         self.in_candicol_ones = small
 
 
-    # TODO: coding the following functinos and test
     def event_add_col(self):
         index = self.out_candi_col
         ones_value = self.out_candicol_ones
@@ -1038,38 +1036,50 @@ class Reaper():
         self.event_den = self.event_ones / self.event_size
 
 
-        # new in candidate remains
+        # new in candidate col
         try:
             self.in_value2colset[ones_value].add(index)
         except:
             self.in_value2colset[ones_value] = ([index])
+        small = min(self.in_value2colset.keys())
+        self.in_candi_col = self.in_value2colset[small].pop()
+        self.in_value2colset[small].add(self.in_candi_col)
+        self.in_candicol_ones = small
+        
 
-        # get new out candidate XXX note: it is possible that out column set is empty
+        # get new out candidate
         self.out_value2colset[ones_value].remove(index)
-        if len(self.out_value2colset[ones_value]) is 0:
+        if self.out_value2colset[ones_value] is ([]):
             del self.out_value2colset[ones_value]
+            if self.out_value2colset is {}: # it is possible that out column set is empty
+                self.out_candi_col = -1
+                self.out_candicol_ones = -1
 
-            max = max(self.out_value2colset.keys())
-            self.out_candi_col = self.out_value2colset[max].pop()
-            self.out_value2colset[max].add(self.out_candi_col)
+            large = max(self.out_value2colset.keys())
+            self.out_candi_col = self.out_value2colset[large].pop()
+            self.out_value2colset[large].add(self.out_candi_col)
+            self.out_candicol_ones = large
         else:
             self.out_candi_col = self.out_value2colset[ones_value].pop()
             self.out_value2colset.add(self.out_candi_col) # must
 
         # get new out row candidate
-        tmpdict = dict()
-        for v in self.out_value2rowset:
-            for row in self.out_value2rowset[v]:
-                new_value = v + self.bmatrix[row, index]
-                try:
-                    tmpdict[new_value].add(row)
-                except:
-                    tmpdict[new_value] = ([row])
-        self.out_value2rowset = tmpdict
-        max = max(self.out_value2rowset.keys())
-        self.out_candi_row = self.out_value2rowset[max].pop()
-        self.out_value2rowset.add(self.out_candi_row)
-
+        if self.out_value2rowset is {}:
+            self.out_candi_row = -1
+            self.out_candirow_ones = -1
+        else:
+            tmpdict = dict()
+            for v in self.out_value2rowset:
+                for row in self.out_value2rowset[v]:
+                    new_value = v + self.bmatrix[row, index]
+                    try:
+                        tmpdict[new_value].add(row)
+                    except:
+                        tmpdict[new_value] = ([row])
+            self.out_value2rowset = tmpdict
+            large = max(tmpdict.keys())
+            self.out_candi_row = tmpdict[large].pop()
+            self.out_candirow_ones = large
 
         # get new in row candidate
         tmpdict = dict()
@@ -1081,9 +1091,9 @@ class Reaper():
                 except:
                     tmpdict[new_value] = ([row])
         self.in_value2rowset = tmpdict
-        small = min(self.in_value2rowset.keys())
-        self.in_candi_row = self.in_value2rowset[small].pop()
-        self.in_value2rowset.add(self.in_candi_row)
+        small = min(tmpdict.keys())
+        self.in_candi_row = tmpdict[small].pop()
+        self.out_candirow_ones = small
 
 
     def event_del_col(self):
@@ -1098,7 +1108,7 @@ class Reaper():
 
         # get new in col candidate
         self.in_value2colset[ones_value].remove(index)
-        if len(self.in_value2colset[ones_value]) is 0:
+        if self.in_value2colset[ones_value] is ([]):
             del self.in_value2colset[ones_value]
 
             small = min(self.in_value2colset.keys())
@@ -1109,41 +1119,48 @@ class Reaper():
             self.in_value2colset.add(self.in_candi_col) # must
 
 
-        # out col candidate does not change
+        # get new out col candidate
         try:
             self.out_value2colset[ones_value].add(index)
         except:
             self.out_value2colset[ones_value] = ([index])
-
+        big = max(self.out_value2colset.keys())
+        self.out_candi_col = self.out_value2colset[big].pop()
+        self.out_value2colset[big].add(self.out_candi_col)
+        self.out_candicol_ones = big
 
         # get new out row candidate
-        tmpdict = dict()
-        for v in self.out_value2rowset:
-            for row in self.out_value2rowset[v]:
-                new_value = v - self.bmatrix[row, index]
-                try:
-                    tmpdict[new_value].add(row)
-                except:
-                    tmpdict[new_value] = ([row])
-        self.out_value2rowset = tmpdict
-        max = max(self.out_value2rowset.keys())
-        self.out_candi_row = self.out_value2rowset[max].pop()
-        self.out_value2rowset.add(self.out_candi_row)
-
+        if self.out_value2rowset is {}:
+            self.out_candi_row = -1
+            self.out_candirow_ones = -1
+        else:
+            tmpdict = dict()
+            for v in self.out_value2rowset:
+                for row in self.out_value2rowset[v]:
+                    new_value = v + self.bmatrix[row, index]
+                    try:
+                        tmpdict[new_value].add(row)
+                    except:
+                        tmpdict[new_value] = ([row])
+            self.out_value2rowset = tmpdict
+            large = max(tmpdict.keys())
+            self.out_candi_row = tmpdict[large].pop()
+            self.out_candirow_ones = large
 
         # get new in row candidate
         tmpdict = dict()
         for v in self.in_value2rowset:
             for row in self.in_value2rowset[v]:
-                new_value = v - self.bmatrix[row, index]
+                new_value = v + self.bmatrix[row, index]
                 try:
                     tmpdict[new_value].add(row)
                 except:
                     tmpdict[new_value] = ([row])
         self.in_value2rowset = tmpdict
-        small = min(self.in_value2rowset.keys())
-        self.in_candi_row = self.in_value2rowset[small].pop()
-        self.in_value2rowset.add(self.in_candi_row)
+        small = min(tmpdict.keys())
+        self.in_candi_row = tmpdict[small].pop()
+        self.out_candirow_ones = small
+
 
     def event_rm_line_ronly(self, index): # do not remove column any more
         self.event_size -= self.event_width
