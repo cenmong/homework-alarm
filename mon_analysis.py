@@ -9,7 +9,7 @@ import os
 import subprocess
 from cStringIO import StringIO
 
-index_list = [16]
+index_list = [20]
 
 for i in index_list:
     my_period = Period(i)
@@ -54,6 +54,7 @@ for i in index_list:
     print nation_count
     print tier_count
 
+    '''
     #--------------------
     # get all ASes from RIB
     f = open(my_period.rib_info_file, 'r')
@@ -112,3 +113,4 @@ for i in index_list:
             count_dict[tier] = 1
 
     print count_dict
+    '''

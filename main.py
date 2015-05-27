@@ -12,11 +12,12 @@ logging.info('Program starts!')
 
 #action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
 #action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
-action = {'middle':0, 'final':1, 'plot':0}
+action = {'middle':0, 'final':0, 'plot':1}
 #option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
 option = {'mid_granu':10, 'final_granu':20} # event paper
 
-index_list = [2]
+index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
+#index_list = [4]
 
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
@@ -54,6 +55,9 @@ for i in index_list:
         plotter = Plotter(reaper)
         plotter.TS_event_dot()
 
+        ''' 
+        #--------------------------------------------
+        # compare the time series under different parameters
         reaper21 = Reaper(my_period,20,0)
         reaper21.set_event_thre(0.005, 0.4, 0.75) # set this threshold to a small value
         reaper22 = Reaper(my_period,20,0)
@@ -64,10 +68,11 @@ for i in index_list:
         reaper32 = Reaper(my_period,30,0)
         reaper32.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
 
+        reaper_list = [reaper21, reaper, reaper22]
+        reaper_list = [reaper31, reaper, reaper32]
+        plotter.TS_all_event_curve(reaper_list)
+        '''
 
-        #reaper_list = [reaper21, reaper, reaper22]
-        #reaper_list = [reaper31, reaper, reaper32]
-        #plotter.TS_all_event_curve(reaper_list)
         # plotter.scatter_all_rwidth_rsize()
         # plotter.scatter_all_ASratio_rsize()
         # plotter.scatter_all_pfxratio_rsize()    

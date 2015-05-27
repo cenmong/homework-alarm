@@ -44,6 +44,7 @@ class Plotter():
         self.event_plot_dir = reaper.get_output_dir_event() + 'plot/'
         cmlib.make_dir(self.pfx_plot_dir)
         cmlib.make_dir(self.event_plot_dir)
+        self.TS_events_dot_dir = pub_plot_dir + 'TS_events_dot/'
 
 
     def TS_all_event_curve(self, rlist):
@@ -105,15 +106,17 @@ class Plotter():
         except:
             occur_dt = None
 
-        if index in ([0,16]):
-            y_high = 0.1
-        else:
-            y_high = 0.03 # Be careful! Setting this may miss some points!
+        #if index in ([0,16]):
+        #    y_high = 0.1
+        #else:
+        #    y_high = 0.03 # Be careful! Setting this may miss some points!
+        
+        y_high = 0.09
 
         value = list()
         dt = list()
 
-        file = self.event_input_dir + 'events_new.txt'
+        file = self.event_input_dir + 'events_plusminus.txt'
         f = open(file, 'r')
         for line in f:
             line = line.rstrip('\n')
@@ -154,7 +157,8 @@ class Plotter():
         if occur_dt is not None:
             plt.plot((occur_dt, occur_dt), (0, y_high), 'k--', lw=4)
 
-        output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
+        output_loc = self.TS_events_dot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
+        #output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()

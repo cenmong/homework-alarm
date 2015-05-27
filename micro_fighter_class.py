@@ -79,7 +79,7 @@ class Micro_fighter():
                 mset2 = mon_set_dict[unix_dt2]
                 JD_m = 1 - float(len(mset1&mset2)) / float(len(mset1|mset2))
 
-                JD = 0.9 * JD_p + 0.1 * JD_m
+                JD = 0.9 * JD_p + 0.1 * JD_m # XXX note the parameters
 
                 #the_list.append(JD_p)
                 the_list.append(JD)
@@ -87,12 +87,18 @@ class Micro_fighter():
             d_matrix.append(the_list)
 
         print unix_dt_list
-        print d_matrix
-        db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(d_matrix)
+        print d_matrix # TODO: change into numpy array ...
+        # XXX note the parameters
+        #db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(d_matrix)
+        db = DBSCAN(eps=0.9, min_samples=2, metric='precomputed').fit(d_matrix)
         print db.core_sample_indices_
         print db.components_
         print db.labels_
 
+        outpath = self.reaper.get_output_dir_event() + 'clustering.txt'
+        f = open(outpath, 'w')
+        f.write(str(db.labels_))
+        f.close()
 
     def all_events_tpattern(self): # time patterns of all events
         event_dict = self.get_events_list()
