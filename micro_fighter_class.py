@@ -13,11 +13,18 @@ import ast
 import calendar
 import os
 import urllib
+
+import sklearn
+print('The scikit-learn version is {}.'.format(sklearn.__version__))
+
 from sklearn.cluster import DBSCAN
 
 from netaddr import *
 from env import *
 from cStringIO import StringIO
+
+#from sklearn.datasets.samples_generator import make_blobs
+#from sklearn.preprocessing import StandardScaler
 
 class Micro_fighter():
 
@@ -86,19 +93,23 @@ class Micro_fighter():
 
             d_matrix.append(the_list)
 
+
+        the_ndarray = np.array(d_matrix)
+
         print unix_dt_list
-        print d_matrix # TODO: change into numpy array ...
-        # XXX note the parameters
-        #db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(d_matrix)
-        db = DBSCAN(eps=0.9, min_samples=2, metric='precomputed').fit(d_matrix)
+        print d_matrix
+        db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(the_ndarray)
         print db.core_sample_indices_
         print db.components_
         print db.labels_
 
-        outpath = self.reaper.get_output_dir_event() + 'clustering.txt'
+        outpath = self.events_cluster_path()
         f = open(outpath, 'w')
         f.write(str(db.labels_))
         f.close()
+
+    def events_cluster_path():
+        return self.reaper.get_output_dir_event() + 'clustering.txt'
 
     def all_events_tpattern(self): # time patterns of all events
         event_dict = self.get_events_list()

@@ -13,8 +13,7 @@ import os
 import logging
 logging.info('Program starts!')
 
-#index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-index_list = [7,8,10,19,20]
+index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
 
 for index in index_list:
     print 'index = ', index

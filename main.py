@@ -10,11 +10,8 @@ import os
 import logging
 logging.info('Program starts!')
 
-#action = {'middle':True, 'final':False, 'plot':False} # Specify what to do
-#action = {'middle':True, 'final':True, 'plot':True} # Specify what to do
 action = {'middle':0, 'final':0, 'plot':1}
-#option = {'mid_granu':10, 'final_granu':60} # fin_gra should be mid_gra * N # pfx paper
-option = {'mid_granu':10, 'final_granu':20} # event paper
+option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
 #index_list = [4]
@@ -49,11 +46,13 @@ for i in index_list:
 
         #-----------------------------------
         # for the event detection paper
-        reaper.detect_event()
+        #reaper.detect_event()
+        reaper.all_events_cluster()
 
     if action['plot']:
         plotter = Plotter(reaper)
-        plotter.TS_event_dot()
+        #plotter.TS_event_dot()
+        plotter.TS_event_cluster_dot()
 
         ''' 
         #--------------------------------------------

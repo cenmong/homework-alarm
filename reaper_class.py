@@ -11,6 +11,7 @@ import logging
 import subprocess
 import os
 import ast
+from sklearn.cluster import DBSCAN
 
 from cStringIO import StringIO
 from netaddr import *
@@ -1190,6 +1191,88 @@ class Reaper():
                 mylist = [k]
 
         return mylist
+
+    def get_events_list(self):
+        event_dict = dict()
+
+        path = self.get_output_dir_event() + self.events_brief_fname
+        f = open(path, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            unix_dt = int(line.split(':')[0])
+            content = line.split(':')[1]
+            thelist = ast.literal_eval(content)
+            event_dict[unix_dt] = thelist
+        f.close()
+
+        return event_dict
+
+    def all_events_cluster(self):
+        pfx_set_dict = dict()
+        mon_set_dict = dict()
+
+        event_dict = self.get_events_list()
+        for unix_dt in event_dict:
+
+            #---------------------------------------------
+            # obtain the prefix and monitor(index) sets of the event
+            pfx_set = set()
+            mon_set = set()
+
+            event_fpath = self.get_output_dir_event() + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                    mon_set = set(mon_set)
+                else:
+                    pfx_set.add(line.split(':')[0])
+            f.close()
+
+            pfx_set_dict[unix_dt] = pfx_set
+            mon_set_dict[unix_dt] = mon_set
+
+        # obtain the jaccard distance between these events
+        d_matrix = list()
+        unix_dt_list = sorted(event_dict.keys()) # sorted list
+
+        for unix_dt in unix_dt_list:
+            the_list = list()
+            for unix_dt2 in unix_dt_list:
+                pset1 = pfx_set_dict[unix_dt]
+                pset2 = pfx_set_dict[unix_dt2]
+                JD_p = 1 - float(len(pset1&pset2)) / float(len(pset1|pset2)) # jaccard distance
+
+                mset1 = mon_set_dict[unix_dt]
+                mset2 = mon_set_dict[unix_dt2]
+                JD_m = 1 - float(len(mset1&mset2)) / float(len(mset1|mset2))
+
+                JD = 0.9 * JD_p + 0.1 * JD_m # XXX note the parameters
+
+                #the_list.append(JD_p)
+                the_list.append(JD)
+
+            d_matrix.append(the_list)
+
+
+        the_ndarray = np.array(d_matrix)
+
+        print unix_dt_list
+        print d_matrix
+        db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(the_ndarray)
+        print db.core_sample_indices_
+        print db.components_
+        print db.labels_
+
+        outpath = self.events_cluster_path()
+        f = open(outpath, 'w')
+        for label in db.labels_:
+            f.write(str(label)+'|')
+        f.close()
+
+    def events_cluster_path(self):
+        return self.get_output_dir_event() + 'clustering.txt'
 
     def detect_event(self):
         #self.filegroups = self.filegroups[17:] # FIXME test
