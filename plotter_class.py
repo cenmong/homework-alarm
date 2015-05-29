@@ -32,7 +32,9 @@ font = {'size': 38,}
 matplotlib.rc('font', **font)
 plt.rc('legend',**{'fontsize':28})
 
-colors = ['r', 'b', 'g', 'y', 'm', 'k']
+colors = ['r', 'b', 'g', 'y', 'm', 'cyan', 'dive', 'darkorange', 'mediumpurple', 'salmon']
+
+default_color = 'k'
 
 class Plotter():
 
@@ -192,6 +194,7 @@ class Plotter():
 
         value = list()
         dt = list()
+        dt2value = dict()
 
         file = self.event_input_dir + 'events_plusminus.txt'
         f = open(file, 'r')
@@ -203,23 +206,45 @@ class Plotter():
             the_list = ast.literal_eval(line.split(':')[1])
             rsize = the_list[0]
             value.append(rsize)
+            dt2value[the_dt] = rsize
         f.close()
 
-        dt1 = list()
-        v1 = list()
-        dt2 = list()
-        v2 = list()
-        if len(dt) > 5:
-            dt1 = dt[:4]
-            dt2 = dt[4:]
-            v1 = value[:4]
-            v2 = value[4:]
+        cluster2dtset = dict()
+        sorted_dt = sorted(dt2value.keys())
+        assert len(cluster_list) == len(sorted_dt)
+        for i in xrange(0, len(sorted_dt)):
+            try:
+                cluster2dtset[cluster_list[i]].add(sorted_dt[i])
+            except:
+                cluster2dtset[cluster_list[i]] = set([sorted_dt[i]])
+
 
         fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)
-        #plt.scatter(dt, value, s=150, facecolor='r', edgecolors='none')
-        plt.scatter(dt1, v1, s=150, facecolor='r', edgecolors='none')
-        plt.scatter(dt2, v2, s=150, facecolor='g', edgecolors='none')
+        
+        #----------------------------------------------------
+        # different clusters are assigned different colors
+        if -1 in cluster2dtset.keys():
+            dt_list = list()
+            value_list = list()
+            for tmp_dt in cluster2dtset[-1]:
+                dt_list.append(tmp_dt)
+                value_list.append(dt2value[tmp_dt])
+            plt.scatter(dt_list, value_list, s=150, facecolor=default_color, edgecolors='none')
+
+        color_index = 0
+        for c in cluster2dtset:
+            dt_list = list()
+            value_list = list()
+            if c == -1:
+                continue
+            for tmp_dt in cluster2dtset[c]:
+                dt_list.append(tmp_dt)
+                value_list.append(dt2value[tmp_dt])
+            plt.scatter(dt_list, value_list, s=150, facecolor=colors[color_index], edgecolors='none')
+            color_index += 1
+
+
         ax.set_ylabel('Relative size')
         ax.set_xlabel('Date')
         myFmt = mpldates.DateFormatter('%b\n%d')
