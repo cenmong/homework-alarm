@@ -1260,7 +1260,7 @@ class Reaper():
 
         print unix_dt_list
         print d_matrix
-        db = DBSCAN(eps=0.7, min_samples=5, metric='precomputed').fit(the_ndarray)
+        db = DBSCAN(eps=0.7, min_samples=4, metric='precomputed').fit(the_ndarray)
         print db.core_sample_indices_
         print db.components_
         print db.labels_
@@ -1433,3 +1433,100 @@ class Reaper():
             f.write(str(dt)+':'+str(self.events[dt])+'\n')
         f.close()
             
+    def all_events_tpattern(self): # time patterns of all events
+        event_dict = self.get_events_list()
+        dt_denlist = dict() 
+        for unix_dt in event_dict:
+            event_size = event_dict[unix_dt][1]
+            event_den = event_dict[unix_dt][2]
+
+            #---------------------------------------------
+            # obtain the prefix and monitor(index) sets of the event
+            pfx_set = set()
+            mon_set = set()
+
+            event_fpath = self.get_output_dir_event() + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                else:
+                    pfx_set.add(line.split(':')[0])
+            f.close()
+
+
+            slot_num = 4 # number of time slots before and after the event
+            #-----------------------------------
+            # determine and read the middle files
+            head = unix_dt - self.granu * 60 * slot_num 
+            tail = unix_dt + self.granu * 60 * slot_num
+    
+            if head < int(self.filegroups[0][0].rstrip('.txt.gz')) or\
+                    tail > int(self.filegroups[-1][0].rstrip('.txt.gz')):
+                print 'cannot analyze the time pattern of the event'
+                continue
+
+            # file group list ordered by datetime
+            unix_set = set()
+            for i in xrange(0, 2*slot_num+1):
+                unix_set.add(head + self.granu*60*i)
+
+            fg_list = list() # it is supposed to be ordered
+            for fg in self.filegroups:
+                if int(fg[0].rstrip('.txt.gz')) in unix_set:
+                    fg_list.append(fg)
+
+            # -----------------------------------------
+            # obtain density list
+            den_list = list() # density list ordered by time
+            for fg in fg_list:
+                if int(fg[0].rstrip('.txt.gz')) == unix_dt: # current event datetime
+                    den_list.append(event_den)
+                    continue
+
+                pfx_int_data = dict()
+                for fname in fg:
+                    floc = self.middle_dir + fname
+                    print 'Reading ', floc
+                    p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+                    fin = StringIO(p.communicate()[0])
+                    assert p.returncode == 0
+                    for line in fin:
+                        line = line.rstrip('\n')
+                        if line == '':
+                            continue
+
+                        pfx = line.split(':')[0]
+                        datalist = ast.literal_eval(line.split(':')[1])
+
+                        try:
+                            c_list = pfx_int_data[pfx]
+                            combined = [x+y for x,y in zip(datalist, c_list)]
+                            pfx_int_data[pfx] = combined
+                        except:
+                            pfx_int_data[pfx] = datalist
+
+
+                ones_in_num = 0
+                for pfx in pfx_set:
+                    for index in mon_set:
+                        try:
+                            if pfx_int_data[pfx][index] > 0:
+                                ones_in_num += 1
+                        except: # no such pfx or mon
+                            pass
+
+                cden = float(ones_in_num) / float(event_size)
+                den_list.append(cden)
+
+            print den_list
+            dt_denlist[unix_dt] = den_list
+
+            f = open(self.events_tpattern_path(), 'w')
+            for dt in dt_denlist: 
+                f.write(str(dt)+':'+str(dt_denlist[dt])+'\n')
+            f.close()
+
+    def events_tpattern_path(self):
+        return self.get_output_dir_event() + 'time_pattern.txt'

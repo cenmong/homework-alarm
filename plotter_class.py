@@ -47,6 +47,47 @@ class Plotter():
         cmlib.make_dir(self.pfx_plot_dir)
         cmlib.make_dir(self.event_plot_dir)
         self.TS_events_dot_dir = pub_plot_dir + 'TS_events_dot/'
+        cmlib.make_dir(self.TS_events_dot_dir)
+        self.events_tpattern_dir = pub_plot_dir + 'events_time_pattern/'
+        cmlib.make_dir(self.events_tpattern_dir)
+
+
+    def all_events_tpattern_curve(self):
+        index = self.reaper.period.index
+
+        pattern_lol = list() # list of lists
+        try:
+            pattern_f = open(self.reaper.events_tpattern_path(), 'r')
+        except:
+            return
+        for line in pattern_f:
+            line = line.rstrip('\n')
+            unix_dt = int(line.split(':')[0])
+            plist = ast.literal_eval(line.split(':')[1])
+            pattern_lol.append(plist)
+            print plist
+        pattern_f.close()
+
+        n = 4
+        total = 2 * n + 1
+        xlist = list()
+        for i in xrange(1, total + 1):
+            xlist.append(i)
+            
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        for ylist in pattern_lol:
+            ax.plot(xlist,ylist,'k-')
+        ax.set_ylabel('Density')
+        ax.set_xlabel('slots')
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        #--------------------------------------------------------------
+        output_loc = self.events_tpattern_dir + str(self.reaper.period.index) + '_tpattern.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf()
+        plt.close()
 
 
     def TS_all_event_curve(self, rlist):
