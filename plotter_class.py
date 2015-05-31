@@ -32,13 +32,15 @@ font = {'size': 38,}
 matplotlib.rc('font', **font)
 plt.rc('legend',**{'fontsize':28})
 
-colors = ['r', 'b', 'g', 'y', 'm', 'cyan', 'dive', 'darkorange', 'mediumpurple', 'salmon']
+colors = ['r', 'b', 'g', 'y', 'm', 'cyan', 'darkorange',\
+          'mediumpurple', 'salmon', 'lime', 'hotpink']
 
 default_color = 'k'
 
 class Plotter():
 
     def __init__(self, reaper):
+        self.mr = None
         self.reaper = reaper
         self.pfx_input_dir = reaper.get_output_dir_pfx()
         self.event_input_dir = reaper.get_output_dir_event()
@@ -51,6 +53,8 @@ class Plotter():
         self.events_tpattern_dir = pub_plot_dir + 'events_time_pattern/'
         cmlib.make_dir(self.events_tpattern_dir)
 
+    def set_multi_reaper(self, mr):
+        self.mr = mr
 
     def all_events_tpattern_curve(self):
         index = self.reaper.period.index
@@ -201,6 +205,121 @@ class Plotter():
             plt.plot((occur_dt, occur_dt), (0, y_high), 'k--', lw=4)
 
         output_loc = self.TS_events_dot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
+        #output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def TS_event_cluster_dot_mr(self):
+        cluster_list = list()
+        cluster_f = open(self.mr.events_cluster_path(), 'r')
+        for line in cluster_f:
+            print line
+            line = line.rstrip('\n')
+            int_list = line.split('|')
+            for i in int_list:
+                if i:
+                    cluster_list.append(int(i))
+
+        print 'clusters: ', cluster_list
+
+        #if index in ([0,16]):
+        #    y_high = 0.1
+        #else:
+        #    y_high = 0.03 # Be careful! Setting this may miss some points!
+        
+        y_high = 0.075
+
+        value = list()
+        dt = list()
+        dt2value = dict()
+
+        fig = plt.figure(figsize=(60, 10))
+        ax = fig.add_subplot(111)
+        
+        for reaper in self.mr.rlist:
+            file = reaper.get_output_dir_event() + 'events_plusminus.txt'
+            f = open(file, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix_dt = float(line.split(':')[0])
+                the_dt = datetime.datetime.utcfromtimestamp(unix_dt)
+                dt.append(the_dt)
+                the_list = ast.literal_eval(line.split(':')[1])
+                rsize = the_list[0]
+                value.append(rsize)
+                dt2value[the_dt] = rsize
+            f.close()
+
+        sorted_dt = sorted(dt2value.keys())
+        cluster2dtset = dict()
+        assert len(cluster_list) == len(sorted_dt)
+        for i in xrange(0, len(sorted_dt)):
+            try:
+                cluster2dtset[cluster_list[i]].add(sorted_dt[i])
+            except:
+                cluster2dtset[cluster_list[i]] = set([sorted_dt[i]])
+
+        #print 'cluster2dtset:', cluster2dtset
+        #print 'dt2value:', dt2value
+        #print 'dt:', dt2value.keys()
+        #----------------------------------------------------
+        # different clusters are assigned different colors
+        if -1 in cluster2dtset.keys():
+            dt_list = list()
+            value_list = list()
+            for tmp_dt in cluster2dtset[-1]:
+                dt_list.append(tmp_dt)
+                value_list.append(dt2value[tmp_dt])
+            print dt_list
+            print value_list
+            assert len(dt_list) == len(value_list)
+            plt.scatter(dt_list, value_list, s=150, facecolor=default_color, edgecolors='none')
+
+        color_index = 0
+        for c in cluster2dtset:
+            dt_list = list()
+            value_list = list()
+            if c == -1:
+                continue
+            for tmp_dt in cluster2dtset[c]:
+                dt_list.append(tmp_dt)
+                value_list.append(dt2value[tmp_dt])
+            print dt_list
+            print value_list
+            assert len(dt_list) == len(value_list)
+            print colors[color_index]
+            plt.scatter(dt_list, value_list, s=150, facecolor=colors[color_index], edgecolors='none')
+            color_index += 1
+
+
+        ax.set_ylabel('Relative size')
+        ax.set_xlabel('Date')
+        myFmt = mpldates.DateFormatter('%b\n%d')
+        ax.xaxis.set_major_formatter(myFmt)
+
+        #sdate = self.reaper.period.sdate
+        #year = int(sdate[0:4])
+        #month = int(sdate[4:6])
+        #day = int(sdate[6:8])
+        #sdate = datetime.datetime(year, month, day)
+        #edate = self.reaper.period.edate
+        #year = int(edate[0:4])
+        #month = int(edate[4:6])
+        #day = int(edate[6:8])
+        #edate = datetime.datetime(year, month, day)
+        #ax.set_xlim([mpldates.date2num(sdate), mpldates.date2num(edate)])
+        ax.set_ylim([0,y_high]) # Be careful!
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+        # polt a line
+        #if occur_dt is not None:
+        #    plt.plot((occur_dt, occur_dt), (0, y_high), 'k--', lw=4)
+
+        output_loc = datadir + 'final_output/all_TS_event_dot.pdf'
         #output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure

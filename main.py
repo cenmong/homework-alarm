@@ -2,6 +2,7 @@ from period_class import Period
 from env import *
 from alarm_class import Alarm
 from reaper_class import Reaper
+from multi_reaper_class import MultiReaper
 from plotter_class import Plotter
 #from plot_matrix import plot_matrix
 
@@ -10,11 +11,12 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'plot':1}
+action = {'middle':0, 'final':0, 'plot':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
+index_list = [281,282,283,284,285]
 
+reaperlist = list()
 for i in index_list:
     # Note: different applications may require different monitor and prefix sets!
     my_period = Period(i)
@@ -32,6 +34,7 @@ for i in index_list:
     reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
     reaper.set_dv_uq_thre(dv_thre, uq_thre)
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
+    reaperlist.append(reaper)
 
     if action['final']:
         #----------------------------------
@@ -44,14 +47,14 @@ for i in index_list:
         # future TODO select results of only part of the monitors to observe its impact
 
         #reaper.detect_event()
-        #reaper.all_events_cluster()
-        reaper.all_events_tpattern()
+        reaper.all_events_cluster()
+        #reaper.all_events_tpattern()
 
     if action['plot']:
         plotter = Plotter(reaper)
         #plotter.TS_event_dot()
-        #plotter.TS_event_cluster_dot()
-        plotter.all_events_tpattern_curve()
+        plotter.TS_event_cluster_dot()
+        #plotter.all_events_tpattern_curve()
 
         ''' 
         #--------------------------------------------
@@ -95,4 +98,13 @@ for i in index_list:
             print 'Ploting matrix:', mdir+mf
             plot_matrix(mdir+mf, plotdir+mf.split('.')[0]+'.pdf') #TODO specify a range?
     '''
+
+#------------------------------------------------------------------
+#combined analysis of all reapers
+mr = MultiReaper(reaperlist)
+#mr.all_events_cluster()
+pl = Plotter(reaper)
+pl.set_multi_reaper(mr)
+pl.TS_event_cluster_dot_mr()
+
 logging.info('Program ends!')
