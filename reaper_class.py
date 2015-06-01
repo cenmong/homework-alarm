@@ -790,6 +790,8 @@ class Reaper():
                 self.event_width -= 1
 
         self.event_size = float(self.event_height * self.event_width)
+        if self.event_size == 0:
+            return 0
 
         if self.event_size < self.thre_size or self.event_width < self.thre_width:
             logging.info('%d : too small after preprocessing', unix_dt)
