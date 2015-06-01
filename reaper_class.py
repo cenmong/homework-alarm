@@ -183,6 +183,9 @@ class Reaper():
         #self.events_brief_fname = 'events_new.txt'
         self.events_brief_fname = 'events_plusminus.txt'
 
+
+        self.dt2size = dict()
+
     # get prefix 2 as mapping from only RouteViews2 collector's RIB
     # TODO test needed
     def get_pfx2as(self):
@@ -790,7 +793,9 @@ class Reaper():
 
         if self.event_size < self.thre_size or self.event_width < self.thre_width:
             logging.info('%d : too small after preprocessing', unix_dt)
-            return -1
+            #-------------------------------------
+            # XXX comment out: now we want the size for each slot
+            #return -1
 
         self.init_attri(all_rows, all_cols)
 
@@ -893,6 +898,9 @@ class Reaper():
                     self.event_den,self.event_height,self.event_width]
             logging.info('%d this is an event!')
             return 100
+
+        else:
+            self.dt2size[unix_dt] = relative_size
         
         return -1
 
@@ -1275,9 +1283,23 @@ class Reaper():
         return self.get_output_dir_event() + 'clustering.txt'
 
     def detect_event(self):
+        #------------------------------------
+        # XXX for getting the sizes of all slots
+        analyzed_dt = set()
+        dt2event = self.get_events_list()
+        for dt in dt2event:
+            self.dt2size[dt] = dt2event[dt][0]
+            analyzed_dt.add(dt)
+
+        print self.dt2size
+
         #self.filegroups = self.filegroups[17:] # FIXME test
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            #------------------------------------
+            # XXX for getting the sizes of all slots
+            if unix_dt in analyzed_dt:
+                continue
 
             #if unix_dt != 1229733600: # test
             #    continue
@@ -1325,6 +1347,7 @@ class Reaper():
             #code = self.analyze_bmatrix_new(unix_dt) # new algorithm
             code = self.analyze_bmatrix_plusminus(unix_dt)
 
+            '''
             if code == 100: # found an event
                 col_set = set()
                 row_set = set()
@@ -1342,6 +1365,7 @@ class Reaper():
                     pfx = self.index2pfx[r]
                     f.write(pfx+':'+str(self.c_pfx_data[pfx])+'\n')
                 f.close()
+            '''
 
             # release memory 
             del self.bmatrix
@@ -1426,11 +1450,19 @@ class Reaper():
         return self.get_output_dir_event() + self.events_brief_fname
 
     def output_event(self):
+        '''
         output_path = self.get_output_fpath_event_brief()
         
         f = open(output_path, 'w')
         for dt in self.events:
             f.write(str(dt)+':'+str(self.events[dt])+'\n')
+        f.close()
+        '''
+
+        all_size_path = self.get_output_dir_event() + 'all_slot_size.txt'
+        f = open(all_size_path, 'w')
+        for dt in self.dt2size:
+            f.write(str(dt)+':'+str(self.dt2size[dt])+'\n')
         f.close()
             
     def all_events_tpattern(self): # time patterns of all events
