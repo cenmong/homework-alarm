@@ -1036,11 +1036,11 @@ class Reaper():
             if not self.out_value2colset: # it is possible that out column set is empty
                 self.out_candi_col = -1
                 self.out_candicol_ones = -1
-
-            large = max(self.out_value2colset.keys())
-            self.out_candi_col = self.out_value2colset[large].pop()
-            self.out_value2colset[large].add(self.out_candi_col)
-            self.out_candicol_ones = large
+            else:
+                large = max(self.out_value2colset.keys())
+                self.out_candi_col = self.out_value2colset[large].pop()
+                self.out_value2colset[large].add(self.out_candi_col)
+                self.out_candicol_ones = large
         else:
             self.out_candi_col = self.out_value2colset[ones_value].pop()
             self.out_value2colset[ones_value].add(self.out_candi_col) # must
