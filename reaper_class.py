@@ -791,6 +791,7 @@ class Reaper():
 
         self.event_size = float(self.event_height * self.event_width)
         if self.event_size == 0:
+            self.dt2size[unix_dt] = 0
             return 0
 
         if self.event_size < self.thre_size or self.event_width < self.thre_width:
@@ -835,18 +836,28 @@ class Reaper():
             #----------------------------------
             # deletion 1) compare deletion utility 2) check width threshold
 
-            rows_du = ((self.event_ones-self.in_candirow_ones)/\
-                    (self.event_size-self.event_width)-self.event_den)/self.event_width
-            cols_du = ((self.event_ones-self.in_candicol_ones)/\
-                    (self.event_size-self.event_height)-self.event_den)/self.event_height
+            print self.event_size, self.event_width, self.event_height
+            if self.event_size > self.event_width:
+                rows_du = ((self.event_ones-self.in_candirow_ones)/\
+                        (self.event_size-self.event_width)-self.event_den)/self.event_width
+            else:
+                rows_du = -999
+            if self.event_size > self.event_height:
+                cols_du = ((self.event_ones-self.in_candicol_ones)/\
+                        (self.event_size-self.event_height)-self.event_den)/self.event_height
+            else:
+                cols_du = -999
             #print self.event_ones,self.in_candicol_ones,self.event_size,self.event_height,self.event_den
 
             # we ignore any height threshold because the size threshold will be adequate
             if self.event_width - 1 < self.thre_width: # cannot delete any more columns
                 cols_du = -999
-            #print self.event_height, self.event_width, self.thre_width
+            if len(self.in_value2rowset.keys()) == 1: # no more row deletion possible
+                rows_du = -999
 
-            if rows_du >= cols_du: # if cols_du is -999 this will definitly be true
+            if rows_du == -999 and cols_du == -999:
+                break
+            elif rows_du >= cols_du: # if cols_du is -999 this will definitly be true
                 self.event_del_row()
             else:
                 self.event_del_col()
@@ -900,9 +911,10 @@ class Reaper():
                     self.event_den,self.event_height,self.event_width]
             logging.info('%d this is an event!')
             return 100
-
-        else:
+        elif self.event_den >= self.thre_den:
             self.dt2size[unix_dt] = relative_size
+        else:
+            self.dt2size[unix_dt] = 0
         
         return -1
 
