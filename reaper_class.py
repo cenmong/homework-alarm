@@ -1576,3 +1576,158 @@ class Reaper():
 
     def events_tpattern_path(self):
         return self.get_output_dir_event() + 'time_pattern.txt'
+
+    def all_events_ratios(self):
+        event_dict = self.get_events_list()
+
+        unix2ones = dict()
+        unix2udt = dict()
+        unix2udt_per_one = dict()
+        unix2width = dict()
+        for unix_dt in event_dict:
+            rel_size = event_dict[unix_dt][0] # relative size
+            width = event_dict[unix_dt][4]
+            size = event_dict[unix_dt][1]
+            height = event_dict[unix_dt][3] # or prefix number
+
+            #---------------------------------------------
+            # obtain the prefix and monitor(index) sets of the event
+            pfx_set = set()
+            mon_set = set()
+
+            event_fpath = self.get_output_dir_event() + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                else:
+                    pfx_set.add(line.split(':')[0])
+            f.close()
+
+
+            #-----------------------------------
+            # read the middle files
+            target_fg = None
+            for fg in self.filegroups:
+                if int(fg[0].rstrip('.txt.gz')) == unix_dt:
+                    target_fg = fg
+                    break
+
+            pfx_int_data = dict()
+            for fname in target_fg:
+                floc = self.middle_dir + fname
+                print 'Reading ', floc
+                p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+                fin = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in fin:
+                    line = line.rstrip('\n')
+                    if line == '':
+                        continue
+
+                    pfx = line.split(':')[0]
+                    datalist = ast.literal_eval(line.split(':')[1])
+
+                    try:
+                        c_list = pfx_int_data[pfx]
+                        combined = [x+y for x,y in zip(datalist, c_list)]
+                        pfx_int_data[pfx] = combined
+                    except:
+                        pfx_int_data[pfx] = datalist
+
+            #------------------------------------------
+            # get the number of updates and 1s in and out of the event
+            udt_num = 0 # number of updates (total)
+            for pfx in pfx_int_data:
+                the_sum = sum(pfx_int_data[pfx])
+                udt_num += the_sum
+
+            udt_in_num = 0 # number of updates (in)
+            for pfx in pfx_set:
+                for mon_index in mon_set:
+                    udt_in_num += pfx_int_data[pfx][mon_index]
+
+            udt_out_num = udt_num - udt_in_num # number of updates (out)
+            print udt_num
+            print udt_in_num
+
+            unix2udt[unix_dt] = [rel_size, udt_num, udt_in_num]
+
+            ones_num = 0 # number of ones (total)
+            for pfx in pfx_int_data:
+                datalist = pfx_int_data[pfx]
+                for data in datalist:
+                    if data > 0:
+                        ones_num += 1
+
+            ones_in_num = 0 # number of ones (in)
+            for pfx in pfx_set:
+                for mon_index in mon_set:
+                    if pfx_int_data[pfx][mon_index] > 0:
+                        ones_in_num += 1
+
+            ones_out_num = ones_num - ones_in_num # number of ones (out)
+            print ones_num
+            print ones_in_num
+
+            unix2ones[unix_dt] = [rel_size, ones_num, ones_in_num]
+            unix2udt_per_one[unix_dt] = [rel_size, float(udt_out_num)/float(ones_out_num), float(udt_in_num)/float(ones_in_num)]
+            print float(udt_out_num)/float(ones_out_num)
+            print float(udt_in_num)/float(ones_in_num)
+
+            unix2width[unix_dt] = [rel_size, width]
+            '''
+            #--------------------------------------------
+            # analyze prefixes
+            all_pfx_num = self.period.get_fib_size()
+            prefix_ratio = float(height) / float(all_pfx_num) # ratio of prefix
+            print prefix_ratio
+
+            #-------------------------------------------
+            # distribution of origin ASes TODO: move to somewhere else
+            all_AS_num = self.period.get_AS_num() # ratio of origin AS
+
+            pfx2as = self.period.get_pfx2as()
+            asn_dict = dict()
+            for pfx in pfx_set:
+                try:
+                    asn = pfx2as[pfx]
+                except:
+                    asn = -1
+                try:
+                    asn_dict[asn] += 1
+                except:
+                    asn_dict[asn] = 1
+
+            #for asn in asn_dict:
+            #    asn_dict[asn] = float(asn_dict[asn]) / float(all_AS_num)
+            print asn_dict
+            '''
+    
+        #-----------------------------------------
+        # TODO: write result to files
+        f = open(self.events_ratios_path(), 'w')
+        for unix in unix2udt:
+            f.write('UPDATE|')
+            f.write(str(unix)+'|')
+            for item in unix2udt[unix]:
+                f.write(str(item)+'|')
+            f.write('\n')
+        for unix in unix2ones:
+            f.write('ONE|')
+            f.write(str(unix)+'|')
+            for item in unix2ones[unix]:
+                f.write(str(item)+'|')
+            f.write('\n')
+        for unix in unix2udt_per_one:
+            f.write('UPerO|')
+            f.write(str(unix)+'|')
+            for item in unix2udt_per_one[unix]:
+                f.write(str(item)+'|')
+            f.write('\n')
+        f.close()
+
+    def events_ratios_path(self):
+        return self.get_output_dir_event() + 'ratios.txt'
+
