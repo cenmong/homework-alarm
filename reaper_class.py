@@ -1677,36 +1677,9 @@ class Reaper():
             print float(udt_in_num)/float(ones_in_num)
 
             unix2width[unix_dt] = [rel_size, width]
-            '''
-            #--------------------------------------------
-            # analyze prefixes
-            all_pfx_num = self.period.get_fib_size()
-            prefix_ratio = float(height) / float(all_pfx_num) # ratio of prefix
-            print prefix_ratio
-
-            #-------------------------------------------
-            # distribution of origin ASes TODO: move to somewhere else
-            all_AS_num = self.period.get_AS_num() # ratio of origin AS
-
-            pfx2as = self.period.get_pfx2as()
-            asn_dict = dict()
-            for pfx in pfx_set:
-                try:
-                    asn = pfx2as[pfx]
-                except:
-                    asn = -1
-                try:
-                    asn_dict[asn] += 1
-                except:
-                    asn_dict[asn] = 1
-
-            #for asn in asn_dict:
-            #    asn_dict[asn] = float(asn_dict[asn]) / float(all_AS_num)
-            print asn_dict
-            '''
     
         #-----------------------------------------
-        # TODO: write result to files
+        # write result to file
         f = open(self.events_ratios_path(), 'w')
         for unix in unix2udt:
             f.write('UPDATE|')
@@ -1731,3 +1704,52 @@ class Reaper():
     def events_ratios_path(self):
         return self.get_output_dir_event() + 'ratios.txt'
 
+    # FIXME too many -1. maybe I should get the last hop of update
+    def all_events_oriAS_distri(self): # the distribution of origin ASes
+        event_dict = self.get_events_list()
+
+        pfx2as = self.period.get_pfx2as()
+        for unix_dt in event_dict:
+            #---------------------------------------------
+            # obtain the prefix and monitor(index) sets of the event
+            pfx_set = set()
+            mon_set = set()
+
+            event_fpath = self.get_output_dir_event() + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                else:
+                    pfx_set.add(line.split(':')[0])
+            f.close()
+
+            '''
+            #--------------------------------------------
+            # analyze prefixes
+            all_pfx_num = self.period.get_fib_size()
+            prefix_ratio = float(height) / float(all_pfx_num) # ratio of prefix
+            print prefix_ratio
+
+            #-------------------------------------------
+            # distribution of origin ASes TODO: move to somewhere else
+            all_AS_num = self.period.get_AS_num() # ratio of origin AS
+            '''
+            asn_dict = dict()
+            for pfx in pfx_set:
+                try:
+                    asn = pfx2as[pfx]
+                except:
+                    asn = -1
+                try:
+                    asn_dict[asn] += 1
+                except:
+                    asn_dict[asn] = 1
+
+            #for asn in asn_dict:
+            #    asn_dict[asn] = float(asn_dict[asn]) / float(all_AS_num)
+            print asn_dict
+
+        def events_oriAS_distri_path(self):
+            return self.get_output_dir_event() + 'oriAS_distri.txt'

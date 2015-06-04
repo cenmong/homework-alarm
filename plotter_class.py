@@ -32,8 +32,9 @@ font = {'size': 38,}
 matplotlib.rc('font', **font)
 plt.rc('legend',**{'fontsize':28})
 
-colors = ['r', 'b', 'g', 'y', 'm', 'cyan', 'darkorange',\
-          'mediumpurple', 'salmon', 'lime', 'hotpink']
+colors = ['r', 'b', 'g', 'yellow', 'm', 'cyan', 'darkorange',\
+          'mediumpurple', 'salmon', 'lime', 'hotpink', '',\
+          'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
 
 default_color = 'k'
 

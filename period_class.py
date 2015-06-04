@@ -1,6 +1,7 @@
 import downloader_class
 from  env import *
 
+import urllib
 import subprocess
 import hashlib
 import calendar
@@ -596,7 +597,7 @@ class Period():
 
             f.close()
         else:
-            # Extract info from RIB of the monitor route-views2
+            # Extract info from RIB of the monitor route-views2 and XXX
             mydate = self.sdate[0:4] + '.' + self.sdate[4:6]
             rib_location = datadir+'archive.routeviews.org/bgpdata/'+mydate+'/RIBS/'
             dir_list = os.listdir(datadir+'archive.routeviews.org/bgpdata/'+mydate+'/RIBS/')

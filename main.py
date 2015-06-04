@@ -15,7 +15,7 @@ action = {'middle':0, 'final':1, 'plot':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281,282,283,284,285]
-index_list = [11]
+index_list = [21]
 
 reaperlist = list()
 for i in index_list:
@@ -50,7 +50,8 @@ for i in index_list:
         #reaper.detect_event()
         #reaper.all_events_cluster()
         #reaper.all_events_tpattern()
-        reaper.all_events_ratios()
+        #reaper.all_events_ratios()
+        reaper.all_events_oriAS_distri()
 
     if action['plot']:
         plotter = Plotter(reaper)
