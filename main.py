@@ -11,11 +11,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':1, 'plot':0}
+action = {'middle':0, 'final':0, 'plot':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281,282,283,284,285]
-index_list = [21]
+index_list = [21,22]
 
 reaperlist = list()
 for i in index_list:
@@ -50,13 +50,13 @@ for i in index_list:
         #reaper.detect_event()
         #reaper.all_events_cluster()
         #reaper.all_events_tpattern()
-        #reaper.all_events_ratios()
-        reaper.all_events_oriAS_distri()
+        reaper.all_events_ratios()
+        #reaper.all_events_oriAS_distri()
 
     if action['plot']:
         plotter = Plotter(reaper)
         #plotter.TS_event_dot()
-        plotter.TS_event_cluster_dot()
+        #plotter.TS_event_cluster_dot()
         #plotter.all_events_tpattern_curve()
 
         ''' 
@@ -104,11 +104,11 @@ for i in index_list:
 
 #------------------------------------------------------------------
 #combined analysis of all reapers
-'''
 mr = MultiReaper(reaperlist)
 #mr.all_events_cluster()
 pl = Plotter(reaper)
 pl.set_multi_reaper(mr)
-pl.TS_event_cluster_dot_mr()
-'''
+#pl.TS_event_cluster_dot_mr()
+pl.ratios_dot_mr()
+pl.width_dot_mr()
 logging.info('Program ends!')

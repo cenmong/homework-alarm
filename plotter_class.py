@@ -229,7 +229,7 @@ class Plotter():
         #else:
         #    y_high = 0.03 # Be careful! Setting this may miss some points!
         
-        y_high = 0.075
+        y_high = 0.04
 
         value = list()
         dt = list()
@@ -275,7 +275,7 @@ class Plotter():
             print dt_list
             print value_list
             assert len(dt_list) == len(value_list)
-            plt.scatter(dt_list, value_list, s=150, facecolor=default_color, edgecolors='none')
+            plt.scatter(dt_list, value_list, s=50, facecolor=default_color, edgecolors='none')
 
         color_index = 0
         for c in cluster2dtset:
@@ -290,7 +290,7 @@ class Plotter():
             print value_list
             assert len(dt_list) == len(value_list)
             print colors[color_index]
-            plt.scatter(dt_list, value_list, s=150, facecolor=colors[color_index], edgecolors='none')
+            plt.scatter(dt_list, value_list, s=50, facecolor=colors[color_index], edgecolors='none')
             color_index += 1
 
 
@@ -544,3 +544,71 @@ class Plotter():
             cdf[xlist[i]] = ylist[i]
 
         return cdf 
+
+    def ratios_dot_mr(self):
+        target = ['UPDATE','ONE','UPerO']
+
+        for tar in target:
+            fig = plt.figure(figsize=(16, 16))
+            ax = fig.add_subplot(111)
+
+            xlist = list()
+            ylist = list()
+            for reaper in self.mr.rlist:
+                file = reaper.get_output_dir_event() + 'ratios.txt'
+                f = open(file, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    linetype = line.split('|')[0]
+                    if linetype != tar:
+                        continue
+
+                    if linetype in ('UPDATE', 'ONE'):
+                        rsize = float(line.split('|')[2])
+                        total = float(line.split('|')[3])
+                        in_num = float(line.split('|')[4])
+                        ratio = in_num / total
+                        xlist.append(rsize)
+                        ylist.append(ratio)
+
+                    if linetype == 'UPerO':
+                        rsize = float(line.split('|')[2])
+                        outavg = float(line.split('|')[3])
+                        inavg = float(line.split('|')[4])
+                        xlist.append(outavg)
+                        ylist.append(inavg)
+                f.close()
+
+            plt.scatter(xlist, ylist, s=150, facecolor='none', edgecolors='b')
+
+            if tar == 'UPerO':
+                print 'XXXXXXXXXXXXXXXXXXXX'
+                ax.set_ylim([0,10]) # Be careful!
+                ax.set_xlim([0,10]) # Be careful!
+
+            output_loc = pub_plot_dir + tar + '.pdf'
+            plt.savefig(output_loc, bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()
+
+    def width_dot_mr(self):
+        xlist = list()
+        ylist = list()
+        for reaper in self.mr.rlist:
+            file = self.event_input_dir + 'events_plusminus.txt'
+            f = open(file, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                the_list = ast.literal_eval(line.split(':')[1])
+                rsize = the_list[0]
+                width = the_list[4]
+                xlist.append(rsize)
+                ylist.append(width)
+            f.close()
+
+        plt.scatter(xlist, ylist, s=150, facecolor='none', edgecolors='b')
+        output_loc = pub_plot_dir + 'width.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
