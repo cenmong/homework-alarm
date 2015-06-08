@@ -13,7 +13,8 @@ import os
 import logging
 logging.info('Program starts!')
 
-index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
+#index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
+index_list = [282]
 
 for index in index_list:
     print 'index = ', index
@@ -30,6 +31,7 @@ for index in index_list:
     reaper.set_event_thre(0.005, 0.4, 0.8) # to find the correct directory
 
     mf = Micro_fighter(reaper) # initialize
+    mf.update_type(1360813800) # largest event in 2013
     #micro_fighter.set_sedate(sdt_obj, edt_obj)
     #micro_fighter.analyze_pfx()
 
@@ -37,10 +39,6 @@ for index in index_list:
     #mf.event_analyze_pfx(1365604200)
 
     #TODO remove the result file if exists
-    #mf.all_events_ratios()
-
-    #mf.all_events_tpattern()
-    mf.all_events_cluster()
 
     '''
     ASes = [9121, 47331]

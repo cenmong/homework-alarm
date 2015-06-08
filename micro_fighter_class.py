@@ -36,7 +36,7 @@ class Micro_fighter():
         self.sdt_obj = None
         self.edt_obj = None
 
-        self.filelist = self.period.get_filelist()
+        self.updt_filel = self.period.get_filelist()
 
         self.mfilegroups = None
 
@@ -163,22 +163,6 @@ class Micro_fighter():
             # TODO: write result to files
 
 
-    def get_events_list(self):
-        event_dict = dict()
-
-        path = self.reaper.get_output_dir_event() + self.reaper.events_brief_fname
-        f = open(path, 'r')
-        for line in f:
-            line = line.rstrip('\n')
-            unix_dt = int(line.split(':')[0])
-            content = line.split(':')[1]
-            thelist = ast.literal_eval(content)
-            event_dict[unix_dt] = thelist
-        f.close()
-
-        return event_dict
-
-
     def set_sedate(self, sdt_obj, edt_obj):
         self.sdt_obj = sdt_obj
         self.edt_obj = edt_obj
@@ -235,8 +219,41 @@ class Micro_fighter():
         return pfx_set
 
 
+    def update_type(self, unix_dt):
+        event_dict = self.reaper.get_events_list()
+        rel_size = event_dict[unix_dt][0] # relative size
+        width = event_dict[unix_dt][4]
+        size = event_dict[unix_dt][1]
+        height = event_dict[unix_dt][3] # or prefix number
+
+        pfx_set = set()
+        mon_set = set()
+
+        event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+        f = open(event_fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('Mo'):
+                mon_set = ast.literal_eval(line.split('set')[1])
+            else:
+                pfx_set.add(line.split(':')[0])
+        f.close()
+
+        #--------------------------------------------------------
+        # Read update files
+        sdt_unix = unix_dt
+        edt_unix = unix_dt + self.reaper.granu * 60
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(updatefile)
+
+        target_updtfiles = cmlib.select_update_file(updt_files, sdt_unix, edt_unix) # TODO
+
+
     def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
-        fmy = open(self.filelist, 'r')
+        fmy = open(self.updt_filel, 'r')
         sdt_unix = calendar.timegm(sdt_obj.utctimetuple())
         edt_unix = calendar.timegm(edt_obj.utctimetuple())
         print sdt_unix, edt_unix
@@ -258,7 +275,7 @@ class Micro_fighter():
             target_dict[m] = dict()
             target_record[m] = dict()
 
-        #fpath_list = cmlib.get_file_list_indate(self.filelist, sdt_obj, edt_obj)
+        #fpath_list = cmlib.get_file_list_indate(self.updt_filel, sdt_obj, edt_obj)
 
         for fline in fmy:
             # get date from file name
@@ -511,7 +528,7 @@ class Micro_fighter():
 
 
         # obtain the target update file list
-        f = open(self.filelist, 'r')
+        f = open(self.updt_filel, 'r')
         for fline in f:
             # get date from file name
             updatefile = fline.split('|')[0]

@@ -4,6 +4,7 @@ from alarm_class import Alarm
 from reaper_class import Reaper
 from multi_reaper_class import MultiReaper
 from plotter_class import Plotter
+from micro_fighter_class import Micro_fighter
 #from plot_matrix import plot_matrix
 
 import cmlib
@@ -11,7 +12,7 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'plot':0}
+action = {'middle':0, 'final':0, 'micro':1, 'plot':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281,282,283,284,285]
