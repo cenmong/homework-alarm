@@ -243,6 +243,14 @@ class Micro_fighter():
             updatefile = fline.split('|')[0]
             updt_files.append(datadir+updatefile)
 
+        #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
+        mp_dict = dict() # mon: prefix: successive update type series (0~5)
+        mp_last_A = dict() # mon: prefix: latest full update
+        mp_last_type = dict()
+        for m in mon_set:
+            mp_dict[m] = dict()
+            mp_last_A[m] = dict() # NOTE: does not record W, only record A
+            mp_last_type[m] = dict()
 
         fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix) # TODO: test
         for fpath in fpathlist:
@@ -258,80 +266,73 @@ class Micro_fighter():
                     type = attr[2]
                     mon = attr[3]
 
-                    #if type == 'W':
-                    #    continue
-                    if mon not in target_mon:
-                        continue
-                        
-                    if pfx not in target_pfx:
+                    if (mon not in mon_set) or (pfx not in pfx_set):
                         continue
 
                     if type == 'A':
                         as_path = attr[6]
-                        #as_list = as_path.split()
-                        #mylen = len(as_list)
-                        #for i in xrange(0, mylen-1):
-                        #    as1 = int(as_list[i])
-                        #    as2 = int(as_list[i+1])
-
-                        #    if as1 == as2:
-                        #        continue
-                        #    
-                        #    if as1 in ASes and as2 in ASes and i == mylen-2: # last hop
-                        #        analyze = True
-                        #        break
-
-                    #pfx_set.add(pfx)
-                    try:
-                        test = target_dict[mon][pfx]
-                    except:
-                        target_dict[mon][pfx] = list() # list of 0~5
 
                     try:
-                        last_update = target_record[mon][pfx]
-                        last_attr = last_update.split('|')
-                        last_type = last_attr[2]
-                        if last_type is 'A':
-                            last_as_path = last_attr[6]
+                        test = mp_dict[mon][pfx]
                     except:
-                        last_type = 'W'
-                        last_as_path = 'Nothing'
+                        mp_dict[mon][pfx] = list() # list of 0~5
 
-                    if last_type is 'W':
-                        if type is 'W':
+                    try:
+                        last_A = mp_last_A[mon][pfx]
+                        last_as_path = last_A.split('|')[6]
+                    except:
+                        last_A = None
+                        last_as_path = None
+
+                    try:
+                        last_type = mp_last_type[mon][pfx]
+                    except: # this is the first update for the mon-pfx pair
+                        last_type = None
+
+                    if last_type == 'W':
+                        if type == 'W':
                             print 'WW'
-                            target_dict[mon][pfx].append(0)
-                        elif type is 'A':
+                            mp_dict[mon][pfx].append(0)
+                        elif type == 'A':
                             print 'WA'
-                            target_dict[mon][pfx].append(4)
-                            target_record[mon][pfx] = line
+                            if last_as_path:
+                                if as_path == last_as_path:
+                                    mp_dict[mon][pfx].append(41)
+                                else:
+                                    mp_dict[mon][pfx].append(42)
+                            else: # no A record
+                                mp_dict[mon][pfx].append(40)
+                            mp_last_A[mon][pfx] = line
                 
-                    elif last_type is 'A':
-                        if type is 'W':
+                    elif last_type == 'A':
+                        if type == 'W':
                             print 'AW'
-                            target_dict[mon][pfx].append(5)
-                            target_record[mon][pfx] = 'Nothing'
-                        elif type is 'A':
-                            if line == last_update:
+                            mp_dict[mon][pfx].append(5)
+                        elif type == 'A':
+                            if line == last_A:
                                 print 'AAdu1'
-                                target_dict[mon][pfx].append(1)
+                                mp_dict[mon][pfx].append(1)
                             elif as_path == last_as_path:
                                 print 'AAdu2'
-                                target_dict[mon][pfx].append(2)
-                                target_record[mon][pfx] = line
+                                mp_dict[mon][pfx].append(2)
                             else:
                                 print 'AAdiff'
-                                target_dict[mon][pfx].append(3)
-                                target_record[mon][pfx] = line
+                                mp_dict[mon][pfx].append(3)
+                            mp_last_A[mon][pfx] = line
                 
-                    else: # abnormal
-                        continue
+                    else: # last_type is None
+                        if type == 'W':
+                            mp_last_type[mon][pfx] = 'W'
+                        elif type == 'A':
+                            mp_last_type[mon][pfx] = 'A'
+                            mp_last_A[mon][pfx] = line
+                        else:
+                            assert False
                         
                 except Exception, err:
                     if line != '':
                         logging.info(traceback.format_exc())
                         logging.info(line)
-                print len(target_dict['195.66.224.138'])
             myf.close()
 
 
