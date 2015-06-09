@@ -219,13 +219,7 @@ class Micro_fighter():
         return pfx_set
 
 
-    def update_type(self, unix_dt):
-        event_dict = self.reaper.get_events_list()
-        rel_size = event_dict[unix_dt][0] # relative size
-        width = event_dict[unix_dt][4]
-        size = event_dict[unix_dt][1]
-        height = event_dict[unix_dt][3] # or prefix number
-
+    def event_update_pattern(self, unix_dt):
         pfx_set = set()
         mon_set = set()
 
@@ -247,9 +241,98 @@ class Micro_fighter():
         fmy = open(self.updt_filel, 'r')
         for fline in fmy:
             updatefile = fline.split('|')[0]
-            updt_files.append(updatefile)
+            updt_files.append(datadir+updatefile)
 
-        target_updtfiles = cmlib.select_update_file(updt_files, sdt_unix, edt_unix) # TODO
+
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix) # TODO: test
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    #if type == 'W':
+                    #    continue
+                    if mon not in target_mon:
+                        continue
+                        
+                    if pfx not in target_pfx:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+                        #as_list = as_path.split()
+                        #mylen = len(as_list)
+                        #for i in xrange(0, mylen-1):
+                        #    as1 = int(as_list[i])
+                        #    as2 = int(as_list[i+1])
+
+                        #    if as1 == as2:
+                        #        continue
+                        #    
+                        #    if as1 in ASes and as2 in ASes and i == mylen-2: # last hop
+                        #        analyze = True
+                        #        break
+
+                    #pfx_set.add(pfx)
+                    try:
+                        test = target_dict[mon][pfx]
+                    except:
+                        target_dict[mon][pfx] = list() # list of 0~5
+
+                    try:
+                        last_update = target_record[mon][pfx]
+                        last_attr = last_update.split('|')
+                        last_type = last_attr[2]
+                        if last_type is 'A':
+                            last_as_path = last_attr[6]
+                    except:
+                        last_type = 'W'
+                        last_as_path = 'Nothing'
+
+                    if last_type is 'W':
+                        if type is 'W':
+                            print 'WW'
+                            target_dict[mon][pfx].append(0)
+                        elif type is 'A':
+                            print 'WA'
+                            target_dict[mon][pfx].append(4)
+                            target_record[mon][pfx] = line
+                
+                    elif last_type is 'A':
+                        if type is 'W':
+                            print 'AW'
+                            target_dict[mon][pfx].append(5)
+                            target_record[mon][pfx] = 'Nothing'
+                        elif type is 'A':
+                            if line == last_update:
+                                print 'AAdu1'
+                                target_dict[mon][pfx].append(1)
+                            elif as_path == last_as_path:
+                                print 'AAdu2'
+                                target_dict[mon][pfx].append(2)
+                                target_record[mon][pfx] = line
+                            else:
+                                print 'AAdiff'
+                                target_dict[mon][pfx].append(3)
+                                target_record[mon][pfx] = line
+                
+                    else: # abnormal
+                        continue
+                        
+                except Exception, err:
+                    if line != '':
+                        logging.info(traceback.format_exc())
+                        logging.info(line)
+                print len(target_dict['195.66.224.138'])
+            myf.close()
 
 
     def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
