@@ -563,8 +563,11 @@ class Plotter():
                     if linetype != tar:
                         continue
 
+                    rsize = float(line.split('|')[2])
+                    if rsize < 0.007:
+                        continue
+
                     if linetype in ('UPDATE', 'ONE'):
-                        rsize = float(line.split('|')[2])
                         total = float(line.split('|')[3])
                         in_num = float(line.split('|')[4])
                         ratio = in_num / total
@@ -572,7 +575,6 @@ class Plotter():
                         ylist.append(ratio)
 
                     if linetype == 'UPerO':
-                        rsize = float(line.split('|')[2])
                         outavg = float(line.split('|')[3])
                         inavg = float(line.split('|')[4])
                         xlist.append(outavg)
@@ -582,9 +584,9 @@ class Plotter():
             plt.scatter(xlist, ylist, s=150, facecolor='none', edgecolors='b')
 
             if tar == 'UPerO':
-                print 'XXXXXXXXXXXXXXXXXXXX'
                 ax.set_ylim([0,10]) # Be careful!
                 ax.set_xlim([0,10]) # Be careful!
+                plt.plot([0,10],[0,10],'k-')
 
             output_loc = pub_plot_dir + tar + '.pdf'
             plt.savefig(output_loc, bbox_inches='tight')
@@ -592,8 +594,11 @@ class Plotter():
             plt.close()
 
     def width_dot_mr(self):
+        fig = plt.figure(figsize=(16, 16))
+        ax = fig.add_subplot(111)
         xlist = list()
         ylist = list()
+        count = 0
         for reaper in self.mr.rlist:
             file = self.event_input_dir + 'events_plusminus.txt'
             f = open(file, 'r')
@@ -601,12 +606,18 @@ class Plotter():
                 line = line.rstrip('\n')
                 the_list = ast.literal_eval(line.split(':')[1])
                 rsize = the_list[0]
+                if rsize < 0.007:
+                    continue
+                count += 1
                 width = the_list[4]
                 xlist.append(rsize)
                 ylist.append(width)
             f.close()
 
-        plt.scatter(xlist, ylist, s=150, facecolor='none', edgecolors='b')
+        print 'count=',count
+        print xlist
+        print ylist
+        plt.scatter(xlist, ylist, s=400, facecolor='none', edgecolors='b')
         output_loc = pub_plot_dir + 'width.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
