@@ -2,7 +2,7 @@ import radix # takes 1/4 the time as patricia
 import datetime
 import numpy as np
 import calendar # do not use the time module
-import cmlib
+from cmlib import *
 import operator
 import string
 import gzip
@@ -221,6 +221,7 @@ class Micro_fighter():
 
     def event_update_pattern(self, unix_dt):
         pfx_set = set()
+        mon_iset = set()
         mon_set = set()
 
         event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
@@ -228,10 +229,22 @@ class Micro_fighter():
         for line in f:
             line = line.rstrip('\n')
             if line.startswith('Mo'):
-                mon_set = ast.literal_eval(line.split('set')[1])
+                mon_iset = ast.literal_eval(line.split('set')[1])
             else:
                 pfx_set.add(line.split(':')[0])
         f.close()
+
+        i2ip = dict()
+        f = open(self.reaper.period.get_mon2index_file_path(), 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            ip = line.split(':')[0]
+            index = int(line.split(':')[1])
+            i2ip[index] = ip
+        f.close()
+
+        for index in mon_iset:
+            mon_set.add(i2ip[index])
 
         #--------------------------------------------------------
         # Read update files
@@ -243,6 +256,7 @@ class Micro_fighter():
             updatefile = fline.split('|')[0]
             updt_files.append(datadir+updatefile)
 
+        num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',41:'WADup',42:'WADiff',5:'AW'}
         #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
         mp_dict = dict() # mon: prefix: successive update type series (0~5)
         mp_last_A = dict() # mon: prefix: latest full update
@@ -252,7 +266,7 @@ class Micro_fighter():
             mp_last_A[m] = dict() # NOTE: does not record W, only record A
             mp_last_type[m] = dict()
 
-        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix) # TODO: test
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix) # TODO: test
         for fpath in fpathlist:
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
@@ -267,6 +281,10 @@ class Micro_fighter():
                     mon = attr[3]
 
                     if (mon not in mon_set) or (pfx not in pfx_set):
+                        continue
+
+                    unix = int(attr[1])
+                    if unix < sdt_unix or unix > edt_unix:
                         continue
 
                     if type == 'A':
@@ -291,10 +309,8 @@ class Micro_fighter():
 
                     if last_type == 'W':
                         if type == 'W':
-                            print 'WW'
                             mp_dict[mon][pfx].append(0)
                         elif type == 'A':
-                            print 'WA'
                             if last_as_path:
                                 if as_path == last_as_path:
                                     mp_dict[mon][pfx].append(41)
@@ -306,17 +322,13 @@ class Micro_fighter():
                 
                     elif last_type == 'A':
                         if type == 'W':
-                            print 'AW'
                             mp_dict[mon][pfx].append(5)
                         elif type == 'A':
                             if line == last_A:
-                                print 'AAdu1'
                                 mp_dict[mon][pfx].append(1)
                             elif as_path == last_as_path:
-                                print 'AAdu2'
                                 mp_dict[mon][pfx].append(2)
                             else:
-                                print 'AAdiff'
                                 mp_dict[mon][pfx].append(3)
                             mp_last_A[mon][pfx] = line
                 
@@ -334,6 +346,26 @@ class Micro_fighter():
                         logging.info(traceback.format_exc())
                         logging.info(line)
             myf.close()
+
+
+        type2num = dict()
+        type2ratio = dict()
+        total = 0
+        for mon in mp_dict:
+            for pfx in mp_dict[mon]:
+                for t in mp_dict[mon][pfx]:
+                    name = num2type[t]
+                    total += 1
+                    try:
+                        type2num[name] += 1
+                    except:
+                        type2num[name] = 1
+        
+        for t in type2num:
+            type2ratio[t] = float(type2num[t]) / float(total)
+
+        print type2num
+        print type2ratio
 
 
     def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
@@ -358,8 +390,6 @@ class Micro_fighter():
         for m in target_mon:
             target_dict[m] = dict()
             target_record[m] = dict()
-
-        #fpath_list = cmlib.get_file_list_indate(self.updt_filel, sdt_obj, edt_obj)
 
         for fline in fmy:
             # get date from file name

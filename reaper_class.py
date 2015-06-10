@@ -1751,5 +1751,12 @@ class Reaper():
             #    asn_dict[asn] = float(asn_dict[asn]) / float(all_AS_num)
             print asn_dict
 
-        def events_oriAS_distri_path(self):
-            return self.get_output_dir_event() + 'oriAS_distri.txt'
+    def events_oriAS_distri_path(self):
+        return self.get_output_dir_event() + 'oriAS_distri.txt'
+
+    '''
+    def get_rel_width(self): # XXX: run this for only once
+        event_dict = self.get_events_list()
+
+        for unix_dt in event_dict:
+    '''
