@@ -266,7 +266,7 @@ class Micro_fighter():
             mp_last_A[m] = dict() # NOTE: does not record W, only record A
             mp_last_type[m] = dict()
 
-        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix) # TODO: test
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
         for fpath in fpathlist:
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
@@ -367,6 +367,94 @@ class Micro_fighter():
         print type2num
         print type2ratio
 
+    def oriAS_in_updt(self, unix_dt):
+        pfx_set = set()
+        mon_iset = set()
+        mon_set = set()
+
+        event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+        f = open(event_fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('Mo'):
+                mon_iset = ast.literal_eval(line.split('set')[1])
+            else:
+                pfx_set.add(line.split(':')[0])
+        f.close()
+
+        i2ip = dict()
+        f = open(self.reaper.period.get_mon2index_file_path(), 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            ip = line.split(':')[0]
+            index = int(line.split(':')[1])
+            i2ip[index] = ip
+        f.close()
+
+        for index in mon_iset:
+            mon_set.add(i2ip[index])
+
+        #--------------------------------------------------------
+        # Read update files
+        sdt_unix = unix_dt
+        edt_unix = unix_dt + self.reaper.granu * 60
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+
+        # XXX Note: 
+        # (1) we record the last existence if multiple A exist
+        # (2) we record when only W exist
+        # (3) we record when inconsistency exists between monitors
+        pfx2oriAS = dict()
+        for pfx in pfx_set:
+            pfx2oriAS[pfx] = -10
+
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    if (mon not in mon_set) or (pfx not in pfx_set):
+                        continue
+
+                    unix = int(attr[1])
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+
+                    oriAS = int(as_path.split()[-1])
+                    pfx2oriAS[pfx] = oriAS
+                        
+                except Exception, err:
+                    if line != '':
+                        logging.info(traceback.format_exc())
+                        logging.info(line)
+            myf.close()
+
+        AS2pfx = dict()
+        for pfx in pfx2oriAS:
+            ASN = pfx2oriAS[pfx]
+            try:
+                AS2pfx[ASN] += 1
+            except:
+                AS2pfx[ASN] = 1
+
+        sorted_x = sorted(AS2pfx.items(), key=operator.itemgetter(1))
+        print sorted_x
 
     def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
         fmy = open(self.updt_filel, 'r')
