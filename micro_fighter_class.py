@@ -437,7 +437,99 @@ class Micro_fighter():
                         as_path = attr[6]
 
                     oriAS = int(as_path.split()[-1])
+                    '''
+                    # seems not necessary. The origin AS is the same
+                    existed = pfx2oriAS[pfx]
+                    if existed != -10:
+                        assert existed == oriAS
+                    else:
+                        pfx2oriAS[pfx] = oriAS
+                    ''' 
                     pfx2oriAS[pfx] = oriAS
+                        
+                except Exception, err:
+                    if line != '':
+                        logging.info(traceback.format_exc())
+                        logging.info(line)
+            myf.close()
+
+        AS2pfx = dict()
+        for pfx in pfx2oriAS:
+            ASN = pfx2oriAS[pfx]
+            try:
+                AS2pfx[ASN] += 1
+            except:
+                AS2pfx[ASN] = 1
+
+        sorted_x = sorted(AS2pfx.items(), key=operator.itemgetter(1))
+        print sorted_x
+
+    def top_AS_ASlink(self, unix_dt):
+        pfx_set = set()
+        mon_iset = set()
+        mon_set = set()
+
+        event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+        f = open(event_fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('Mo'):
+                mon_iset = ast.literal_eval(line.split('set')[1])
+            else:
+                pfx_set.add(line.split(':')[0])
+        f.close()
+
+        i2ip = dict()
+        f = open(self.reaper.period.get_mon2index_file_path(), 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            ip = line.split(':')[0]
+            index = int(line.split(':')[1])
+            i2ip[index] = ip
+        f.close()
+
+        for index in mon_iset:
+            mon_set.add(i2ip[index])
+
+        #--------------------------------------------------------
+        # Read update files
+        sdt_unix = unix_dt
+        edt_unix = unix_dt + self.reaper.granu * 60
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+
+
+        AS2count = dict()
+        ASlink2count = dict()
+
+
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    if (mon not in mon_set) or (pfx not in pfx_set):
+                        continue
+
+                    unix = int(attr[1])
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+
                         
                 except Exception, err:
                     if line != '':

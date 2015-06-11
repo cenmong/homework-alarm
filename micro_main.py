@@ -32,7 +32,11 @@ for index in index_list:
 
     mf = Micro_fighter(reaper) # initialize
     #mf.event_update_pattern(1360813800) # largest event in 2013
-    mf.oriAS_in_updt(1360813800)
+    #mf.oriAS_in_updt(1360813800)
+    mf.top_AS_ASlink(1360813800)
+
+
+
     #micro_fighter.set_sedate(sdt_obj, edt_obj)
     #micro_fighter.analyze_pfx()
 
