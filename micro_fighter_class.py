@@ -284,7 +284,9 @@ class Micro_fighter():
             updatefile = fline.split('|')[0]
             updt_files.append(datadir+updatefile)
 
-        num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',41:'WADup',42:'WADiff',5:'AW'}
+        num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
+                    41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
+                    800:'patho',801:'patho(include WADup)',802:'policy'}
         for n in num2type:
             pattern2count[n] = set()
         #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
@@ -343,14 +345,20 @@ class Micro_fighter():
                         if type == 'W':
                             mp_dict[mon][pfx].append(0)
                             pattern2count[0].add(the_tag)
+                            pattern2count[800].add(the_tag)
+                            pattern2count[801].add(the_tag)
                         elif type == 'A':
                             if last_as_path:
                                 if as_path == last_as_path:
                                     mp_dict[mon][pfx].append(41)
                                     pattern2count[41].add(the_tag)
+                                    pattern2count[799].add(the_tag)
+                                    pattern2count[801].add(the_tag)
                                 else:
                                     mp_dict[mon][pfx].append(42)
                                     pattern2count[42].add(the_tag)
+                                    pattern2count[799].add(the_tag)
+                                    pattern2count[798].add(the_tag)
                             else: # no A record
                                 mp_dict[mon][pfx].append(40)
                                 pattern2count[40].add(the_tag)
@@ -364,12 +372,17 @@ class Micro_fighter():
                             if line == last_A:
                                 mp_dict[mon][pfx].append(1)
                                 pattern2count[1].add(the_tag)
+                                pattern2count[800].add(the_tag)
+                                pattern2count[801].add(the_tag)
                             elif as_path == last_as_path:
                                 mp_dict[mon][pfx].append(2)
                                 pattern2count[2].add(the_tag)
+                                pattern2count[802].add(the_tag)
                             else:
                                 mp_dict[mon][pfx].append(3)
                                 pattern2count[3].add(the_tag)
+                                pattern2count[799].add(the_tag)
+                                pattern2count[798].add(the_tag)
                             mp_last_A[mon][pfx] = line
                 
                     else: # last_type is None
