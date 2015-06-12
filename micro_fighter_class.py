@@ -246,6 +246,34 @@ class Micro_fighter():
         for index in mon_iset:
             mon_set.add(i2ip[index])
 
+        pattern2count = dict()
+        # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx, to save memory
+        pfx2tag = dict()
+        mon2tag = dict()
+
+        start = 100000
+        for pfx in pfx_set:
+            pfx2tag[pfx] = str(start)
+            start += 1
+
+        start = 100
+        for mon in mon_set:
+            mon2tag[mon] = str(start)
+            start += 1
+
+        # get the number of ones within the event
+        ones_num = 0
+        f = open(self.reaper.events_ratios_path(), 'r')
+        for line in f:
+            if not line.startswith('ONE'):
+                continue
+            attr = line.rstrip('\n').split('|')
+            unix = int(attr[1])
+            if unix == unix_dt:
+                ones_num = int(attr[4])
+        f.close()
+        print 'ones_num=',ones_num
+
         #--------------------------------------------------------
         # Read update files
         sdt_unix = unix_dt
@@ -257,6 +285,8 @@ class Micro_fighter():
             updt_files.append(datadir+updatefile)
 
         num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',41:'WADup',42:'WADiff',5:'AW'}
+        for n in num2type:
+            pattern2count[n] = set()
         #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
         mp_dict = dict() # mon: prefix: successive update type series (0~5)
         mp_last_A = dict() # mon: prefix: latest full update
@@ -290,6 +320,8 @@ class Micro_fighter():
                     if type == 'A':
                         as_path = attr[6]
 
+                    the_tag = pfx2tag[pfx] + mon2tag[mon]
+
                     try:
                         test = mp_dict[mon][pfx]
                     except:
@@ -310,26 +342,34 @@ class Micro_fighter():
                     if last_type == 'W':
                         if type == 'W':
                             mp_dict[mon][pfx].append(0)
+                            pattern2count[0].add(the_tag)
                         elif type == 'A':
                             if last_as_path:
                                 if as_path == last_as_path:
                                     mp_dict[mon][pfx].append(41)
+                                    pattern2count[41].add(the_tag)
                                 else:
                                     mp_dict[mon][pfx].append(42)
+                                    pattern2count[42].add(the_tag)
                             else: # no A record
                                 mp_dict[mon][pfx].append(40)
+                                pattern2count[40].add(the_tag)
                             mp_last_A[mon][pfx] = line
                 
                     elif last_type == 'A':
                         if type == 'W':
                             mp_dict[mon][pfx].append(5)
+                            pattern2count[5].add(the_tag)
                         elif type == 'A':
                             if line == last_A:
                                 mp_dict[mon][pfx].append(1)
+                                pattern2count[1].add(the_tag)
                             elif as_path == last_as_path:
                                 mp_dict[mon][pfx].append(2)
+                                pattern2count[2].add(the_tag)
                             else:
                                 mp_dict[mon][pfx].append(3)
+                                pattern2count[3].add(the_tag)
                             mp_last_A[mon][pfx] = line
                 
                     else: # last_type is None
@@ -366,6 +406,25 @@ class Micro_fighter():
 
         print type2num
         print type2ratio
+        sorted_list = sorted(type2num.items(), key=operator.itemgetter(1), reverse=True)
+        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern.txt', 'w')
+        for item in sorted_list:
+            tp = item[0]
+            count = item[1]
+            ratio = type2ratio[tp]
+            f.write(str(tp)+':'+str(count)+' '+str(ratio)+'\n')
+        f.close()
+
+        p2ratio = dict()
+        for p in pattern2count:
+            p2ratio[num2type[p]] = float(len(pattern2count[p])) / float(ones_num)
+        sorted_list = sorted(p2ratio.items(), key=operator.itemgetter(1), reverse=True)
+        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones.txt', 'w')
+        for item in sorted_list:
+            p = item[0]
+            ratio = item[1]
+            f.write(str(p)+':'+str(ratio)+'\n')
+        f.close()
 
     def oriAS_in_updt(self, unix_dt):
         pfx_set = set()
@@ -461,8 +520,14 @@ class Micro_fighter():
             except:
                 AS2pfx[ASN] = 1
 
-        sorted_x = sorted(AS2pfx.items(), key=operator.itemgetter(1))
-        print sorted_x
+        sorted_list = sorted(AS2pfx.items(), key=operator.itemgetter(1), reverse=True)
+        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt', 'w')
+        for item in sorted_list:
+            ASN = item[0]
+            count = item[1]
+            f.write(str(ASN)+':'+str(count)+'\n')
+        f.close()
+
 
     def top_AS_ASlink(self, unix_dt):
         pfx_set = set()
@@ -491,6 +556,19 @@ class Micro_fighter():
         for index in mon_iset:
             mon_set.add(i2ip[index])
 
+        # get the number of ones within the event
+        ones_num = 0
+        f = open(self.reaper.events_ratios_path(), 'r')
+        for line in f:
+            if not line.startswith('ONE'):
+                continue
+            attr = line.rstrip('\n').split('|')
+            unix = int(attr[1])
+            if unix == unix_dt:
+                ones_num = int(attr[4])
+        f.close()
+        print 'ones_num=',ones_num
+
         #--------------------------------------------------------
         # Read update files
         sdt_unix = unix_dt
@@ -502,8 +580,21 @@ class Micro_fighter():
             updt_files.append(datadir+updatefile)
 
 
-        AS2count = dict()
-        ASlink2count = dict()
+        as_count = dict()
+        as_link_count = dict()
+        # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx, to save memory
+        pfx2tag = dict()
+        mon2tag = dict()
+
+        start = 100000
+        for pfx in pfx_set:
+            pfx2tag[pfx] = str(start)
+            start += 1
+
+        start = 100
+        for mon in mon_set:
+            mon2tag[mon] = str(start)
+            start += 1
 
 
         fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
@@ -530,6 +621,38 @@ class Micro_fighter():
                     if type == 'A':
                         as_path = attr[6]
 
+                    # now do something
+                    the_tag = pfx2tag[pfx] + mon2tag[mon]
+
+                    as_list = as_path.split()
+                    mylen = len(as_list)
+                    for i in xrange(0, mylen-1):
+                        as1 = as_list[i]
+                        as2 = as_list[i+1]
+
+                        if as1 == as2:
+                            continue
+
+                        if int(as1) > int(as2):
+                            as_link = as2+'_'+as1
+                        else:
+                            as_link = as1+'_'+as2
+
+                        try:
+                            as_link_count[as_link].add(the_tag)
+                        except:
+                            as_link_count[as_link] = set([the_tag])
+
+                        try:
+                            as_count[as1].add(the_tag)
+                        except:
+                            as_count[as1] = set([the_tag])
+
+                    try:
+                        as_count[as2].add(the_tag)
+                    except:
+                        as_count[as2] = set([the_tag])
+
                         
                 except Exception, err:
                     if line != '':
@@ -537,16 +660,33 @@ class Micro_fighter():
                         logging.info(line)
             myf.close()
 
-        AS2pfx = dict()
-        for pfx in pfx2oriAS:
-            ASN = pfx2oriAS[pfx]
-            try:
-                AS2pfx[ASN] += 1
-            except:
-                AS2pfx[ASN] = 1
 
-        sorted_x = sorted(AS2pfx.items(), key=operator.itemgetter(1))
-        print sorted_x
+        tmp_dict = dict()
+        for al in as_link_count:
+            tmp_dict[al] = float(len(as_link_count[al])) / ones_num
+
+        tmp_list = sorted(tmp_dict.iteritems(),\
+                key=operator.itemgetter(1), reverse=True)
+        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_topASlink.txt', 'w')
+        for item in tmp_list:
+            as_link = item[0]
+            count = item[1]
+            f.write(str(as_link)+':'+str(count)+'\n')
+        f.close()
+
+
+        tmp_dict = dict()
+        for a in as_count:
+            tmp_dict[a] = float(len(as_count[a])) / ones_num
+        tmp_list = sorted(tmp_dict.iteritems(),\
+                key=operator.itemgetter(1), reverse=True)
+        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_topAS.txt', 'w')
+        for item in tmp_list:
+            asn = item[0]
+            count = item[1]
+            f.write(str(asn)+':'+str(count)+'\n')
+        f.close()
+
 
     def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
         fmy = open(self.updt_filel, 'r')
@@ -954,7 +1094,3 @@ class Micro_fighter():
             count = item[1]
             f.write(str(asn)+':'+str(count)+'\n')
         f.close()
-
-        # read the unix_dt.txt file to get prefix and monitor set (a separate function)
-        # read each update file to identify the interested pfx and mon
-        # record the data we care
