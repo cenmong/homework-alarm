@@ -12,11 +12,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':1, 'micro':0, 'plot':0}
+action = {'middle':0, 'final':0, 'micro':0, 'plot':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-#index_list = [281,282,283,284,285,286,287,288,289,2810]
-index_list = [282]
+index_list = [281,282,283,284,285,286,287,288,289,2810]
+#index_list = [281,282]
 
 reaperlist = list()
 for i in index_list:
@@ -105,13 +105,13 @@ for i in index_list:
 
 #------------------------------------------------------------------
 #combined analysis of all reapers
-'''
 mr = MultiReaper(reaperlist)
 #mr.all_events_cluster()
 pl = Plotter(reaper)
 pl.set_multi_reaper(mr)
-#pl.TS_event_cluster_dot_mr()
-pl.ratios_dot_mr()
-pl.width_dot_mr()
-'''
+pl.TS_event_cluster_dot_mr()
+#pl.ratios_dot_mr()
+#pl.width_dot_mr()
+#pl.size_CDFs_mr()
+
 logging.info('Program ends!')

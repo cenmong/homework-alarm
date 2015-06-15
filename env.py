@@ -1,6 +1,8 @@
 from os.path import expanduser
 import datetime
 
+global_rsize_threshold = 0.007 # used for filtering events for analysis
+#---------------------------------------------------------
 datadir = '/media/usb/' # TODO add 'bgp_project/' at end and really change the directories
 homedir = expanduser('~') + '/'
 projectdir = expanduser('~') + '/alarm/'

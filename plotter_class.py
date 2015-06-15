@@ -25,6 +25,7 @@ from matplotlib.dates import HourLocator
 from matplotlib.dates import DayLocator
 from matplotlib.patches import Ellipse
 from matplotlib.patches import Rectangle
+from matplotlib.lines import Line2D
 
 line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
 font = {'size': 38,}
@@ -32,11 +33,28 @@ font = {'size': 38,}
 matplotlib.rc('font', **font)
 plt.rc('legend',**{'fontsize':28})
 
+
+
+
+default_color = 'k'
 colors = ['r', 'b', 'g', 'yellow', 'm', 'cyan', 'darkorange',\
           'mediumpurple', 'salmon', 'lime', 'hotpink', '',\
           'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
+linestyles = ['-', '--', '_', ':']
+markers = []
+for m in Line2D.markers:
+    try:
+        if len(m) == 1 and m != ' ':
+            markers.append(m)
+    except TypeError:
+        pass
+styles = markers + [
+        r'$\lambda$',
+        r'$\bowtie$',
+        r'$\circlearrowleft$',
+        r'$\clubsuit$',
+        r'$\checkmark$']
 
-default_color = 'k'
 
 class Plotter():
 
@@ -586,7 +604,14 @@ class Plotter():
             if tar == 'UPerO':
                 ax.set_ylim([0,10]) # Be careful!
                 ax.set_xlim([0,10]) # Be careful!
+                ax.set_ylabel('updates per one (out)')
+                ax.set_xlabel('updates per one (in)')
                 plt.plot([0,10],[0,10],'k-')
+
+            if tar in ('UPDATE', 'ONE'):
+                ax.set_xlim([0,0.04]) # Be careful!
+                ax.set_ylabel('ratio')
+                ax.set_xlabel('relative size')
 
             output_loc = pub_plot_dir + tar + '.pdf'
             plt.savefig(output_loc, bbox_inches='tight')
@@ -600,7 +625,7 @@ class Plotter():
         ylist = list()
         count = 0
         for reaper in self.mr.rlist:
-            file = self.event_input_dir + 'events_plusminus.txt'
+            file = reaper.get_output_dir_event() + 'events_plusminus.txt'
             f = open(file, 'r')
             for line in f:
                 line = line.rstrip('\n')
@@ -617,9 +642,55 @@ class Plotter():
         print 'count=',count
         print xlist
         print ylist
+        ax.set_ylim([30, 140])
+        ax.set_xlim([0, 0.04])
+        ax.set_ylabel('number of monitors')
+        ax.set_xlabel('relative size')
         plt.scatter(xlist, ylist, s=400, facecolor='none', edgecolors='b')
         output_loc = pub_plot_dir + 'width.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
 
+
+    def size_CDFs_mr(self):
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        count = 0
+        for reaper in self.mr.rlist:
+            vlist = list()
+            xlist = [0] # initialized 
+            ylist = [0]
+
+            file = reaper.get_output_dir_event() + 'all_slot_size.txt'
+            print 'Reading ', file
+            f = open(file, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                size = float(line.split(':')[1])
+                vlist.append(size)
+            f.close()
+
+            vlist.sort()
+            tlen = len(vlist)
+            #print tlen
+            for i in xrange(0,tlen):
+                yindex = i + 1
+                ylist.append(float(yindex) / float(tlen))
+                xlist.append(vlist[i])
+
+            ax.plot(xlist, ylist, linestyle='None', marker=styles[count],\
+                    color=colors[count], markersize=12)
+            #ax.plot(xlist, ylist, 'k--')
+
+            count += 1
+
+        plt.plot((0.007, 0.007), (0, 1.1), 'k--', lw=4)
+        ax.set_ylim([0.8, 1.02])
+        ax.set_xlim([0.003, 0.013])
+        ax.set_ylabel('ratio')
+        ax.set_xlabel('relative size')
+        output_loc = pub_plot_dir + 'all_size_dist.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
