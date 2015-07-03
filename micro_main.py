@@ -11,10 +11,12 @@ import datetime
 import cmlib
 import os
 import logging
+import ast
 logging.info('Program starts!')
 
 #index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-index_list = [282]
+#index_list = [282]
+index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 for index in index_list:
     print 'index = ', index
@@ -31,10 +33,15 @@ for index in index_list:
     reaper.set_event_thre(0.005, 0.4, 0.8) # to find the correct directory
 
     mf = Micro_fighter(reaper) # initialize
-    mf.event_update_pattern(1360813800) # largest event in 2013
+    #mf.event_update_pattern(1360813800) # largest event in 2013
     #mf.oriAS_in_updt(1360813800)
     #mf.top_AS_ASlink(1360813800)
-
+    events = reaper.get_events_list()
+    for unix_dt in events.keys():
+        thelist = events[unix_dt]
+        rsize = thelist[0]
+        if rsize > global_rsize_threshold:
+            mf.event_update_pattern(unix_dt)
 
 
     #micro_fighter.set_sedate(sdt_obj, edt_obj)

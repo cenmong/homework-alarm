@@ -77,6 +77,7 @@ class Plotter():
 
     def all_events_tpattern_curve(self):
         index = self.reaper.period.index
+        edict = self.reaper.get_events_list()
 
         pattern_lol = list() # list of lists
         try:
@@ -86,6 +87,8 @@ class Plotter():
         for line in pattern_f:
             line = line.rstrip('\n')
             unix_dt = int(line.split(':')[0])
+            if edict[unix_dt][0] < global_rsize_threshold:
+                continue
             plist = ast.literal_eval(line.split(':')[1])
             pattern_lol.append(plist)
             print plist
