@@ -7,6 +7,7 @@ import subprocess
 import os
 import ast
 from sklearn.cluster import DBSCAN
+from env import *
 
 from cStringIO import StringIO
 
@@ -27,6 +28,9 @@ class MultiReaper():
                 unix_dt = int(line.split(':')[0])
                 content = line.split(':')[1]
                 thelist = ast.literal_eval(content)
+                rsize = thelist[0]
+                if rsize < global_rsize_threshold:
+                    continue
                 event_dict[unix_dt] = thelist
                 unix2reaper[unix_dt] = reaper
             f.close()
@@ -74,7 +78,8 @@ class MultiReaper():
                 mset2 = mon_set_dict[unix_dt2]
                 JD_m = 1 - float(len(mset1&mset2)) / float(len(mset1|mset2))
 
-                JD = 0.9 * JD_p + 0.1 * JD_m # XXX note the parameters
+                #JD = 0.9 * JD_p + 0.1 * JD_m # XXX note the parameters
+                JD = JD_p
 
                 #the_list.append(JD_p)
                 the_list.append(JD)
@@ -86,7 +91,7 @@ class MultiReaper():
 
         print unix_dt_list
         print d_matrix
-        db = DBSCAN(eps=0.7, min_samples=4, metric='precomputed').fit(the_ndarray)
+        db = DBSCAN(eps=0.8, min_samples=3, metric='precomputed').fit(the_ndarray)
         print db.core_sample_indices_
         print db.components_
         print db.labels_

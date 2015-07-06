@@ -184,7 +184,10 @@ class Reaper():
         self.events_brief_fname = 'events_plusminus.txt'
 
 
-        self.dt2size = dict()
+        # XXX tmp functions
+        self.dt2size = dict() # sizes for ALL slots
+        self.target_dt_rwidth = dict() # LBE dt -> relative width
+
 
     # get prefix 2 as mapping from only RouteViews2 collector's RIB
     # TODO test needed
@@ -905,6 +908,10 @@ class Reaper():
         logging.info('%d final submatrix: %s', unix_dt,str([relative_size, self.event_size,\
                 self.event_den, self.event_height, self.event_width]))
 
+        relative_width = float(self.event_width) / (self.thre_width * 2.5)
+        self.target_dt_rwidth[unix_dt] = relative_width
+        print unix_dt, relative_width
+
         if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
                 and self.event_width >= self.thre_width:
             self.events[unix_dt]=[relative_size,self.event_size,\
@@ -1214,7 +1221,7 @@ class Reaper():
 
         return mylist
 
-    def get_events_list(self):
+    def get_event_dict(self):
         event_dict = dict()
 
         path = self.get_output_dir_event() + self.events_brief_fname
@@ -1233,7 +1240,7 @@ class Reaper():
         pfx_set_dict = dict()
         mon_set_dict = dict()
 
-        event_dict = self.get_events_list()
+        event_dict = self.get_event_dict()
         for unix_dt in event_dict:
 
             #---------------------------------------------
@@ -1297,22 +1304,33 @@ class Reaper():
         return self.get_output_dir_event() + 'clustering.txt'
 
     def detect_event(self):
+
+        # XXX special use: for re-getting the relative width of very large LBEs
+        target_dt = set()
+
         #------------------------------------
-        # XXX for getting the sizes of all slots
+        # XXX special use: for getting the sizes of all slots
         analyzed_dt = set()
-        dt2event = self.get_events_list()
+        dt2event = self.get_event_dict()
         for dt in dt2event:
-            self.dt2size[dt] = dt2event[dt][0]
+            rsize = dt2event[dt][0]
+            self.dt2size[dt] = rsize # dt -> relative size
             analyzed_dt.add(dt)
 
-        print self.dt2size
+            if rsize >= global_rsize_threshold:
+                target_dt.add(dt)
 
-        #self.filegroups = self.filegroups[17:] # FIXME test
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+
             #------------------------------------
-            # XXX for getting the sizes of all slots
-            if unix_dt in analyzed_dt:
+            # XXX for getting the sizes of all slots (no use for now)
+            #if unix_dt in analyzed_dt:
+            #    continue
+
+            #------------------------------------
+            # XXX for re-getting the relative width of LBEs
+            if unix_dt not in target_dt:
                 continue
 
             #if unix_dt != 1229733600: # test
@@ -1413,6 +1431,13 @@ class Reaper():
 
         self.output_event()
 
+        # XXX tmp: record LBEs' relative width
+        f_path = self.pub_plot_dir() + 'tmp_LBE_rwidth.txt'
+        f = open(f_path, 'w')
+        for dt in self.target_dt_rwidth:
+            f.write(str(dt)+':'+str(self.target_dt_rwidth[dt])+'\n')
+        f.close()
+
     def read_a_file_event(self, floc):
         print 'Reading ', floc
         p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
@@ -1480,7 +1505,7 @@ class Reaper():
         f.close()
             
     def all_events_tpattern(self): # time patterns of all events
-        event_dict = self.get_events_list()
+        event_dict = self.get_event_dict()
         dt_denlist = dict() 
         for unix_dt in event_dict:
             event_size = event_dict[unix_dt][1]
@@ -1578,7 +1603,7 @@ class Reaper():
         return self.get_output_dir_event() + 'time_pattern.txt'
 
     def all_events_ratios(self):
-        event_dict = self.get_events_list()
+        event_dict = self.get_event_dict()
 
         unix2ones = dict()
         unix2udt = dict()
@@ -1706,7 +1731,7 @@ class Reaper():
 
     # FIXME too many -1. maybe I should get the last hop of update
     def all_events_oriAS_distri(self): # the distribution of origin ASes
-        event_dict = self.get_events_list()
+        event_dict = self.get_event_dict()
 
         pfx2as = self.period.get_pfx2as()
         for unix_dt in event_dict:
@@ -1756,7 +1781,7 @@ class Reaper():
 
     '''
     def get_rel_width(self): # XXX: run this for only once
-        event_dict = self.get_events_list()
+        event_dict = self.get_event_dict()
 
         for unix_dt in event_dict:
     '''

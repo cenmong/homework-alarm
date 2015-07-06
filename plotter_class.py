@@ -256,7 +256,7 @@ class Plotter():
         dt = list()
         dt2value = dict()
 
-        fig = plt.figure(figsize=(60, 10))
+        fig = plt.figure(figsize=(50, 10))
         ax = fig.add_subplot(111)
         
         for reaper in self.mr.rlist:
@@ -265,10 +265,12 @@ class Plotter():
             for line in f:
                 line = line.rstrip('\n')
                 unix_dt = float(line.split(':')[0])
-                the_dt = datetime.datetime.utcfromtimestamp(unix_dt)
-                dt.append(the_dt)
                 the_list = ast.literal_eval(line.split(':')[1])
                 rsize = the_list[0]
+                if rsize < global_rsize_threshold:
+                    continue
+                the_dt = datetime.datetime.utcfromtimestamp(unix_dt)
+                dt.append(the_dt)
                 value.append(rsize)
                 dt2value[the_dt] = rsize
             f.close()
@@ -296,7 +298,7 @@ class Plotter():
             print dt_list
             print value_list
             assert len(dt_list) == len(value_list)
-            plt.scatter(dt_list, value_list, s=50, facecolor=default_color, edgecolors='none')
+            plt.scatter(dt_list, value_list, s=250, facecolor='none', edgecolors=default_color)
 
         color_index = 0
         for c in cluster2dtset:
@@ -311,7 +313,7 @@ class Plotter():
             print value_list
             assert len(dt_list) == len(value_list)
             print colors[color_index]
-            plt.scatter(dt_list, value_list, s=50, facecolor=colors[color_index], edgecolors='none')
+            plt.scatter(dt_list, value_list, s=250, facecolor='none', edgecolors=colors[color_index])
             color_index += 1
 
 
@@ -341,7 +343,7 @@ class Plotter():
         #if occur_dt is not None:
         #    plt.plot((occur_dt, occur_dt), (0, y_high), 'k--', lw=4)
 
-        output_loc = datadir + 'final_output/all_TS_event_dot.pdf'
+        output_loc = pub_plot_dir + 'all_TS_event_dot.pdf'
         #output_loc = self.event_plot_dir + str(self.reaper.period.index) + '_TS_event_dot.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure

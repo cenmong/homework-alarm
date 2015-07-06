@@ -12,7 +12,7 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':1}
+action = {'middle':0, 'final':1, 'micro':0, 'plot':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 index_list = [281,282,283,284,285,286,287,288,289,2810]
@@ -48,9 +48,9 @@ for i in index_list:
         # : in order to avoid the period when disruptive events happened
         # future TODO select results of only part of the monitors to observe its impact
 
-        #reaper.detect_event()
+        reaper.detect_event()
         #reaper.all_events_cluster()
-        reaper.all_events_tpattern()
+        #reaper.all_events_tpattern()
         #reaper.all_events_ratios()
         #reaper.all_events_oriAS_distri()
 
@@ -107,7 +107,7 @@ for i in index_list:
 #combined analysis of all reapers
 '''
 mr = MultiReaper(reaperlist)
-#mr.all_events_cluster()
+mr.all_events_cluster()
 pl = Plotter(reaper)
 pl.set_multi_reaper(mr)
 pl.TS_event_cluster_dot_mr()
