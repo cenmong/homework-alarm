@@ -910,7 +910,7 @@ class Reaper():
 
         relative_width = float(self.event_width) / (self.thre_width * 2.5)
         self.target_dt_rwidth[unix_dt] = relative_width
-        print unix_dt, relative_width
+        print 'relative width', unix_dt, relative_width
 
         if self.event_size >= self.thre_size and self.event_den >= self.thre_den\
                 and self.event_width >= self.thre_width:
@@ -1431,12 +1431,14 @@ class Reaper():
 
         self.output_event()
 
+        '''
         # XXX tmp: record LBEs' relative width
-        f_path = self.pub_plot_dir() + 'tmp_LBE_rwidth.txt'
-        f = open(f_path, 'w')
+        f_path = datadir + 'final_output/tmp_LBE_rwidth.txt'
+        f = open(f_path, 'a') # caution: append, not write
         for dt in self.target_dt_rwidth:
             f.write(str(dt)+':'+str(self.target_dt_rwidth[dt])+'\n')
         f.close()
+        '''
 
     def read_a_file_event(self, floc):
         print 'Reading ', floc

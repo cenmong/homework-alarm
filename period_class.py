@@ -1,4 +1,5 @@
 import downloader_class
+import radix
 from  env import *
 
 import urllib
@@ -535,10 +536,10 @@ class Period():
 
 
     def get_pfx2as_file(self):
-        location = datadir + 'support/' + self.sdate + '/'
+        location = self.spt_dir
         cmlib.make_dir(location)
 
-        tmp = os.listdir(datadir+'support/'+self.sdate+'/')
+        tmp = os.listdir(self.spt_dir)
         for line in tmp:
             if 'pfx2as' in line:
                 return 0 # we already have a prefix2as file
@@ -567,6 +568,70 @@ class Period():
 
         return 0
 
+    def pfx2as_LPM(self, pfx_set): # longest prefix matching
+        self.get_pfx2as_file()
+
+        print 'Calculating prefix to AS number trie...'
+        pfx2as = dict()
+        pfx_radix = radix.Radix()
+
+        pfx2as_file = ''
+        tmp = os.listdir(self.spt_dir)
+        for line in tmp:
+            if 'pfx2as' in line:
+                pfx2as_file = line
+                break
+
+        f = open(self.spt_dir+pfx2as_file)
+        for line in f:
+            line = line.rstrip('\n')
+            attr = line.split()
+            if '_' in attr[2] or ',' in attr[2]:
+                continue
+            pfx = attr[0]+'/'+attr[1]
+            '''
+            try:
+                pfx2as[pfx] = int(attr[2]) # pfx: origin AS
+            except: # When will this happen?
+                pfx2as[pfx] = -1
+            '''
+            rnode = pfx_radix.add(pfx)
+            try:
+                rnode.data[0] = int(attr[2]) # pfx->AS
+            except:
+                rnode.data[0] = -1
+        f.close()
+
+        print 'Getting origin ASes of target prefixes'
+        target_p2a = dict()
+        exact_a2p = dict()
+        for pfx in pfx_set:
+            rnode = pfx_radix.search_best(pfx)
+            try:
+                asn = rnode.data[0]
+                target_p2a[pfx] = asn
+                if pfx == rnode.prefix:
+                    exact_a2p[asn] = pfx
+            except:
+                asn = -1
+
+        a2p = dict()
+        for pfx in target_p2a:
+            asn = target_p2a[pfx]
+            try:
+                a2p[asn].add(pfx)
+            except:
+                a2p[asn] = set([pfx])
+
+        f = open(datadir+'final_output/target_pfx2AS_RIB'+str(self.index)+'.txt', 'w')
+        for pfx in target_p2a:
+            f.write(pfx+':'+str(target_p2a[pfx])+'\n')
+        for asn in a2p:
+            f.write('#'+str(asn)+':'+str(len(a2p[asn]))+'\n')
+        f.write('*'+str(exact_a2p))
+        f.close()
+
+
     def get_pfx2as(self):
         self.get_pfx2as_file()
 
@@ -577,13 +642,13 @@ class Period():
             self.get_pfx2as_file()
 
             pfx2as_file = ''
-            tmp = os.listdir(datadir+'support/'+self.sdate+'/')
+            tmp = os.listdir(self.spt_dir)
             for line in tmp:
                 if 'pfx2as' in line:
                     pfx2as_file = line
                     break
 
-            f = open(datadir+'support/'+self.sdate+'/'+pfx2as_file)
+            f = open(self.spt_dir+pfx2as_file)
             for line in f:
                 line = line.rstrip('\n')
                 attr = line.split()

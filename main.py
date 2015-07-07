@@ -12,11 +12,16 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':1, 'micro':0, 'plot':0}
+action = {'middle':0, 'final':0, 'micro':1, 'plot':0, 'plot_matrix':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-index_list = [281,282,283,284,285,286,287,288,289,2810]
-#index_list = [281,282]
+#index_list = [281,282,283,284,285,286,287,288,289,2810]
+index_list = [283, 287]
+
+dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
+
+#dt_list1 = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800]
+#dt_list2 = [1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
 
 reaperlist = list()
 for i in index_list:
@@ -36,7 +41,7 @@ for i in index_list:
     reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
     reaper.set_dv_uq_thre(dv_thre, uq_thre)
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
-    reaperlist.append(reaper)
+    reaperlist.append(reaper) 
 
     if action['final']:
         #----------------------------------
@@ -87,32 +92,42 @@ for i in index_list:
         # plotter.CDF_all_event_onepctg_CDnum_compare()
         # plotter.CDF_all_event_updtpctg_CDnum_compare()
 
-    '''
+    if action['micro']:
+        pfxset = set()
+        f = open(datadir+'final_output/target_pfx.txt', 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        my_period.pfx2as_LPM(pfxset)
+
     #------------------------------------------------------------
     # plot matrices of every middle file
-    mdir = my_period.get_middle_dir()
-    plotdir = mdir + 'matrix/'
-    cmlib.make_dir(plotdir)
+    if action['plot_matrix']:
+        mdir = my_period.get_middle_dir()
+        plotdir = mdir + 'matrix/'
+        cmlib.make_dir(plotdir)
 
-    mfiles = os.listdir(mdir)
-    for mf in mfiles:
-        if not os.path.isfile(mdir+mf):
-            mfiles.remove(mf)
-        else:
-            print 'Ploting matrix:', mdir+mf
-            plot_matrix(mdir+mf, plotdir+mf.split('.')[0]+'.pdf') #TODO specify a range?
-    '''
+        mfiles = os.listdir(mdir)
+        for mf in mfiles:
+            if not os.path.isfile(mdir+mf):
+                mfiles.remove(mf)
+            else:
+                print 'Ploting matrix:', mdir+mf
+                plot_matrix(mdir+mf, plotdir+mf.split('.')[0]+'.pdf') #TODO specify a range?
+
 
 #------------------------------------------------------------------
 #combined analysis of all reapers
-'''
 mr = MultiReaper(reaperlist)
-mr.all_events_cluster()
-pl = Plotter(reaper)
-pl.set_multi_reaper(mr)
-pl.TS_event_cluster_dot_mr()
+#mr.get_common_pfx_set(dt_list)
+#mr.all_events_cluster()
+#pl = Plotter(reaper)
+#pl.set_multi_reaper(mr)
+#pl.TS_event_cluster_dot_mr()
+
 #pl.ratios_dot_mr()
 #pl.width_dot_mr()
 #pl.size_CDFs_mr()
-'''
 logging.info('Program ends!')

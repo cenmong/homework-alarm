@@ -439,10 +439,17 @@ class Micro_fighter():
             f.write(str(p)+':'+str(ratio)+'\n')
         f.close()
 
-    def oriAS_in_updt(self, unix_dt):
+    def oriAS_in_updt(self, unix_dt, target_pfx):
+        print 'getting origin AS for ', unix_dt
+
         pfx_set = set()
+        pfx_recording = True
         mon_iset = set()
         mon_set = set()
+
+        if target_pfx != None:
+            pfx_set = target_pfx
+            pfx_recording = False
 
         event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
         f = open(event_fpath, 'r')
@@ -450,7 +457,7 @@ class Micro_fighter():
             line = line.rstrip('\n')
             if line.startswith('Mo'):
                 mon_iset = ast.literal_eval(line.split('set')[1])
-            else:
+            elif pfx_recording:
                 pfx_set.add(line.split(':')[0])
         f.close()
 
@@ -534,13 +541,15 @@ class Micro_fighter():
                 AS2pfx[ASN] = 1
 
         sorted_list = sorted(AS2pfx.items(), key=operator.itemgetter(1), reverse=True)
-        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt', 'w')
+        if target_pfx == None:
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt', 'w')
+        else:
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_target_pfx_oriAS.txt', 'w')
         for item in sorted_list:
             ASN = item[0]
             count = item[1]
             f.write(str(ASN)+':'+str(count)+'\n')
         f.close()
-
 
     def top_AS_ASlink(self, unix_dt):
         pfx_set = set()

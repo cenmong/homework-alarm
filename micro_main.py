@@ -18,6 +18,14 @@ logging.info('Program starts!')
 #index_list = [282]
 index_list = [281,282,283,284,285,286,287,288,289,2810]
 
+dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
+pfx_set = set()
+f = open(datadir+'final_output/target_pfx.txt')
+for line in f:
+    line = line.rstrip('\n')
+    pfx_set.add(line)
+f.close()
+
 for index in index_list:
     print 'index = ', index
 
@@ -34,15 +42,28 @@ for index in index_list:
 
     mf = Micro_fighter(reaper) # initialize
     #mf.event_update_pattern(1360813800) # largest event in 2013
-    #mf.oriAS_in_updt(1360813800)
     #mf.top_AS_ASlink(1360813800)
+
+    # Get pfx->origin AS within an LBE for certain prefixes (optional)
+    for dt in dt_list:
+        try:
+            mf.oriAS_in_updt(dt, pfx_set)
+        except: # no such dt in the period
+            pass
+
+    #mf.oriAS_in_updt(1360813800, None)
+
+
+    #----------------------------------
+    # obtain the update pattern for LBEs
+    '''
     events = reaper.get_events_list()
     for unix_dt in events.keys():
         thelist = events[unix_dt]
         rsize = thelist[0]
         if rsize > global_rsize_threshold:
             mf.event_update_pattern(unix_dt)
-
+    '''
 
     #micro_fighter.set_sedate(sdt_obj, edt_obj)
     #micro_fighter.analyze_pfx()
