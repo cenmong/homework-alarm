@@ -571,6 +571,8 @@ class Period():
     def pfx2as_LPM(self, pfx_set): # longest prefix matching
         self.get_pfx2as_file()
 
+        pfx_set_9121 = set()
+
         print 'Calculating prefix to AS number trie...'
         pfx2as = dict()
         pfx_radix = radix.Radix()
@@ -609,6 +611,8 @@ class Period():
             rnode = pfx_radix.search_best(pfx)
             try:
                 asn = rnode.data[0]
+                if asn == 9121:
+                   pfx_set_9121.add(rnode.prefix) 
                 target_p2a[pfx] = asn
                 if pfx == rnode.prefix:
                     exact_a2p[asn] = pfx
@@ -628,7 +632,8 @@ class Period():
             f.write(pfx+':'+str(target_p2a[pfx])+'\n')
         for asn in a2p:
             f.write('#'+str(asn)+':'+str(len(a2p[asn]))+'\n')
-        f.write('*'+str(exact_a2p))
+        f.write('*'+str(exact_a2p)+'\n')
+        f.write('$9121 involved prefix quantity:'+str(len(pfx_set_9121)))
         f.close()
 
 

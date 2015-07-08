@@ -439,6 +439,7 @@ class Micro_fighter():
             f.write(str(p)+':'+str(ratio)+'\n')
         f.close()
 
+
     def oriAS_in_updt(self, unix_dt, target_pfx):
         print 'getting origin AS for ', unix_dt
 

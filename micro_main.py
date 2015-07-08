@@ -45,11 +45,13 @@ for index in index_list:
     #mf.top_AS_ASlink(1360813800)
 
     # Get pfx->origin AS within an LBE for certain prefixes (optional)
+    '''
     for dt in dt_list:
         try:
             mf.oriAS_in_updt(dt, pfx_set)
         except: # no such dt in the period
             pass
+    '''
 
     #mf.oriAS_in_updt(1360813800, None)
 

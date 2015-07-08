@@ -6,6 +6,7 @@ import logging
 import subprocess
 import os
 import ast
+import traceback
 from sklearn.cluster import DBSCAN
 from env import *
 
@@ -15,6 +16,103 @@ class MultiReaper():
 
     def __init__(self, reaper_list):
         self.rlist = reaper_list
+
+
+    def AS_exist_in_ASpath_in_updt(self, dt_list, the_asn, target_pfx):
+        pfx2path_num = dict()
+        pfx2path_exist = dict()
+        for pfx in target_pfx:
+            pfx2path_num[pfx] = 0
+            pfx2path_exist[pfx] = 0
+
+        unix2event, unix2reaper = self.get_dt2event_dt2reaper()
+        for unix_dt in unix2event:
+            if unix_dt not in dt_list:
+                continue
+            reaper = unix2reaper[unix_dt]
+
+            mon_set = set()
+            event_fpath = reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+            f = open(event_fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('Mo'):
+                    mon_set = ast.literal_eval(line.split('set')[1])
+                    mon_set = set(mon_set)
+            f.close()
+
+            mon_set_ip = set()
+            i2ip = dict()
+            f = open(reaper.period.get_mon2index_file_path(), 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                ip = line.split(':')[0]
+                index = int(line.split(':')[1])
+                i2ip[index] = ip
+            f.close()
+
+            for index in mon_set:
+                mon_set_ip.add(i2ip[index])
+
+            #---------------------------
+            # read file
+            mon_set = mon_set_ip
+            pfx_set = target_pfx
+            sdt_unix = unix_dt
+            edt_unix = unix_dt + reaper.granu * 60
+            updt_files = list()
+            fmy = open(reaper.period.get_filelist(), 'r')
+            for fline in fmy:
+                updatefile = fline.split('|')[0]
+                updt_files.append(datadir+updatefile)
+
+            fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+            for fpath in fpathlist:
+                print 'Reading ', fpath
+                p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+                myf = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in myf:
+                    try:
+                        line = line.rstrip('\n')
+                        attr = line.split('|')
+                        pfx = attr[5]
+                        type = attr[2]
+                        mon = attr[3]
+
+                        if (mon not in mon_set) or (pfx not in pfx_set):
+                            continue
+
+                        unix = int(attr[1])
+                        if unix < sdt_unix or unix > edt_unix:
+                            continue
+
+                        if type == 'A':
+                            as_path = attr[6]
+                            pfx2path_num[pfx] += 1
+
+                            asn_list = as_path.split()
+                            for asn in asn_list:
+                                try:
+                                    asn = int(asn)
+                                    if asn == the_asn:
+                                        pfx2path_exist[pfx] += 1
+                                        break
+                                except:
+                                    pass
+
+                            
+                    except Exception, err:
+                        if line != '':
+                            logging.info(traceback.format_exc())
+                            logging.info(line)
+                myf.close()
+
+        f = open(datadir+'final_output/9121-in-path.txt', 'w')
+        for pfx in pfx2path_num:
+            f.write(pfx+':'+str(pfx2path_num[pfx])+'|'+str(pfx2path_exist[pfx])+'\n')
+        f.close()
+
 
     def get_common_pfx_set(self, dt_list):
         pfxset_list = list()
