@@ -219,6 +219,212 @@ class Micro_fighter():
         return pfx_set
 
 
+    def upattern_for_pfx(self, unix_dt, pset):
+        pfx_set = pset
+        mon_iset = set()
+        mon_set = set()
+
+        event_fpath = self.reaper.get_output_dir_event() + str(unix_dt) + '.txt'
+        f = open(event_fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('Mo'):
+                mon_iset = ast.literal_eval(line.split('set')[1])
+        f.close()
+
+        i2ip = dict()
+        f = open(self.reaper.period.get_mon2index_file_path(), 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            ip = line.split(':')[0]
+            index = int(line.split(':')[1])
+            i2ip[index] = ip
+        f.close()
+
+        for index in mon_iset:
+            mon_set.add(i2ip[index])
+
+        pattern2count = dict()
+        # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx, to save memory
+        pfx2tag = dict()
+        mon2tag = dict()
+
+        start = 100000
+        for pfx in pfx_set:
+            pfx2tag[pfx] = str(start)
+            start += 1
+
+        start = 100
+        for mon in mon_set:
+            mon2tag[mon] = str(start)
+            start += 1
+        mcount = len(mon_set)
+
+        #--------------------------------------------------------
+        # Read update files
+        sdt_unix = unix_dt
+        edt_unix = unix_dt + self.reaper.granu * 60
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+
+        num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
+                    41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
+                    800:'patho',801:'patho(include WADup)',802:'policy'}
+        for n in num2type:
+            pattern2count[n] = set()
+        #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
+        mp_dict = dict() # mon: prefix: successive update type series (0~5)
+        mp_last_A = dict() # mon: prefix: latest full update
+        mp_last_type = dict()
+        for m in mon_set:
+            mp_dict[m] = dict()
+            mp_last_A[m] = dict() # NOTE: does not record W, only record A
+            mp_last_type[m] = dict()
+
+
+        pfx2aadiff = dict()
+        pfx2policy = dict()
+        for pfx in pfx_set:
+            pfx2policy[pfx] = set()
+            pfx2aadiff[pfx] = set()
+
+
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    if (mon not in mon_set) or (pfx not in pfx_set):
+                        continue
+
+                    unix = int(attr[1])
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+
+                    the_tag = pfx2tag[pfx] + mon2tag[mon]
+
+                    try:
+                        test = mp_dict[mon][pfx]
+                    except:
+                        mp_dict[mon][pfx] = list() # list of 0~5
+
+                    try:
+                        last_A = mp_last_A[mon][pfx]
+                        last_as_path = last_A.split('|')[6]
+                    except:
+                        last_A = None
+                        last_as_path = None
+
+                    try:
+                        last_type = mp_last_type[mon][pfx]
+                    except: # this is the first update for the mon-pfx pair
+                        last_type = None
+
+                    if last_type == 'W':
+                        if type == 'W':
+                            mp_dict[mon][pfx].append(0)
+                            pattern2count[0].add(the_tag)
+                            pattern2count[800].add(the_tag)
+                            pattern2count[801].add(the_tag)
+                        elif type == 'A':
+                            if last_as_path:
+                                if as_path == last_as_path:
+                                    mp_dict[mon][pfx].append(41)
+                                    pattern2count[41].add(the_tag)
+                                    pattern2count[799].add(the_tag)
+                                    pattern2count[801].add(the_tag)
+                                else:
+                                    mp_dict[mon][pfx].append(42)
+                                    pattern2count[42].add(the_tag)
+                                    pattern2count[799].add(the_tag)
+                                    pattern2count[798].add(the_tag)
+                            else: # no A record
+                                mp_dict[mon][pfx].append(40)
+                                pattern2count[40].add(the_tag)
+                            mp_last_A[mon][pfx] = line
+                
+                    elif last_type == 'A':
+                        if type == 'W':
+                            mp_dict[mon][pfx].append(5)
+                            pattern2count[5].add(the_tag)
+                        elif type == 'A':
+                            if line == last_A:
+                                mp_dict[mon][pfx].append(1)
+                                pattern2count[1].add(the_tag)
+                                pattern2count[800].add(the_tag)
+                                pattern2count[801].add(the_tag)
+                            elif as_path == last_as_path:
+                                mp_dict[mon][pfx].append(2)
+                                pattern2count[2].add(the_tag)
+                                pattern2count[802].add(the_tag)
+                                pfx2policy[pfx].add(the_tag)
+                            else:
+                                mp_dict[mon][pfx].append(3)
+                                pattern2count[3].add(the_tag)
+                                pattern2count[799].add(the_tag)
+                                pattern2count[798].add(the_tag)
+                                pfx2aadiff[pfx].add(the_tag)
+                            mp_last_A[mon][pfx] = line
+                
+                    else: # last_type is None
+                        if type == 'W':
+                            mp_last_type[mon][pfx] = 'W'
+                        elif type == 'A':
+                            mp_last_type[mon][pfx] = 'A'
+                            mp_last_A[mon][pfx] = line
+                        else:
+                            assert False
+                        
+                except Exception, err:
+                    if line != '':
+                        logging.info(traceback.format_exc())
+                        logging.info(line)
+            myf.close()
+
+
+        type2num = dict()
+        type2ratio = dict()
+        total = 0
+        for mon in mp_dict:
+            for pfx in mp_dict[mon]:
+                for t in mp_dict[mon][pfx]:
+                    name = num2type[t]
+                    total += 1
+                    try:
+                        type2num[name] += 1
+                    except:
+                        type2num[name] = 1
+        
+        for t in type2num:
+            type2ratio[t] = float(type2num[t]) / float(total)
+
+        print 'writing ', self.reaper.get_output_dir_event() + str(unix_dt) + '_tpfx_policy_ratio.txt'
+        f = open(self.reaper.get_output_dir_event() + str(unix_dt) + '_tpfx_policy_ratio.txt', 'w')
+        for pfx in pfx2policy:
+            f.write(pfx+':'+str(len(pfx2policy[pfx]))+'|'+str(mcount)+'\n')
+        f.close()
+
+        print 'writing ', self.reaper.get_output_dir_event() + str(unix_dt) + '_tpfx_aadiff_ratio.txt'
+        f = open(self.reaper.get_output_dir_event() + str(unix_dt) + '_tpfx_aadiff_ratio.txt', 'w')
+        for pfx in pfx2aadiff:
+            f.write(pfx+':'+str(len(pfx2aadiff[pfx]))+'|'+str(mcount)+'\n')
+        f.close()
+
     def event_update_pattern(self, unix_dt):
         pfx_set = set()
         mon_iset = set()

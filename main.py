@@ -130,7 +130,7 @@ for line in f:
     line = line.rstrip('\n')
     pfx_set.add(line)
 f.close()
-mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
+#mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
 
 #mr.get_common_pfx_set(dt_list)
 #mr.all_events_cluster()

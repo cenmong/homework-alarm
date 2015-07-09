@@ -15,8 +15,8 @@ import ast
 logging.info('Program starts!')
 
 #index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-#index_list = [282]
-index_list = [281,282,283,284,285,286,287,288,289,2810]
+index_list = [284,286]
+#index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
 pfx_set = set()
@@ -55,6 +55,12 @@ for index in index_list:
 
     #mf.oriAS_in_updt(1360813800, None)
 
+    # Get update pattern for certain prefixes
+    for dt in dt_list:
+        try:
+            mf.upattern_for_pfx(dt, pfx_set)
+        except:
+            pass
 
     #----------------------------------
     # obtain the update pattern for LBEs
