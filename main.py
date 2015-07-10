@@ -12,11 +12,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0}
+action = {'middle':0, 'final':1, 'micro':0, 'plot':0, 'plot_matrix':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-#index_list = [281,282,283,284,285,286,287,288,289,2810]
-index_list = [284, 286]
+index_list = [281,282,283,284,285,286,287,288,289,2810]
+#index_list = [284, 286]
 
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
 
@@ -46,6 +46,7 @@ for i in index_list:
     if action['final']:
         #----------------------------------
         # for the prefix paper 
+        reaper.get_pfx_data()
         #reaper.analyze_pfx()
 
         #periods = [[],[],[],[],[],[]]
@@ -53,7 +54,9 @@ for i in index_list:
         # : in order to avoid the period when disruptive events happened
         # future TODO select results of only part of the monitors to observe its impact
 
-        reaper.detect_event()
+        #--------------------------------
+        # for detecting large-scale BGP events
+        #reaper.detect_event()
         #reaper.all_events_cluster()
         #reaper.all_events_tpattern()
         #reaper.all_events_ratios()
@@ -124,12 +127,14 @@ mr = MultiReaper(reaperlist)
 
 #-------------------------------------------------------------------
 # Get the existenc frequency of certain AS in the AS paths in the updates for some prefixes
+'''
 pfx_set = set()
 f = open(datadir+'final_output/target_pfx.txt')
 for line in f:
     line = line.rstrip('\n')
     pfx_set.add(line)
 f.close()
+'''
 #mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
 
 #mr.get_common_pfx_set(dt_list)

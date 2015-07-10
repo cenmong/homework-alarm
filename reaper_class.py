@@ -29,6 +29,7 @@ class Reaper():
 
         self.middle_dir = period.get_middle_dir()
         self.final_dir = period.get_final_dir()
+        self.pfx_final_dir = datadir+'final_output_pfx/'+self.period.sdate+'_'+self.period.edate+'/'
 
         self.blank_file = period.get_blank_dir() + 'blank.txt'
         self.blank_info = list() # list of lists
@@ -218,10 +219,77 @@ class Reaper():
         self.dv_thre = dvt
         self.uq_thre = uqt
 
-    def get_output_dir_pfx(self):
-        assert self.dv_thre != None and self.uq_thre != None
-        return self.final_dir + str(self.dv_thre).lstrip('0.') + '_' + str(self.uq_thre) +\
-                '_' + str(self.m_granu) + '_' + str(self.granu) + '_' + str(self.shift) + '/'
+
+    def get_pfx_data(self):
+        count = 0
+        for fg in self.filegroups:
+            count += 1
+            print count
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            for f in fg:
+                floc = self.middle_dir+f
+                print 'Reading ', floc
+                p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+                fin = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in fin:
+                    line = line.rstrip('\n')
+                    if line == '':
+                        continue
+
+                    pfx = line.split(':')[0]
+                    datalist = ast.literal_eval(line.split(':')[1])
+
+                    try:
+                        c_datalist = self.c_pfx_data[pfx]
+                        combined = [x+y for x,y in zip(datalist, c_datalist)]
+                        self.c_pfx_data[pfx] = combined
+                    except:
+                        self.c_pfx_data[pfx] = datalist
+
+                fin.close()
+
+            # get interesting info
+            mcount = self.period.get_mo_number()
+            pfx2uq = dict()
+            pfx2uv = dict()
+            uq2num = dict()
+            uv2num = dict()
+            for pfx in self.c_pfx_data:
+                uq = sum(self.c_pfx_data[pfx])
+                pfx2uq[pfx] = uq
+                try:
+                    uq2num[uq] += 1
+                except:
+                    uq2num[uq] = 1
+
+                    
+                onesum = sum(1 for x in self.c_pfx_data[pfx] if x > 0)
+                uv = float(onesum) / float(mcount)
+                pfx2uv[pfx] = uv
+                try:
+                    uv2num[uv] += 1
+                except:
+                    uv2num[uv] = 1
+
+            del self.c_pfx_data
+            self.c_pfx_data = dict()
+
+            #--------------------------------------------------
+            # write prefix info into a final file for every slot
+            fname = self.get_output_dir_pfx() + str(unix_dt) + '_pfx.txt'
+            f = open(fname, 'w')
+            for pfx in pfx2uq:
+                f.write(pfx+':'+str(pfx2uq[pfx])+'|'+str(pfx2uv[pfx])+'\n')
+            f.close()
+
+            fname = self.get_output_dir_pfx() + str(unix_dt) + '_value.txt'
+            f = open(fname, 'w')
+            for uq in uq2num:
+                f.write('#'+str(uq)+':'+str(uq2num[uq])+'\n')
+            for uv in uv2num:
+                f.write('%'+str(uv)+':'+str(uv2num[uv])+'\n')
+            f.close()
 
     # Do many tasks in only one scan of all files!
     def analyze_pfx(self):
@@ -1486,6 +1554,18 @@ class Reaper():
         cmlib.make_dir(mydir)
 
         return mydir
+
+
+    def get_output_dir_pfx(self):
+        '''
+        assert self.dv_thre != None and self.uq_thre != None
+        return self.final_dir + str(self.dv_thre).lstrip('0.') + '_' + str(self.uq_thre) +\
+                '_' + str(self.m_granu) + '_' + str(self.granu) + '_' + str(self.shift) + '/'
+        '''
+        mydir = self.pfx_final_dir + 'default/'
+        cmlib.make_dir(mydir)
+        return mydir
+
 
     def get_output_fpath_event_brief(self):
         return self.get_output_dir_event() + self.events_brief_fname

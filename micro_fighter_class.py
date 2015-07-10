@@ -413,6 +413,7 @@ class Micro_fighter():
         for t in type2num:
             type2ratio[t] = float(type2num[t]) / float(total)
 
+        print pfx2policy
         print 'writing ', self.reaper.get_output_dir_event() + str(unix_dt) + '_tpfx_policy_ratio.txt'
         f = open(self.reaper.get_output_dir_event() + str(unix_dt) + '_tpfx_policy_ratio.txt', 'w')
         for pfx in pfx2policy:
