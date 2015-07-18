@@ -291,6 +291,12 @@ class Reaper():
                 f.write('%'+str(uv)+':'+str(uv2num[uv])+'\n')
             f.close()
 
+            del pfx2uq
+            del pfx2uv
+            del uq2num
+            del uv2num
+
+
     # Do many tasks in only one scan of all files!
     def analyze_pfx(self):
         for fg in self.filegroups:

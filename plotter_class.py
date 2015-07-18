@@ -11,6 +11,7 @@ import re
 import os
 import ast
 
+from operator import add
 from cStringIO import StringIO
 from netaddr import *
 from env import *
@@ -19,7 +20,7 @@ from env import *
 import matplotlib
 # This is useful. I can render figures thourgh ssh. VNC viewer in unnecessary.
 matplotlib.use('Agg') # must be before fisrtly importing pyplot or pylab
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import matplotlib.dates as mpldates
 from matplotlib.dates import HourLocator
 from matplotlib.dates import DayLocator
@@ -40,6 +41,9 @@ default_color = 'k'
 colors = ['r', 'b', 'g', 'yellow', 'm', 'cyan', 'darkorange',\
           'mediumpurple', 'salmon', 'lime', 'hotpink', '',\
           'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
+shapes = ['^', '*', 'D', 'd']
+cluster_labels = ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']
+month_labels = ['Jan.','Feb.','Mar.','Apr','May','June','July','Aug.','Sept.','Oct.','Nov.','Dec.']
 linestyles = ['-', '--', '_', ':']
 markers = []
 for m in Line2D.markers:
@@ -250,13 +254,13 @@ class Plotter():
         #else:
         #    y_high = 0.03 # Be careful! Setting this may miss some points!
         
-        y_high = 0.04
+        y_high = 0.08
 
         value = list()
         dt = list()
         dt2value = dict()
 
-        fig = plt.figure(figsize=(50, 10))
+        fig = plt.figure(figsize=(50, 9.2))
         ax = fig.add_subplot(111)
         
         for reaper in self.mr.rlist:
@@ -298,7 +302,7 @@ class Plotter():
             print dt_list
             print value_list
             assert len(dt_list) == len(value_list)
-            plt.scatter(dt_list, value_list, s=250, facecolor='none', edgecolors=default_color)
+            plt.scatter(dt_list, value_list, s=250, facecolor=default_color, edgecolors='none', label='Others')
 
         color_index = 0
         for c in cluster2dtset:
@@ -313,12 +317,21 @@ class Plotter():
             print value_list
             assert len(dt_list) == len(value_list)
             print colors[color_index]
-            plt.scatter(dt_list, value_list, s=250, facecolor='none', edgecolors=colors[color_index])
+            plt.scatter(dt_list, value_list, s=350, facecolor=colors[color_index], edgecolors='none', marker=shapes[color_index], label = cluster_labels[color_index])
             color_index += 1
 
 
+        the_dt = datetime.datetime.utcfromtimestamp(1363564800)
+        plt.plot((the_dt, the_dt), (0, y_high), 'k--', lw=3)
+        the_dt = datetime.datetime.utcfromtimestamp(1364601600)
+        plt.plot((the_dt, the_dt), (0, y_high), 'k--', lw=3)
+
+        dt1 = datetime.datetime.utcfromtimestamp(1356998400)
+        dt2 = datetime.datetime.utcfromtimestamp(1383264000)
+        ax.set_xlim([dt1, dt2])
+
         ax.set_ylabel('Relative size')
-        ax.set_xlabel('Date')
+        #ax.set_xlabel('Date')
         myFmt = mpldates.DateFormatter('%b\n%d')
         ax.xaxis.set_major_formatter(myFmt)
 
@@ -335,6 +348,7 @@ class Plotter():
         #ax.set_xlim([mpldates.date2num(sdate), mpldates.date2num(edate)])
         ax.set_ylim([0,y_high]) # Be careful!
 
+        legend = ax.legend(loc='upper right',shadow=False)
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
@@ -604,20 +618,24 @@ class Plotter():
                         ylist.append(inavg)
                 f.close()
 
-            plt.scatter(xlist, ylist, s=150, facecolor='none', edgecolors='b')
+            plt.scatter(xlist, ylist, s=400, facecolor='none', edgecolors='k')
 
             if tar == 'UPerO':
                 ax.set_ylim([0,10]) # Be careful!
                 ax.set_xlim([0,10]) # Be careful!
-                ax.set_ylabel('updates per one (out)')
-                ax.set_xlabel('updates per one (in)')
+                ax.set_ylabel('Updates per one (out of LBE)')
+                ax.set_xlabel('Updates per one (in LBE)')
                 plt.plot([0,10],[0,10],'k-')
 
             if tar in ('UPDATE', 'ONE'):
+                ax.set_ylim([0.38, 1])
                 ax.set_xlim([0,0.04]) # Be careful!
-                ax.set_ylabel('ratio')
-                ax.set_xlabel('relative size')
+                plt.xticks([0, 0.01, 0.02, 0.03, 0.04])
+                ax.set_ylabel('Ratio of updates captured by LBE')
+                ax.set_xlabel('Relative size')
 
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
             output_loc = pub_plot_dir + tar + '.pdf'
             plt.savefig(output_loc, bbox_inches='tight')
             plt.clf() # clear the figure
@@ -628,30 +646,44 @@ class Plotter():
         ax = fig.add_subplot(111)
         xlist = list()
         ylist = list()
-        count = 0
+
+        unix2rw = dict()
+        f = open(datadir+'final_output/007_LBE_rwidth.txt', 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            line = line.split(':')
+            unix = int(line[0])
+            rwidth = float(line[1])
+            unix2rw[unix] = rwidth
+        f.close()
+
+        unix2rs = dict()
         for reaper in self.mr.rlist:
             file = reaper.get_output_dir_event() + 'events_plusminus.txt'
             f = open(file, 'r')
             for line in f:
                 line = line.rstrip('\n')
+                unix = int(line.split(':')[0])
                 the_list = ast.literal_eval(line.split(':')[1])
                 rsize = the_list[0]
                 if rsize < 0.007:
                     continue
-                count += 1
-                width = the_list[4]
-                xlist.append(rsize)
-                ylist.append(width)
+                unix2rs[unix] = rsize
             f.close()
 
-        print 'count=',count
-        print xlist
-        print ylist
-        ax.set_ylim([30, 140])
+        for unix in unix2rw:
+            xlist.append(unix2rs[unix])
+            ylist.append(unix2rw[unix])
+
+        ax.set_ylim([0.38, 1.05])
         ax.set_xlim([0, 0.04])
-        ax.set_ylabel('number of monitors')
-        ax.set_xlabel('relative size')
-        plt.scatter(xlist, ylist, s=400, facecolor='none', edgecolors='b')
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('Relative width')
+        ax.set_xlabel('Relative size')
+        plt.scatter(xlist, ylist, s=400, facecolor='none', edgecolors='k')
+        plt.xticks([0, 0.01, 0.02, 0.03, 0.04])
+        plt.yticks([0.4, 0.5, 0.6, 0.7, 0.8,0.9,1.0])
         output_loc = pub_plot_dir + 'width.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
@@ -685,17 +717,272 @@ class Plotter():
                 xlist.append(vlist[i])
 
             ax.plot(xlist, ylist, linestyle='None', marker=styles[count],\
-                    color=colors[count], markersize=12)
+                    color=colors[count], markersize=15, label=month_labels[count])
             #ax.plot(xlist, ylist, 'k--')
 
             count += 1
 
+        legend = ax.legend(loc='lower right',shadow=False)
         plt.plot((0.007, 0.007), (0, 1.1), 'k--', lw=4)
-        ax.set_ylim([0.8, 1.02])
-        ax.set_xlim([0.003, 0.013])
-        ax.set_ylabel('ratio')
-        ax.set_xlabel('relative size')
+        ax.set_ylim([0.8, 1.01])
+        ax.set_xlim([0.003, 0.012])
+        ax.set_ylabel('Cumulative distribution (ratio)')
+        ax.set_xlabel('Relative size')
         output_loc = pub_plot_dir + 'all_size_dist.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def LBE_updt_pattern(self, dt_list):
+        target_types = ['AADiff','AADup2','AADup1','WW','WADup','WADiff',]
+        #target_types = ['WAUnknown','AW','WW','WADup','WADiff','AADiff','AADup1','AADup2']
+
+        numflist = list()
+        oneflist = list()
+        for dt in dt_list:
+            numflist.append(str(dt)+'_updt_pattern.txt')
+            oneflist.append(str(dt)+'_updt_pattern_in_ones.txt')
+
+        numtype2list = dict()
+        onetype2list = dict()
+        for t in target_types:
+            numtype2list[t] = list()
+            onetype2list[t] = list()
+        labels = target_types
+
+        for reaper in self.mr.rlist:
+            dir = reaper.get_output_dir_event() 
+            for nf in numflist:
+                nfpath = dir + nf
+                if not os.path.isfile(nfpath):
+                    continue
+                print nf
+                f = open(nfpath, 'r')
+                type2num = dict()
+                type2ratio = dict()
+                for line in f:
+                    line = line.rstrip('\n')
+                    type = line.split(':')[0]
+                    num = int(line.split(':')[1].split()[0])
+                    type2num[type] = num
+                    ratio = float(line.split(':')[1].split()[1])
+                    type2ratio[type] = ratio
+                f.close()
+
+                removed_ratio = type2ratio['AW'] + type2ratio['WAUnknown']
+                multiply_factor = 1.0 / (1-removed_ratio)
+                for t in target_types:
+                    type2ratio[t] = type2ratio[t] * multiply_factor
+                    print t, type2num[t], type2ratio[t]
+                    numtype2list[t].append(type2ratio[t])
+
+
+            for of in oneflist:
+                ofpath = dir + of
+                if not os.path.isfile(ofpath):
+                    continue
+                print of
+                type2ratio = dict()
+                f = open(ofpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    type = line.split(':')[0]
+                    ratio = float(line.split(':')[1])
+                    type2ratio[type] = ratio
+                f.close()
+                    
+                for t in target_types:
+                    print t, type2ratio[t]
+                    onetype2list[t].append(type2ratio[t])
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        loc = list()
+        for i in xrange(1, 19):
+            loc.append(i)
+    
+        width = 0.6
+        p1=plt.bar(loc, numtype2list['AADiff'],width,color = colors[0])
+        p2=plt.bar(loc, numtype2list['AADup2'],width,color = colors[1],bottom=numtype2list['AADiff'])
+        tmp = map(add, numtype2list['AADiff'], numtype2list['AADup2'])
+        p3=plt.bar(loc, numtype2list['AADup1'],width,color = colors[2],bottom=tmp)
+        tmp = map(add, tmp, numtype2list['AADup1'])
+        p4=plt.bar(loc, numtype2list['WW'],width,color = colors[3],bottom=tmp)
+        tmp = map(add, tmp, numtype2list['WW'])
+        p5=plt.bar(loc, numtype2list['WADup'],width,color = colors[4],bottom=tmp)
+        tmp = map(add, tmp, numtype2list['WADup'])
+        p6=plt.bar(loc, numtype2list['WADiff'],width,color = colors[5],bottom=tmp)
+        tmp = map(add, tmp, numtype2list['WADiff'])
+
+
+        #legend = ax.legend(loc='lower right',shadow=False)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('Ratio')
+        ax.set_xlabel('LBE Sequence')
+        plt.xticks([1,9,18],['1','9','18'])
+        ax.set_xlim([0, 19])
+        ax.set_ylim([0, 1])
+        plt.legend((p1[0],p2[0],p3[0],p4[0],p5[0],p6[0]),('AADiff','AADup2','AADup1','WW','WADup','WADiff'),loc='lower left')
+        output_loc = pub_plot_dir + 'upattern_num.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        loc = list()
+        for i in xrange(1, 19):
+            loc.append(i)
+    
+        width = 0.6
+        p1=plt.bar(loc, onetype2list['AADiff'],width,color = colors[0])
+        p2=plt.bar(loc, onetype2list['AADup2'],width,color = colors[1],bottom=onetype2list['AADiff'])
+        tmp = map(add, onetype2list['AADiff'], onetype2list['AADup2'])
+        p3=plt.bar(loc, onetype2list['AADup1'],width,color = colors[2],bottom=tmp)
+        tmp = map(add, tmp, onetype2list['AADup1'])
+        p4=plt.bar(loc, onetype2list['WW'],width,color = colors[3],bottom=tmp)
+        tmp = map(add, tmp, onetype2list['WW'])
+        p5=plt.bar(loc, onetype2list['WADup'],width,color = colors[4],bottom=tmp)
+        tmp = map(add, tmp, onetype2list['WADup'])
+        p6=plt.bar(loc, onetype2list['WADiff'],width,color = colors[5],bottom=tmp)
+        tmp = map(add, tmp, onetype2list['WADiff'])
+
+
+        #legend = ax.legend(loc='lower right',shadow=False)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('Ratio')
+        ax.set_xlabel('LBE Sequence')
+        plt.xticks([1,9,18],['1','9','18'])
+        ax.set_xlim([0, 19])
+        plt.legend((p1[0],p2[0],p3[0],p4[0],p5[0],p6[0]),('AADiff','AADup2','AADup1','WW','WADup','WADiff'),loc='lower left')
+        output_loc = pub_plot_dir + 'upattern_one.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def pfx_upattern_dist(self, dt_list):
+        aadiff_flist = list()
+        aadup2_flist = list()
+        f2id = dict()
+        count = 1
+        for dt in dt_list:
+            aadiff_flist.append(str(dt)+'_tpfx_aadiff_ratio.txt')
+            f2id[str(dt)+'_tpfx_aadiff_ratio.txt'] = count
+            aadup2_flist.append(str(dt)+'_tpfx_policy_ratio.txt')
+            f2id[str(dt)+'_tpfx_policy_ratio.txt'] = count
+            count += 1
+
+        count = 1
+        id2plot = dict()
+        for reaper in self.mr.rlist:
+            dir = reaper.get_output_dir_event() 
+            for myf in aadiff_flist:
+                ratio2count = dict()
+                myfpath = dir + myf
+                if not os.path.isfile(myfpath):
+                    continue
+                print myfpath
+                f = open(myfpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    value = float(line.split(':')[1].split('|')[0])
+                    mcount = float(line.split(':')[1].split('|')[1])
+                    ratio = value / mcount
+                    try:
+                        ratio2count[ratio] += 1
+                    except:
+                        ratio2count[ratio] = 1
+                f.close()
+            
+                id = f2id[myf]
+                id2plot[id] = ratio2count
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        for id in id2plot:
+            ratio2count = id2plot[id]
+            xlist = [0]
+            ylist = [0]
+            rlist = sorted(ratio2count.keys())
+            prev = 0
+            for i in xrange(0, len(rlist)):
+                ratio = rlist[i]
+                xlist.append(ratio)
+                ylist.append(ratio2count[ratio] + prev)
+                prev = ratio2count[ratio] + prev
+
+
+            ax.plot(xlist, ylist, 'k-')
+
+        #ax.set_ylim([-0.1*ymax, 1.1*ymax])
+        #ax.set_xlim([-0.1*xmax, 1.1*xmax])
+        ax.set_ylabel('Cumulative distribution')
+        ax.set_xlabel('Proportion')
+
+        output_loc = pub_plot_dir + 'tpfx_upattern_aadiff.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+
+
+        count = 1
+        id2plot = dict()
+        for reaper in self.mr.rlist:
+            dir = reaper.get_output_dir_event() 
+            for myf in aadup2_flist:
+                ratio2count = dict()
+                myfpath = dir + myf
+                if not os.path.isfile(myfpath):
+                    continue
+                print myfpath
+                f = open(myfpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    value = float(line.split(':')[1].split('|')[0])
+                    mcount = float(line.split(':')[1].split('|')[1])
+                    ratio = value / mcount
+                    try:
+                        ratio2count[ratio] += 1
+                    except:
+                        ratio2count[ratio] = 1
+                f.close()
+            
+                id = f2id[myf]
+                id2plot[id] = ratio2count
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        for id in id2plot:
+            for f in f2id:
+                if f2id[f] == id:
+                    print f
+            ratio2count = id2plot[id]
+            xlist = [0]
+            ylist = [0]
+            rlist = sorted(ratio2count.keys())
+            for r in rlist:
+                print r,':',ratio2count[r]
+            prev = 0
+            for i in xrange(0, len(rlist)):
+                ratio = rlist[i]
+                xlist.append(ratio)
+                ylist.append(ratio2count[ratio] + prev)
+                prev = ratio2count[ratio] + prev
+
+            ax.plot(xlist, ylist, 'k-')
+
+        #ax.set_ylim([-0.1*ymax, 1.1*ymax])
+        #ax.set_xlim([-0.1*xmax, 1.1*xmax])
+        ax.set_ylabel('Cumulative distribution')
+        ax.set_xlabel('Proportion')
+
+        output_loc = pub_plot_dir + 'tpfx_upattern_aadup2.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()

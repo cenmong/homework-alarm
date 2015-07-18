@@ -232,6 +232,7 @@ class MultiReaper():
         num = len(unix_dt_list)
         outpath = self.events_cluster_path()
         f = open(outpath, 'w')
+        '''
         for i in xrange(0, num):
             f.write(str(unix_dt_list[i])+':'+str(db.labels_[i])+'\n')
             try:
@@ -241,6 +242,9 @@ class MultiReaper():
         f.write('##################\n')
         for c in cluster2dt:
             f.write(str(c)+'|'+str(len(cluster2dt[c]))+':'+str(cluster2dt[c])+'\n')
+        '''
+        for i in db.labels_:
+            f.write(str(i)+'|')
         f.close()
 
     def events_cluster_path(self):
