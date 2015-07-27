@@ -874,7 +874,7 @@ class Reaper():
         if self.event_size < self.thre_size or self.event_width < self.thre_width:
             logging.info('%d : too small after preprocessing', unix_dt)
             #-------------------------------------
-            # XXX comment out: now we want the size for each slot
+            # XXX comment out: when getting the size for each slot
             #return -1
 
         self.init_attri(all_rows, all_cols)
@@ -994,6 +994,7 @@ class Reaper():
             return 100
         elif self.event_den >= self.thre_den:
             self.dt2size[unix_dt] = relative_size
+            print '****Relative size:', relative_size
         else:
             self.dt2size[unix_dt] = 0
         
@@ -1380,7 +1381,7 @@ class Reaper():
     def detect_event(self):
 
         # XXX special use: for re-getting the relative width of very large LBEs
-        target_dt = set()
+        #target_dt = set()
 
         #------------------------------------
         # XXX special use: for getting the sizes of all slots
@@ -1389,25 +1390,23 @@ class Reaper():
         for dt in dt2event:
             rsize = dt2event[dt][0]
             self.dt2size[dt] = rsize # dt -> relative size
+            print '######Relative size:', rsize
             analyzed_dt.add(dt)
 
-            if rsize >= global_rsize_threshold:
-                target_dt.add(dt)
+            #if rsize >= global_rsize_threshold:
+            #    target_dt.add(dt)
 
         for fg in self.filegroups:
             unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
 
             #------------------------------------
             # XXX for getting the sizes of all slots (no use for now)
-            #if unix_dt in analyzed_dt:
-            #    continue
-
-            #------------------------------------
-            # XXX for re-getting the relative width of LBEs
-            if unix_dt not in target_dt:
+            if unix_dt in analyzed_dt:
                 continue
 
-            #if unix_dt != 1229733600: # test
+            #------------------------------------
+            ## XXX for re-getting the relative width of LBEs
+            #if unix_dt not in target_dt:
             #    continue
 
             #reset size and width thresholds to cope with collector blank period
@@ -1586,7 +1585,7 @@ class Reaper():
         f.close()
         '''
 
-        all_size_path = self.get_output_dir_event() + 'all_slot_size.txt'
+        all_size_path = self.get_output_dir_event() + 'all_slot_size.txt' # XXX use only once!! do not over-write
         f = open(all_size_path, 'w')
         for dt in self.dt2size:
             f.write(str(dt)+':'+str(self.dt2size[dt])+'\n')
