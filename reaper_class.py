@@ -1585,11 +1585,11 @@ class Reaper():
         f.close()
         '''
 
-        all_size_path = self.get_output_dir_event() + 'all_slot_size.txt' # XXX use only once!! do not over-write
-        f = open(all_size_path, 'w')
-        for dt in self.dt2size:
-            f.write(str(dt)+':'+str(self.dt2size[dt])+'\n')
-        f.close()
+        #all_size_path = self.get_output_dir_event() + 'all_slot_size.txt' # XXX use only once!! do not over-write
+        #f = open(all_size_path, 'w')
+        #for dt in self.dt2size:
+            #f.write(str(dt)+':'+str(self.dt2size[dt])+'\n')
+        #f.close()
             
     def all_events_tpattern(self): # time patterns of all events
         event_dict = self.get_event_dict()
@@ -1872,3 +1872,101 @@ class Reaper():
 
         for unix_dt in event_dict:
     '''
+
+    ##############################################################################
+    #############################################################################
+    #############################################################################
+    #############################################################################
+
+    def uv_uq_distr(self):
+        top_ratios = [0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
+        #top_ratios = [0.999, 0.99, 0.98, 0.97, 0.95, 0.9]
+        mydir = self.pfx_final_dir + 'default/'
+        fpath = mydir + 'uq_uv_top.txt'
+        foo = open(fpath, 'w')
+
+        count = 0
+        for fg in self.filegroups:
+            count += 1
+            print '******************Round ', count
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            print 'Getting UV UQ distribution for unix_dt ', unix_dt
+
+            total_num = 0
+            uq2num = dict()
+            uv2num = dict()
+            fname = self.get_output_dir_pfx() + str(unix_dt) + '_value.txt'
+            f = open(fname, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                if line.startswith('#'):
+                    line = line.strip('#').split(':')
+                    uq = int(line[0])
+                    uq_num = int(line[1])
+                    uq2num[uq] = uq_num
+                else:
+                    line = line.strip('%').split(':')
+                    uv = float(line[0])
+                    uv_num = int(line[1])
+                    uv2num[uv] = uv_num
+                    total_num += uv_num
+            f.close()
+
+            uq2cdf = dict()
+            uv2cdf = dict()
+            cdf = 0
+            for uq in sorted(uq2num.keys()):
+                num = uq2num[uq]
+                cdf += num
+                uq2cdf[uq] = cdf
+
+            cdf = 0
+            for uv in sorted(uv2num.keys()):
+                num = uv2num[uv]
+                cdf += num
+                uv2cdf[uv] = cdf
+
+            top2uq = dict()
+            top2uv = dict()
+            pre_ratio = 1.1
+            for uq in sorted(uq2cdf.keys()):
+                cdfvalue = float(uq2cdf[uq])
+                ratio = cdfvalue / total_num
+                for top in top_ratios:
+                    if ratio > top and pre_ratio <= top:
+                        top2uq[top] = uq
+                pre_ratio = ratio
+
+            # avoid special cases that some tops do not exist in the dict keys
+            i = len(top_ratios) - 2
+            while (i+1):
+                if top_ratios[i] not in top2uq.keys():
+                    top2uq[top_ratios[i]] = top2uq[top_ratios[i+1]]
+                i -= 1
+
+            pre_ratio = 1.1
+            for uv in sorted(uv2cdf.keys()):
+                cdfvalue = float(uv2cdf[uv])
+                ratio = cdfvalue / total_num
+                for top in top_ratios:
+                    if ratio > top and pre_ratio <= top:
+                        top2uv[top] = uv
+                pre_ratio = ratio
+
+            # avoid special cases that some tops do not exist in the dict keys
+            i = len(top_ratios) - 2
+            while (i+1):
+                if top_ratios[i] not in top2uv.keys():
+                    top2uv[top_ratios[i]] = top2uv[top_ratios[i+1]]
+                i -= 1
+
+            foo.write(str(unix_dt)+':')
+            for top in top2uq:
+                foo.write(' '+str(top)+'|'+str(top2uq[top])+' ')
+            foo.write('&')
+            for top in top2uv:
+                foo.write(' '+str(top)+'|'+str(top2uv[top])+' ')
+            foo.write('\n')
+
+        foo.close()
+

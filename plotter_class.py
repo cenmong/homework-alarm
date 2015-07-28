@@ -725,7 +725,8 @@ class Plotter():
         legend = ax.legend(loc='lower right',shadow=False)
         plt.plot((0.007, 0.007), (0, 1.1), 'k--', lw=4)
         ax.set_ylim([0.8, 1.01])
-        ax.set_xlim([0.003, 0.012])
+        ax.set_xlim([0.003, 0.011])
+        plt.xticks([0.004, 0.006, 0.008, 0.010])
         ax.set_ylabel('Cumulative distribution (ratio)')
         ax.set_xlabel('Relative size')
         output_loc = pub_plot_dir + 'all_size_dist.pdf'
@@ -983,6 +984,137 @@ class Plotter():
         ax.set_xlabel('Proportion')
 
         output_loc = pub_plot_dir + 'tpfx_upattern_aadup2.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def uv_uq_distr_mr(self):
+        top_ratios = [0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999] # change with that in reaper
+        top2uq_list = dict()
+        top2uv_list = dict()
+        for top in top_ratios:
+            top2uq_list[top] = list()
+            top2uv_list[top] = list()
+
+        for reaper in self.mr.rlist:
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir + 'uq_uv_top.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                line = line.split(':')[1]
+                part1 = line.split('&')[0]
+                part2 = line.split('&')[1]
+                part1 = part1.split()
+                count = 0
+                for item in part1:
+                    if item == '':
+                        continue
+                    count += 1
+                    top = float(item.split('|')[0])
+                    uq = int(item.split('|')[1])
+                    top2uq_list[top].append(uq)
+
+                count = 0
+                part2 = part2.split()
+                for item in part2:
+                    if item == '':
+                        continue
+                    count += 1
+                    top = float(item.split('|')[0])
+                    uv = float(item.split('|')[1])
+                    top2uv_list[top].append(uv)
+            f.close()
+
+        #---------------------------------
+        # plot UQ
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        i = -1
+        for top in top2uq_list:
+            print 'top=',top
+            print 'list length=', len(top2uq_list[top])
+            i += 1
+            uqlist = sorted(top2uq_list[top])
+            #uqlist = [1,1,2,2,2,3,4,5,6,6,7] # for test
+            xlist = [0]
+            ylist = [0]
+            uq_pre = uqlist[0]
+            sum = 0
+            for uq in uqlist:
+                if uq != uq_pre:
+                    xlist.append(uq_pre)
+                    ylist.append(sum)
+                    sum += 1
+                    uq_pre = uq
+                else:
+                    sum += 1
+            ylist.append(sum)
+            xlist.append(uq)
+
+            ax.plot(xlist,ylist,'k-')
+            ymax = max(ylist)
+            print 'ymax=',ymax
+
+        #legend = ax.legend(loc='upper left',shadow=False)
+        ax.set_ylabel('number of time slots')
+        ax.set_xlabel('Value')
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        plt.plot((100, 100), (0, 23000), 'k--', lw=4)
+        plt.plot((200, 200), (0, 23000), 'k--', lw=4)
+        ax.set_xlim([0,2000])
+        ax.set_ylim([0,23000])
+
+        output_loc = pub_plot_dir + 'UQ_distr.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+        #---------------------------------
+        # plot UV
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        i = -1
+        for top in top2uv_list:
+            print 'top=',top
+            print 'list length=', len(top2uv_list[top])
+            i += 1
+            uvlist = sorted(top2uv_list[top])
+            xlist = [0]
+            ylist = [0]
+            uv_pre = uvlist[0]
+            sum = 0
+            for uv in uvlist:
+                if uv != uv_pre:
+                    xlist.append(uv_pre)
+                    ylist.append(sum)
+                    sum += 1
+                    uv_pre = uv
+                else:
+                    sum += 1
+            ylist.append(sum)
+            xlist.append(uv)
+
+            ax.plot(xlist,ylist,'k-')
+            ymax = max(ylist)
+            print 'ymax=',ymax
+
+        #legend = ax.legend(loc='upper left',shadow=False)
+        ax.set_ylabel('number of time slots')
+        ax.set_xlabel('Value')
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_xlim([-0.01,1.01])
+        ax.set_ylim([0,23000])
+        plt.plot((0.4, 0.4), (0, 23000), 'k--', lw=4)
+        plt.plot((0.6, 0.6), (0, 23000), 'k--', lw=4)
+
+        output_loc = pub_plot_dir + 'UV_distr.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()

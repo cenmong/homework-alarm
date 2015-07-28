@@ -4,7 +4,6 @@ from alarm_class import Alarm
 from reaper_class import Reaper
 from multi_reaper_class import MultiReaper
 from plotter_class import Plotter
-from micro_fighter_class import Micro_fighter
 #from plot_matrix import plot_matrix
 
 import cmlib
@@ -12,13 +11,14 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':1, 'micro':0, 'plot':0, 'plot_matrix':0}
+action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 index_list = [281,282,283,284,285,286,287,288,289,2810]
-#index_list = [286,287,288,289,2810]
+#index_list = [281]
 #index_list = [284, 286]
 
+# the largest cluster in 01~10 2013 (for IPCCC 2015)
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
 
 #dt_list1 = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800]
@@ -40,24 +40,20 @@ for i in index_list:
     uq_thre = 200 # HUQP
 
     reaper = Reaper(my_period, option['final_granu'], shift=0) # in most cases shift is 0
-    reaper.set_dv_uq_thre(dv_thre, uq_thre)
+    #reaper.set_dv_uq_thre(dv_thre, uq_thre)
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
     reaperlist.append(reaper) 
 
     if action['final']:
         #----------------------------------
         # for the prefix paper 
-        #reaper.get_pfx_data()
+        reaper.uv_uq_distr()
+        #reaper.get_pfx_data() # get the uv and uq for every prefix in every slot
         #reaper.analyze_pfx()
-
-        #periods = [[],[],[],[],[],[]]
-        # ready TODO record DV and UQ distribution for certain periods, e.g., 6 weeks? (stand-alone)
-        # : in order to avoid the period when disruptive events happened
-        # future TODO select results of only part of the monitors to observe its impact
 
         #--------------------------------
         # for detecting large-scale BGP events
-        reaper.detect_event()
+        #reaper.detect_event()
         #reaper.all_events_cluster()
         #reaper.all_events_tpattern()
         #reaper.all_events_ratios()
@@ -67,7 +63,7 @@ for i in index_list:
         plotter = Plotter(reaper)
         #plotter.TS_event_dot()
         #plotter.TS_event_cluster_dot()
-        plotter.all_events_tpattern_curve()
+        #plotter.all_events_tpattern_curve()
 
         ''' 
         #--------------------------------------------
@@ -140,8 +136,9 @@ f.close()
 
 #mr.get_common_pfx_set(dt_list)
 #mr.all_events_cluster()
-#pl = Plotter(reaper)
-#pl.set_multi_reaper(mr)
+pl = Plotter(reaper)
+pl.set_multi_reaper(mr)
+pl.uv_uq_distr_mr()
 #pl.TS_event_cluster_dot_mr()
 
 #pl.ratios_dot_mr()
