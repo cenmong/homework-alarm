@@ -11,10 +11,10 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0}
+action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR': 1}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-index_list = [281,282,283,284,285,286,287,288,289,2810]
+index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
 #index_list = [281]
 #index_list = [284, 286]
 
@@ -47,7 +47,8 @@ for i in index_list:
     if action['final']:
         #----------------------------------
         # for the prefix paper 
-        reaper.uv_uq_distr()
+        #reaper.uv_uq_distr()
+        reaper.huvp_huqp_TS(100, 0.4)
         #reaper.get_pfx_data() # get the uv and uq for every prefix in every slot
         #reaper.analyze_pfx()
 
@@ -120,28 +121,32 @@ for i in index_list:
 
 #------------------------------------------------------------------
 #combined analysis of all reapers
-mr = MultiReaper(reaperlist)
+if action['MR']:
+    mr = MultiReaper(reaperlist)
 
-#-------------------------------------------------------------------
-# Get the existenc frequency of certain AS in the AS paths in the updates for some prefixes
-'''
-pfx_set = set()
-f = open(datadir+'final_output/target_pfx.txt')
-for line in f:
-    line = line.rstrip('\n')
-    pfx_set.add(line)
-f.close()
-'''
-#mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
+    #-------------------------------------------------------------------
+    # Get the existenc frequency of certain AS in the AS paths in the updates for some prefixes
+    '''
+    pfx_set = set()
+    f = open(datadir+'final_output/target_pfx.txt')
+    for line in f:
+        line = line.rstrip('\n')
+        pfx_set.add(line)
+    f.close()
+    '''
+    #mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
 
-#mr.get_common_pfx_set(dt_list)
-#mr.all_events_cluster()
-pl = Plotter(reaper)
-pl.set_multi_reaper(mr)
-pl.uv_uq_distr_mr()
-#pl.TS_event_cluster_dot_mr()
+    #mr.get_common_pfx_set(dt_list)
+    #mr.all_events_cluster()
+    pl = Plotter(reaper)
+    pl.set_multi_reaper(mr)
+    #pl.TS_prefix_mr(100, 0.4)
+    #pl.uv_uq_distr_mr()
+    #pl.TS_prefix_mr()
+    #pl.TS_event_cluster_dot_mr()
 
-#pl.ratios_dot_mr()
-#pl.width_dot_mr()
-#pl.size_CDFs_mr()
+    #pl.ratios_dot_mr()
+    #pl.width_dot_mr()
+    pl.size_CDFs_mr()
+
 logging.info('Program ends!')

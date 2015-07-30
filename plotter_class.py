@@ -1118,3 +1118,76 @@ class Plotter():
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
+
+    def TS_prefix_mr(self, Tq, Tv):
+        unix2huqp = dict()
+        unix2huvp = dict()
+        unix2h2 = dict()
+        for reaper in self.mr.rlist:
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                 line = line.rstrip('\n')
+                 unix = int(line.split(':')[0])
+                 tmp = line.split(':')[1].split('|')
+                 huqp_num = int(tmp[0])
+                 huvp_num = int(tmp[1])
+                 h2_num = int(tmp[2])
+
+                 unix2huqp[unix] = huqp_num
+                 unix2huvp[unix] = huvp_num
+                 unix2h2[unix] = h2_num
+
+        dict_list = [unix2huqp, unix2huvp, unix2h2]
+        count = 0
+        for mydict in dict_list:
+            count += 1
+
+            fig = plt.figure(figsize=(100, 20))
+            ax = fig.add_subplot(111)
+
+            dt_list = list()
+            value_list = list()
+            for unix in mydict:
+                the_dt = datetime.datetime.utcfromtimestamp(unix)
+                dt_list.append(the_dt)
+                value_list.append(mydict[unix])
+
+            plt.scatter(dt_list, value_list, s=20, facecolor='k', edgecolors='none')
+
+            '''
+            if count == 1:
+                dt_list = list()
+                value_list = list()
+                for unix in unix2h2:
+                    the_dt = datetime.datetime.utcfromtimestamp(unix)
+                    dt_list.append(the_dt)
+                    value_list.append(unix2h2[unix])
+
+                plt.scatter(dt_list, value_list, s=20, facecolor='red', edgecolors='none')
+            '''
+
+            #dt1 = datetime.datetime.utcfromtimestamp(min(dt_list))
+            #dt2 = datetime.datetime.utcfromtimestamp(max(dt_list))
+            dt1 = min(dt_list)
+            dt2 = max(dt_list)
+            ax.set_xlim([dt1, dt2])
+            ymax = max(value_list)
+            for dt in dt_list:
+                if dt.weekday() == 0:
+                    plt.plot((dt, dt), (0, ymax), 'k--', lw=4)
+
+            ax.set_yscale('log')
+            ax.set_ylabel('Quantity')
+            myFmt = mpldates.DateFormatter('%b\n%d')
+            ax.xaxis.set_major_formatter(myFmt)
+
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
+            #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+            output_loc = pub_plot_dir + str(count) + '.pdf'
+            plt.savefig(output_loc, bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()

@@ -1970,3 +1970,37 @@ class Reaper():
 
         foo.close()
 
+    def huvp_huqp_TS(self, Tq, Tv):
+        mydir = self.pfx_final_dir + 'default/'
+        outpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+
+        fo = open(outpath, 'w')
+
+        count = 0
+        for fg in self.filegroups:
+            count += 1
+            print '******************Round ', count
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            print 'Getting HUVP and HUQP time series for slot ', unix_dt
+            
+            huqp_num = 0
+            huvp_num = 0
+            h2_num = 0
+            fpath = mydir + str(unix_dt) + '_pfx.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                line = line.split(':')[1].split('|')
+                uq = int(line[0])
+                uv = float(line[1])
+                if uq >= Tq:
+                    huqp_num += 1
+                    if uv >= Tv:
+                        h2_num += 1
+                if uv >= Tv:
+                    huvp_num += 1
+
+            fo.write(str(unix_dt)+':'+str(huqp_num)+'|'+str(huvp_num)+'|'+str(h2_num)+'\n')
+            f.close()
+
+        fo.close()
