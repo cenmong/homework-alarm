@@ -1879,7 +1879,7 @@ class Reaper():
     #############################################################################
 
     def uv_uq_distr(self):
-        top_ratios = [0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
+        top_ratios = [0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
         #top_ratios = [0.999, 0.99, 0.98, 0.97, 0.95, 0.9]
         mydir = self.pfx_final_dir + 'default/'
         fpath = mydir + 'uq_uv_top.txt'

@@ -1,3 +1,4 @@
+import random
 import radix # takes 1/4 the time as patricia
 import numpy as np
 import cmlib
@@ -249,3 +250,151 @@ class MultiReaper():
 
     def events_cluster_path(self):
         return  cmlib.datadir+'final_output/clustering.txt'
+
+    def random_slots_upattern(self, num):
+        unix_set = set()
+        delete_unix_set = set()
+        unix2reaper = dict()
+        for reaper in self.rlist:
+            fpath = reaper.get_output_dir_event() + 'all_slot_size.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix = line.split(':')[0]
+                unix2reaper[unix] = reaper
+                unix_set.add(unix)
+            f.close()
+
+            fpath = reaper.get_output_dir_event() + 'events_plusminus.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix = line.split(':')[0]
+                delete_unix_set.add(unix)
+            f.close()
+
+        goal_unix_set = unix_set - delete_unix_set
+        print random.sample(goal_unix_set, 18)
+
+        for unix in goal_unix_set:
+            reaper = unix2reaper[unix]
+            sdt_unix = unix_dt
+            edt_unix = unix_dt + reaper.granu * 60
+
+            updt_files = list()
+            updt_filel = reaper.period.get_filelist()
+
+            fmy = open(updt_filel, 'r')
+            for fline in fmy:
+                updatefile = fline.split('|')[0]
+                updt_files.append(datadir+updatefile)
+            fmy.close()
+        
+            num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
+                        41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
+                        800:'patho',801:'patho(include WADup)',802:'policy'}
+            for n in num2type:
+                pattern2count[n] = set()
+
+            mp_dict = dict() # mon: prefix: successive update type series (0~5)
+            mp_last_A = dict() # mon: prefix: latest full update
+            mp_last_type = dict()
+
+            fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+            for fpath in fpathlist:
+                print 'Reading ', fpath
+                p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+                myf = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in myf:
+                    try:
+                        line = line.rstrip('\n')
+                        attr = line.split('|')
+                        pfx = attr[5]
+                        type = attr[2]
+                        mon = attr[3]
+
+                        unix = int(attr[1])
+                        if unix < sdt_unix or unix > edt_unix:
+                            continue
+
+                        if type == 'A':
+                            as_path = attr[6]
+
+                        the_tag = pfx2tag[pfx] + mon2tag[mon]
+
+                        try:
+                            test = mp_dict[mon][pfx]
+                        except:
+                            mp_dict[mon][pfx] = list() # list of 0~5
+
+                        try:
+                            last_A = mp_last_A[mon][pfx]
+                            last_as_path = last_A.split('|')[6]
+                        except:
+                            last_A = None
+                            last_as_path = None
+
+                        try:
+                            last_type = mp_last_type[mon][pfx]
+                        except: # this is the first update for the mon-pfx pair
+                            last_type = None
+
+                        if last_type == 'W':
+                            if type == 'W':
+                                mp_dict[mon][pfx].append(0)
+                                pattern2count[0].add(the_tag)
+                                pattern2count[800].add(the_tag)
+                                pattern2count[801].add(the_tag)
+                            elif type == 'A':
+                                if last_as_path:
+                                    if as_path == last_as_path:
+                                        mp_dict[mon][pfx].append(41)
+                                        pattern2count[41].add(the_tag)
+                                        pattern2count[799].add(the_tag)
+                                        pattern2count[801].add(the_tag)
+                                    else:
+                                        mp_dict[mon][pfx].append(42)
+                                        pattern2count[42].add(the_tag)
+                                        pattern2count[799].add(the_tag)
+                                        pattern2count[798].add(the_tag)
+                                else: # no A record
+                                    mp_dict[mon][pfx].append(40)
+                                    pattern2count[40].add(the_tag)
+                                mp_last_A[mon][pfx] = line
+                    
+                        elif last_type == 'A':
+                            if type == 'W':
+                                mp_dict[mon][pfx].append(5)
+                                pattern2count[5].add(the_tag)
+                            elif type == 'A':
+                                if line == last_A:
+                                    mp_dict[mon][pfx].append(1)
+                                    pattern2count[1].add(the_tag)
+                                    pattern2count[800].add(the_tag)
+                                    pattern2count[801].add(the_tag)
+                                elif as_path == last_as_path:
+                                    mp_dict[mon][pfx].append(2)
+                                    pattern2count[2].add(the_tag)
+                                    pattern2count[802].add(the_tag)
+                                else:
+                                    mp_dict[mon][pfx].append(3)
+                                    pattern2count[3].add(the_tag)
+                                    pattern2count[799].add(the_tag)
+                                    pattern2count[798].add(the_tag)
+                                mp_last_A[mon][pfx] = line
+                    
+                        else: # last_type is None
+                            if type == 'W':
+                                mp_last_type[mon][pfx] = 'W'
+                            elif type == 'A':
+                                mp_last_type[mon][pfx] = 'A'
+                                mp_last_A[mon][pfx] = line
+                            else:
+                                assert False
+                            
+                    except Exception, err:
+                        if line != '':
+                            logging.info(traceback.format_exc())
+                            logging.info(line)
+                myf.close()

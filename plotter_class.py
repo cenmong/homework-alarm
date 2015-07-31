@@ -989,7 +989,7 @@ class Plotter():
         plt.close()
 
     def uv_uq_distr_mr(self):
-        top_ratios = [0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999] # change with that in reaper
+        top_ratios = [0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999] # change with that in reaper
         top2uq_list = dict()
         top2uv_list = dict()
         for top in top_ratios:
@@ -1053,11 +1053,11 @@ class Plotter():
             ylist.append(sum)
             xlist.append(uq)
 
-            ax.plot(xlist,ylist,'k-')
+            ax.plot(xlist,ylist,'k-', color=colors[i], label=str(top))
             ymax = max(ylist)
             print 'ymax=',ymax
 
-        #legend = ax.legend(loc='upper left',shadow=False)
+        legend = ax.legend(loc='lower right',shadow=False)
         ax.set_ylabel('number of time slots')
         ax.set_xlabel('Value')
 
@@ -1065,8 +1065,10 @@ class Plotter():
         ax.tick_params(axis='x',pad=10)
         plt.plot((100, 100), (0, 23000), 'k--', lw=4)
         plt.plot((200, 200), (0, 23000), 'k--', lw=4)
-        ax.set_xlim([0,2000])
-        ax.set_ylim([0,23000])
+        #ax.set_xscale('log')
+        #plt.xlim(-1,10000)
+        plt.xlim(-1,2000)
+        ax.set_ylim([0,ymax * 1.1])
 
         output_loc = pub_plot_dir + 'UQ_distr.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -1110,9 +1112,9 @@ class Plotter():
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
         ax.set_xlim([-0.01,1.01])
-        ax.set_ylim([0,23000])
-        plt.plot((0.4, 0.4), (0, 23000), 'k--', lw=4)
-        plt.plot((0.6, 0.6), (0, 23000), 'k--', lw=4)
+        ax.set_ylim([0,ymax * 1.1])
+        plt.plot((0.3, 0.3), (0, 23000), 'k--', lw=4)
+        plt.plot((0.5, 0.5), (0, 23000), 'k--', lw=4)
 
         output_loc = pub_plot_dir + 'UV_distr.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -1174,9 +1176,10 @@ class Plotter():
             dt2 = max(dt_list)
             ax.set_xlim([dt1, dt2])
             ymax = max(value_list)
-            for dt in dt_list:
-                if dt.weekday() == 0:
-                    plt.plot((dt, dt), (0, ymax), 'k--', lw=4)
+            ax.set_ylim([100, 10000]) # for test only
+            #for dt in dt_list:
+            #    if dt.weekday() == 0:
+            #        plt.plot((dt, dt), (0, ymax), 'k--', lw=4)
 
             ax.set_yscale('log')
             ax.set_ylabel('Quantity')
@@ -1187,7 +1190,44 @@ class Plotter():
             ax.tick_params(axis='x',pad=10)
             #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-            output_loc = pub_plot_dir + str(count) + '.pdf'
+            output_loc = pub_plot_dir + str(count)+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
             plt.savefig(output_loc, bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
+
+    def hratio_box(self, Tq, Tv):
+        the_lists = list() # list of lists
+
+        h2_huqp_list = list()
+        h2_huvp_list = list()
+        for reaper in self.mr.rlist:
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                 line = line.rstrip('\n')
+                 tmp = line.split(':')[1].split('|')
+                 huqp_num = float(tmp[0])
+                 huvp_num = float(tmp[1])
+                 h2_num = float(tmp[2])
+
+                 ratio1 = h2_num / huqp_num
+                 ratio2 = h2_num / huvp_num
+                 h2_huqp_list.append(ratio1)
+                 h2_huvp_list.append(ratio2)
+            f.close()
+
+        the_lists.append(h2_huqp_list)
+        the_lists.append(h2_huvp_list)
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.boxplot(the_lists, showmeans=True)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('ratio')
+
+        output_loc = pub_plot_dir + 'h2_ratio_'+str(Tq)+'_'+str(Tv)+'.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
