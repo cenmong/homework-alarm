@@ -1,3 +1,4 @@
+import collections
 import random
 import radix # takes 1/4 the time as patricia
 import numpy as np
@@ -398,3 +399,114 @@ class MultiReaper():
                             logging.info(traceback.format_exc())
                             logging.info(line)
                 myf.close()
+
+    def new_huqp_huvp(self):
+        all_huvp = set()
+        all_huqp = set()
+        all_hap = set()
+
+        new_n = 10 # the number of slots before a hprefix is believed to be 'new'
+        nhuvp = collections.deque()
+        nhuqp = collections.deque()
+        nhap = collections.deque()
+
+        count = 0
+        for reaper in self.rlist:
+            mydir = reaper.get_output_dir_pfx()
+            outpath = mydir+'new_huvp_'+str(reaper.Tv)+'_huqp_'+str(reaper.Tq)+'_TS.txt'
+            fo = open(outpath, 'w')
+
+            for fg in reaper.filegroups:
+                count += 1
+                print '******************Round ', count
+                unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+                print 'Getting new HUVP and HUQP for slot ', unix_dt
+
+                # sets for this slot only
+                huvp_set = set()
+                huqp_set = set()
+                hap_set = set()
+
+                fpath = mydir + str(unix_dt) + '_pfx.txt'
+                f = open(fpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    pfx = line.split(':')[0]
+                    line = line.split(':')[1].split('|')
+                    uq = int(line[0])
+                    uv = float(line[1])
+                    if uq >= reaper.Tq:
+                        huqp_set.add(pfx)
+                        if uv >= reaper.Tv:
+                            hap_set.add(pfx)
+                    if uv >= reaper.Tv:
+                        huvp_set.add(pfx)
+                f.close()
+
+                #--------------------------------------------
+                # new h prefixs that exist for the first time
+                new_huvp_set = set()
+                new_huqp_set = set()
+                new_hap_set = set()
+
+                for p in huvp_set:
+                    if p not in all_huvp:
+                        new_huvp_set.add(p)
+                for p in huqp_set:
+                    if p not in all_huqp:
+                        new_huqp_set.add(p)
+                for p in hap_set:
+                    if p not in all_hap:
+                        new_hap_set.add(p)
+
+                all_huvp = all_huvp | huvp_set
+                all_huqp = all_huqp | huqp_set
+                all_hap = all_hap | hap_set
+
+
+                #-------------------------------------------
+                # new prefixes that have not existed in the previous N slots
+                new_huvp_N = set()
+                new_huqp_N = set()
+                new_hap_N = set()
+
+                for p in huvp_set:
+                    existed = False
+                    for s in nhuvp:
+                        if p in s:
+                            existed = True
+                            break
+                    if existed == False:
+                        new_huvp_N.add(p)
+                for p in huqp_set:
+                    existed = False
+                    for s in nhuqp:
+                        if p in s:
+                            existed = True
+                            break
+                    if existed == False:
+                        new_huqp_N.add(p)
+                for p in hap_set:
+                    existed = False
+                    for s in nhap:
+                        if p in s:
+                            existed = True
+                            break
+                    if existed == False:
+                        new_hap_N.add(p)
+
+                nhuvp.append(huvp_set)
+                if len(nhuvp) > new_n:
+                    nhuvp.popleft()
+                nhuqp.append(huqp_set)
+                if len(nhuqp) > new_n:
+                    nhuqp.popleft()
+                nhap.append(hap_set)
+                if len(nhap) > new_n:
+                    nhap.popleft()
+
+                fo.write(str(unix_dt)+':'+str(len(new_huqp_set))+'|'+str(len(new_huvp_set))+'|'+\
+                         str(len(new_hap_set))+'&'+str(len(new_huqp_N))+'|'+str(len(new_huvp_N))+\
+                         '|'+str(len(new_hap_N))+'\n')
+
+            fo.close()

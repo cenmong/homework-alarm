@@ -1,3 +1,4 @@
+import collections
 import radix # takes 1/4 the time as patricia
 import datetime
 import numpy as np
@@ -79,28 +80,8 @@ class Reaper():
         ##self.c_pfx_data = radix.Radix()
         self.c_pfx_data = dict()
 
-
         #--------------------------------------------------------------------
         # variables for analyzing all types of prefixes
-        # XXX if memo too hard, scan two or more times
-
-        # recore time series of three types of prefixes. datetime: value
-        self.hdv_ts = dict()
-        self.huq_ts = dict()
-        self.h2_ts = dict()
-        self.pfx_ts = dict()
-
-        # overall updates time series of certain prefixes
-        self.uq_ts_hdv = dict()
-        self.uq_ts_huq = dict()
-        self.uq_ts_h2 = dict()
-        # total updates time series 
-        self.uq_ts = dict()
-
-        # overall DV distribution of certain prefixes
-        self.dv_distr_hdv = dict() # DV value: existence
-        self.dv_distr_huq = dict() # DV value: existence
-        self.dv_distr_h2 = dict() # DV value: existence
 
         # Lifetime of 3 types of H prefixes
         self.pfx_lifetime = radix.Radix() # XXX costs memo
@@ -189,6 +170,9 @@ class Reaper():
         self.dt2size = dict() # sizes for ALL slots
         self.target_dt_rwidth = dict() # LBE dt -> relative width
 
+
+        self.Tq = None
+        self.Tv = None
 
     # get prefix 2 as mapping from only RouteViews2 collector's RIB
     # TODO test needed
@@ -1561,16 +1545,6 @@ class Reaper():
         return mydir
 
 
-    def get_output_dir_pfx(self):
-        '''
-        assert self.dv_thre != None and self.uq_thre != None
-        return self.final_dir + str(self.dv_thre).lstrip('0.') + '_' + str(self.uq_thre) +\
-                '_' + str(self.m_granu) + '_' + str(self.granu) + '_' + str(self.shift) + '/'
-        '''
-        mydir = self.pfx_final_dir + 'default/'
-        cmlib.make_dir(mydir)
-        return mydir
-
 
     def get_output_fpath_event_brief(self):
         return self.get_output_dir_event() + self.events_brief_fname
@@ -1878,6 +1852,12 @@ class Reaper():
     #############################################################################
     #############################################################################
 
+    def get_output_dir_pfx(self):
+        # TODO change the dir name to time granularity
+        mydir = self.pfx_final_dir + 'default/'
+        cmlib.make_dir(mydir)
+        return mydir
+
     def uv_uq_distr(self):
         top_ratios = [0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
         #top_ratios = [0.999, 0.99, 0.98, 0.97, 0.95, 0.9]
@@ -1970,7 +1950,10 @@ class Reaper():
 
         foo.close()
 
-    def huvp_huqp_TS(self, Tq, Tv):
+    def huvp_huqp_TS(self):
+        Tq = self.Tq
+        Tv = self.Tv
+        
         mydir = self.pfx_final_dir + 'default/'
         outpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
 
@@ -2004,3 +1987,48 @@ class Reaper():
             f.close()
 
         fo.close()
+
+    def TS_updt_num(self):
+        Tq = self.Tq
+        Tv = self.Tv
+
+        mydir = self.pfx_final_dir + 'default/'
+        outpath = mydir+'TS_updt_num_'+str(Tv)+'_'+str(Tq)+'.txt'
+        fo = open(outpath, 'w')
+
+        count = 0
+        for fg in self.filegroups:
+            count += 1
+            print '******************Round ', count
+            unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+            print 'Getting HUVP and HUQP update number for slot ', unix_dt
+
+            total = 0
+            huqp_u = 0
+            huvp_u = 0
+            h2p_u = 0
+            fpath = mydir + str(unix_dt) + '_pfx.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                line = line.split(':')[1].split('|')
+                uq = int(line[0])
+                total += uq
+                uv = float(line[1])
+                if uq >= Tq:
+                    huqp_u += uq
+                    if uv >= Tv:
+                        h2p_u += uq
+                if uv >= Tv:
+                    huvp_u += uq
+            f.close()
+
+            fo.write(str(unix_dt)+':'+str(total)+'|'+str(huqp_u)+'|'+str(huvp_u)+'|'+str(h2p_u)+'\n')
+
+        fo.close()
+
+    def set_Tq_Tv(self, qv, vv):
+        self.Tq = qv
+        self.Tv = vv
+        return 0
+

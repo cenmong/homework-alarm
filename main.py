@@ -11,11 +11,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':1, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR': 0}
+action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR': 1}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-index_list = [285,286,287,288,289,2810] # for NOMS 2016 short paper
 #index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
+index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
 
 # the largest cluster in 01~10 2013 (for IPCCC 2015)
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
@@ -42,17 +42,17 @@ for i in index_list:
     #reaper.set_dv_uq_thre(dv_thre, uq_thre)
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
     reaperlist.append(reaper) 
+    reaper.set_Tq_Tv(100, 0.4)
 
     if action['final']:
         #----------------------------------
         # for the prefix paper 
-        #reaper.uv_uq_distr()
-        reaper.TS_uquv_updt_num()
-        #reaper.huvp_huqp_TS(100, 0.4)
-        #reaper.huvp_huqp_TS(100, 0.3) # done
-        #reaper.huvp_huqp_TS(200, 0.4) # done
-        #reaper.get_pfx_data() # get the uv and uq for every prefix in every slot
-        #reaper.analyze_pfx()
+        #reaper.TS_updt_num()
+        reaper.life_time() # TODO
+        #reaper.huvp_huqp_TS()
+        #reaper.get_pfx_data() # get the uv and uq for every prefix in every slot (run only once)
+        #reaper.uv_uq_distr()# (run only once)
+        #reaper.analyze_pfx() # no use any more
 
         #--------------------------------
         # for detecting large-scale BGP events
@@ -137,6 +137,7 @@ if action['MR']:
     f.close()
     '''
     #mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
+    mr.new_huqp_huvp() # note: data from previous slot will be used
 
     #mr.get_common_pfx_set(dt_list)
     #mr.all_events_cluster()
@@ -144,11 +145,12 @@ if action['MR']:
 
     pl = Plotter(reaper)
     pl.set_multi_reaper(mr)
-    #pl.TS_prefix_mr(200, 0.4)
-    #pl.hratio_box(100, 0.4) # the box plot of the ratio of HUQP and HUVP
-    #pl.hratio_box(100, 0.3) # the box plot of the ratio of HUQP and HUVP
-    #pl.hratio_box(200, 0.4) # the box plot of the ratio of HUQP and HUVP
-    pl.uv_uq_distr_mr()
+    #pl.TS_prefix_mr()
+    #pl.TS_total_huvp_huqp_updt_mr()
+    #pl.HUQOP_uv_distr_mr() # TODO
+    #pl.hratio_box()
+    #pl.uv_uq_distr_mr()
+    #pl.updt_ratio_box()
     #pl.TS_event_cluster_dot_mr()
 
     #pl.ratios_dot_mr()

@@ -1063,12 +1063,15 @@ class Plotter():
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
+        plt.plot((80, 80), (0, 23000), 'k--', lw=2)
         plt.plot((100, 100), (0, 23000), 'k--', lw=4)
-        plt.plot((200, 200), (0, 23000), 'k--', lw=4)
-        #ax.set_xscale('log')
-        #plt.xlim(-1,10000)
-        plt.xlim(-1,2000)
+        plt.plot((200, 200), (0, 23000), 'k--', lw=2)
+        ax.set_xscale('log')
+        plt.xlim(-1,10000)
+        #plt.xlim(-1,1000)
         ax.set_ylim([0,ymax * 1.1])
+
+        plt.grid()
 
         output_loc = pub_plot_dir + 'UQ_distr.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -1101,7 +1104,7 @@ class Plotter():
             ylist.append(sum)
             xlist.append(uv)
 
-            ax.plot(xlist,ylist,'k-')
+            ax.plot(xlist,ylist,'k-', color=colors[i])
             ymax = max(ylist)
             print 'ymax=',ymax
 
@@ -1113,19 +1116,24 @@ class Plotter():
         ax.tick_params(axis='x',pad=10)
         ax.set_xlim([-0.01,1.01])
         ax.set_ylim([0,ymax * 1.1])
-        plt.plot((0.3, 0.3), (0, 23000), 'k--', lw=4)
-        plt.plot((0.5, 0.5), (0, 23000), 'k--', lw=4)
+        plt.plot((0.3, 0.3), (0, 23000), 'k--', lw=2)
+        plt.plot((0.4, 0.4), (0, 23000), 'k--', lw=4)
+        plt.plot((0.5, 0.5), (0, 23000), 'k--', lw=2)
+
+        plt.grid()
 
         output_loc = pub_plot_dir + 'UV_distr.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
 
-    def TS_prefix_mr(self, Tq, Tv):
+    def TS_prefix_mr(self):
         unix2huqp = dict()
         unix2huvp = dict()
         unix2h2 = dict()
         for reaper in self.mr.rlist:
+            Tv = reaper.Tv
+            Tq = reaper.Tq
             mydir = reaper.pfx_final_dir + 'default/'
             fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
@@ -1141,7 +1149,10 @@ class Plotter():
                  unix2huvp[unix] = huvp_num
                  unix2h2[unix] = h2_num
 
+        Tv = reaper.Tv
+        Tq = reaper.Tq
         dict_list = [unix2huqp, unix2huvp, unix2h2]
+        index2name = {1:'huqp',2:'huvp',3:'hap'}
         count = 0
         for mydict in dict_list:
             count += 1
@@ -1170,13 +1181,11 @@ class Plotter():
                 plt.scatter(dt_list, value_list, s=20, facecolor='red', edgecolors='none')
             '''
 
-            #dt1 = datetime.datetime.utcfromtimestamp(min(dt_list))
-            #dt2 = datetime.datetime.utcfromtimestamp(max(dt_list))
             dt1 = min(dt_list)
             dt2 = max(dt_list)
             ax.set_xlim([dt1, dt2])
             ymax = max(value_list)
-            ax.set_ylim([100, 10000]) # for test only
+            ax.set_ylim([100, 10000]) # FIXME for test only
             #for dt in dt_list:
             #    if dt.weekday() == 0:
             #        plt.plot((dt, dt), (0, ymax), 'k--', lw=4)
@@ -1190,33 +1199,44 @@ class Plotter():
             ax.tick_params(axis='x',pad=10)
             #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-            output_loc = pub_plot_dir + str(count)+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
+            output_loc = pub_plot_dir + index2name[count]+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
             plt.savefig(output_loc, bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
 
-    def hratio_box(self, Tq, Tv):
+    def hratio_box(self):
         the_lists = list() # list of lists
 
         h2_huqp_list = list()
         h2_huvp_list = list()
         for reaper in self.mr.rlist:
+            Tv = reaper.Tv
+            Tq = reaper.Tq
             mydir = reaper.pfx_final_dir + 'default/'
             fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:
-                 line = line.rstrip('\n')
-                 tmp = line.split(':')[1].split('|')
-                 huqp_num = float(tmp[0])
-                 huvp_num = float(tmp[1])
-                 h2_num = float(tmp[2])
+                line = line.rstrip('\n')
+                tmp = line.split(':')[1].split('|')
+                huqp_num = float(tmp[0])
+                huvp_num = float(tmp[1])
+                h2_num = float(tmp[2])
 
-                 ratio1 = h2_num / huqp_num
-                 ratio2 = h2_num / huvp_num
-                 h2_huqp_list.append(ratio1)
-                 h2_huvp_list.append(ratio2)
+                try:
+                    ratio1 = h2_num / huqp_num
+                    h2_huqp_list.append(ratio1)
+                except:
+                    print 'no huqp'
+                
+                try:
+                    ratio2 = h2_num / huvp_num
+                    h2_huvp_list.append(ratio2)
+                except:
+                    print 'no huvp'
             f.close()
 
+        Tv = reaper.Tv
+        Tq = reaper.Tq
         the_lists.append(h2_huqp_list)
         the_lists.append(h2_huvp_list)
 
@@ -1231,3 +1251,114 @@ class Plotter():
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
+
+    def updt_ratio_box(self):
+        the_lists = list() # list of lists
+
+        updt_ratio_huqp = list()
+        updt_ratio_huvp = list()
+        updt_ratio_h2p = list()
+        h2p_huqp = list()
+        for reaper in self.mr.rlist:
+            Tq = reaper.Tq
+            Tv = reaper.Tv
+
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'TS_updt_num_'+str(Tv)+'_'+str(Tq)+'.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                tmp = line.split(':')[1].split('|')
+                total = float(tmp[0])
+                huqp_u = float(tmp[1])
+                huvp_u = float(tmp[2])
+                h2p_u = float(tmp[3])
+
+                updt_ratio_huqp.append(huqp_u/total)
+                updt_ratio_huvp.append(huvp_u/total)
+                updt_ratio_h2p.append(h2p_u/total)
+                h2p_huqp.append(h2p_u/huqp_u)
+
+        the_lists.append(updt_ratio_huqp)
+        the_lists.append(updt_ratio_huvp)
+        the_lists.append(updt_ratio_h2p)
+        the_lists.append(h2p_huqp)
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.boxplot(the_lists, showmeans=True)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('update ratio')
+
+        Tq = reaper.Tq
+        Tv = reaper.Tv
+        output_loc = pub_plot_dir + 'update_ratio_'+str(Tq)+'_'+str(Tv)+'.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def TS_total_huvp_huqp_updt_mr(self):
+        dt2total = dict()
+        dt2uq = dict()
+        dt2uv = dict()
+        dt2h2 = dict()
+        for reaper in self.mr.rlist:
+            Tq = reaper.Tq
+            Tv = reaper.Tv
+
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'TS_updt_num_'+str(Tv)+'_'+str(Tq)+'.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix = int(line.split(':')[0])
+                tmp = line.split(':')[1].split('|')
+                total = int(tmp[0])
+                huqp_u = int(tmp[1])
+                huvp_u = int(tmp[2])
+                h2p_u = int(tmp[3])
+
+                dt2total[unix] = total
+                dt2uq[unix] = huqp_u
+                dt2uv[unix] = huvp_u
+                dt2h2[unix] = h2p_u
+
+        dlist = [dt2total, dt2uq, dt2uv, dt2h2]
+        index2name = {0:'total_updt',1:'huqp_updt',2:'huvp_updt',3:'hap_updt'}
+        count = 0
+        for mydict in dlist:
+
+            fig = plt.figure(figsize=(100, 20))
+            ax = fig.add_subplot(111)
+
+            dt_list = list()
+            value_list = list()
+            for unix in mydict:
+                the_dt = datetime.datetime.utcfromtimestamp(unix)
+                dt_list.append(the_dt)
+                value_list.append(mydict[unix])
+
+            plt.scatter(dt_list, value_list, s=20, facecolor='r', edgecolors='none')
+
+            dt1 = min(dt_list)
+            dt2 = max(dt_list)
+            ax.set_xlim([dt1, dt2])
+            #ymax = max(value_list)
+            #ax.set_ylim([100, 10000]) # FIXME for test only
+
+            ax.set_yscale('log')
+            ax.set_ylabel('Quantity')
+            myFmt = mpldates.DateFormatter('%b\n%d')
+            ax.xaxis.set_major_formatter(myFmt)
+
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
+            #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+            output_loc = pub_plot_dir + index2name[count]+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
+            plt.savefig(output_loc, bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()
+
+            count += 1
