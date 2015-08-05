@@ -18,6 +18,7 @@ class MultiReaper():
 
     def __init__(self, reaper_list):
         self.rlist = reaper_list
+        self.pfx_root = datadir + 'final_output_pfx/' # TODO change to granularity
 
 
     def AS_exist_in_ASpath_in_updt(self, dt_list, the_asn, target_pfx):
@@ -401,11 +402,13 @@ class MultiReaper():
                 myf.close()
 
     def new_huqp_huvp(self):
+        # all h prefixes that have existed
         all_huvp = set()
         all_huqp = set()
         all_hap = set()
 
-        new_n = 10 # the number of slots before a hprefix is believed to be 'new'
+        # the h prefixes in the previous new_n slots
+        new_n = 10
         nhuvp = collections.deque()
         nhuqp = collections.deque()
         nhap = collections.deque()
@@ -420,7 +423,6 @@ class MultiReaper():
                 count += 1
                 print '******************Round ', count
                 unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
-                print 'Getting new HUVP and HUQP for slot ', unix_dt
 
                 # sets for this slot only
                 huvp_set = set()
@@ -510,3 +512,77 @@ class MultiReaper():
                          '|'+str(len(new_hap_N))+'\n')
 
             fo.close()
+
+    def hpfx_life_time(self):
+        Tv = self.rlist[0].Tv
+        Tq = self.rlist[0].Tq
+
+        huqp2lt = dict() # h prefix 2 total lifetime/slots
+        huvp2lt = dict() # h prefix 2 total lifetime/slots
+        hap2lt = dict() # h prefix 2 total lifetime/slots
+
+        '''
+        huqp2lt_cont = dict() # h prefix 2 longest continuous lifetime/slots
+        huvp2lt_cont = dict() # h prefix 2 longest continuous lifetime/slots
+        hap2lt_cont = dict() # h prefix 2 longest continuous lifetime/slots
+
+        pre_huqp_set = set([]) 
+        pre_huvp_set = set([]) 
+        pre_hap_set = set([]) 
+        '''
+
+        count = 0
+        for reaper in self.rlist:
+            for fg in reaper.filegroups:
+                count += 1
+                print '******************Round ', count
+                unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+
+                # sets for this slot only
+                huvp_set = set()
+                huqp_set = set()
+                hap_set = set()
+
+                mydir = reaper.pfx_final_dir + 'default/'
+                fpath = mydir + str(unix_dt) + '_pfx.txt'
+                f = open(fpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    pfx = line.split(':')[0]
+                    line = line.split(':')[1].split('|')
+                    uq = int(line[0])
+                    uv = float(line[1])
+                    if uq >= reaper.Tq:
+                        huqp_set.add(pfx)
+                        if uv >= reaper.Tv:
+                            hap_set.add(pfx)
+                    if uv >= reaper.Tv:
+                        huvp_set.add(pfx)
+                f.close()
+
+                for p in huqp_set:
+                    try:
+                        huqp2lt[p] += 1
+                    except:
+                        huqp2lt[p] = 1
+                for p in huvp_set:
+                    try:
+                        huvp2lt[p] += 1
+                    except:
+                        huvp2lt[p] = 1
+                for p in hap_set:
+                    try:
+                        hap2lt[p] += 1
+                    except:
+                        hap2lt[p] = 1
+
+        mydir = self.pfx_root
+        outpath = mydir+'lifetime_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'.txt'
+        fo = open(outpath, 'w')
+        for p in huqp2lt:
+            fo.write('#'+p+':'+str(huqp2lt[p])+'\n')
+        for p in huvp2lt:
+            fo.write('%'+p+':'+str(huvp2lt[p])+'\n')
+        for p in hap2lt:
+            fo.write('A'+p+':'+str(hap2lt[p])+'\n')
+        fo.close()

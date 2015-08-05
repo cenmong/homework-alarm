@@ -1362,3 +1362,137 @@ class Plotter():
             plt.close()
 
             count += 1
+
+    def new_pfx_mr(self):
+        unix2nhuqp = dict()
+        unix2nhuvp = dict()
+        unix2nhap = dict()
+
+        unix2totaln_q = dict()
+        unix2totaln_v = dict()
+        unix2totaln_a = dict()
+
+        Tq = None
+        Tv = None
+
+        for reaper in self.mr.rlist:
+            Tq = reaper.Tq
+            Tv = reaper.Tv
+
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'new_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix = int(line.split(':')[0])
+                tmp1 = line.split(':')[1].split('&')[0]
+                unix2totaln_q[unix] = int(tmp1.split('|')[0])
+                unix2totaln_v[unix] = int(tmp1.split('|')[1])
+                unix2totaln_a[unix] = int(tmp1.split('|')[2])
+                tmp2 = line.split(':')[1].split('&')[1]
+                unix2nhuqp[unix] = int(tmp2.split('|')[0])
+                unix2nhuvp[unix] = int(tmp2.split('|')[1])
+                unix2nhap[unix] = int(tmp2.split('|')[2])
+            f.close()
+
+        dict_list = [unix2totaln_q, unix2totaln_v, unix2totaln_a,\
+                unix2nhuqp, unix2nhuvp, unix2nhap]
+        index2name = {0:'total_newhuqp',1:'total_newhuvp',2:'total_newhap',\
+                3:'new_huqp',4:'new_huvp',5:'new_hap'}
+
+        index = -1
+        for mydict in dict_list:
+            index += 1
+
+            fig = plt.figure(figsize=(100, 20))
+            ax = fig.add_subplot(111)
+
+            dt_list = list()
+            value_list = list()
+            for unix in mydict:
+                the_dt = datetime.datetime.utcfromtimestamp(unix)
+                dt_list.append(the_dt)
+                value_list.append(mydict[unix])
+
+            plt.scatter(dt_list, value_list, s=30, facecolor='r', edgecolors='none')
+
+            dt1 = min(dt_list)
+            dt2 = max(dt_list)
+            ax.set_xlim([dt1, dt2])
+            #ymax = max(value_list)
+            #ax.set_ylim([100, 10000]) # FIXME for test only
+
+            ax.set_yscale('log')
+            ax.set_ylabel('Quantity')
+            myFmt = mpldates.DateFormatter('%b\n%d')
+            ax.xaxis.set_major_formatter(myFmt)
+
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
+            #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+            output_loc = pub_plot_dir + index2name[index]+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
+            plt.savefig(output_loc, bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()
+
+    def hpfx_lifetime_distr_mr(self):
+        Tq = self.mr.rlist[0].Tq
+        Tv = self.mr.rlist[0].Tv
+        fpath = datadir + 'final_output_pfx/' + 'lifetime_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'.txt'
+
+        uq_lt = dict()
+        uv_lt = dict()
+        a_lt = dict()
+
+        f = open(fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            value = int(line.split(':')[1])
+            if line.startswith('#'):
+                try:
+                    uq_lt[value] += 1
+                except:
+                    uq_lt[value] = 1
+            elif line.startswith('%'):
+                try:
+                    uv_lt[value] += 1
+                except:
+                    uv_lt[value] = 1
+            else:
+                try:
+                    a_lt[value] += 1
+                except:
+                    a_lt[value] = 1
+        f.close()
+
+        dict_list = [uq_lt, uv_lt, a_lt]
+        index2name = {0:'UQ_LT',1:'UV_LT',2:'A_LT'}
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        count = 0
+        for mydict in dict_list:
+            cdf_dict = self.value_count2cdf(mydict)
+
+            xlist = [0]
+            ylist = [0]
+            for key in sorted(cdf_dict):
+                xlist.append(key)
+                ylist.append(cdf_dict[key])
+
+            ax.plot(xlist, ylist, 'k-', color=colors[count], label=index2name[count])
+            count += 1
+
+        legend = ax.legend(loc='lower right',shadow=False)
+        ax.set_ylabel('cumulative distribution')
+        ax.set_xlabel('value')
+        #ax.set_xlim([-1, 1000])
+        ax.set_xscale('log')
+        plt.grid()
+
+        output_loc = pub_plot_dir + 'LifeTimeDistribution_'+str(Tq)+'_'+str(Tv)+'.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()

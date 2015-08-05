@@ -48,8 +48,7 @@ for i in index_list:
         #----------------------------------
         # for the prefix paper 
         #reaper.TS_updt_num()
-        reaper.life_time() # TODO
-        #reaper.huvp_huqp_TS()
+        reaper.huvp_huqp_TS()
         #reaper.get_pfx_data() # get the uv and uq for every prefix in every slot (run only once)
         #reaper.uv_uq_distr()# (run only once)
         #reaper.analyze_pfx() # no use any more
@@ -137,7 +136,8 @@ if action['MR']:
     f.close()
     '''
     #mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
-    mr.new_huqp_huvp() # note: data from previous slot will be used
+    #mr.new_huqp_huvp() # note: data from previous slot will be used (run once)
+    #mr.hpfx_life_time() # (run once for used months only)
 
     #mr.get_common_pfx_set(dt_list)
     #mr.all_events_cluster()
@@ -145,7 +145,9 @@ if action['MR']:
 
     pl = Plotter(reaper)
     pl.set_multi_reaper(mr)
+    pl.hpfx_lifetime_distr_mr()
     #pl.TS_prefix_mr()
+    #pl.new_pfx_mr()
     #pl.TS_total_huvp_huqp_updt_mr()
     #pl.HUQOP_uv_distr_mr() # TODO
     #pl.hratio_box()
