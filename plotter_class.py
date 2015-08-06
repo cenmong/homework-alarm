@@ -38,8 +38,8 @@ plt.rc('legend',**{'fontsize':28})
 
 
 default_color = 'k'
-colors = ['r', 'b', 'g', 'yellow', 'm', 'cyan', 'darkorange',\
-          'mediumpurple', 'salmon', 'lime', 'hotpink', '',\
+colors = ['r', 'b', 'g', 'm', 'cyan', 'darkorange',\
+          'mediumpurple', 'salmon', 'lime', 'hotpink', 'yellow', '',\
           'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
 shapes = ['^', '*', 'D', 'd']
 cluster_labels = ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']
@@ -1444,6 +1444,8 @@ class Plotter():
         uq_lt = dict()
         uv_lt = dict()
         a_lt = dict()
+        uqo_lt = dict()
+        uvo_lt = dict()
 
         f = open(fpath, 'r')
         for line in f:
@@ -1459,6 +1461,16 @@ class Plotter():
                     uv_lt[value] += 1
                 except:
                     uv_lt[value] = 1
+            elif line.startswith('O#'):
+                try:
+                    uqo_lt[value] += 1
+                except:
+                    uqo_lt[value] = 1
+            elif line.startswith('O%'):
+                try:
+                    uvo_lt[value] += 1
+                except:
+                    uvo_lt[value] = 1
             else:
                 try:
                     a_lt[value] += 1
@@ -1466,8 +1478,8 @@ class Plotter():
                     a_lt[value] = 1
         f.close()
 
-        dict_list = [uq_lt, uv_lt, a_lt]
-        index2name = {0:'UQ_LT',1:'UV_LT',2:'A_LT'}
+        dict_list = [uq_lt, uv_lt, a_lt, uqo_lt, uvo_lt]
+        index2name = {0:'UQ_LT',1:'UV_LT',2:'A_LT',3:'UQO_LT',4:'UVO_LT'}
 
         fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)

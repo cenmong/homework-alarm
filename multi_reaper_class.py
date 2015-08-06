@@ -520,6 +520,8 @@ class MultiReaper():
         huqp2lt = dict() # h prefix 2 total lifetime/slots
         huvp2lt = dict() # h prefix 2 total lifetime/slots
         hap2lt = dict() # h prefix 2 total lifetime/slots
+        huqop2lt = dict()
+        huvop2lt = dict()
 
         '''
         huqp2lt_cont = dict() # h prefix 2 longest continuous lifetime/slots
@@ -542,6 +544,8 @@ class MultiReaper():
                 huvp_set = set()
                 huqp_set = set()
                 hap_set = set()
+                huqop_set = set()
+                huvop_set = set()
 
                 mydir = reaper.pfx_final_dir + 'default/'
                 fpath = mydir + str(unix_dt) + '_pfx.txt'
@@ -552,12 +556,16 @@ class MultiReaper():
                     line = line.split(':')[1].split('|')
                     uq = int(line[0])
                     uv = float(line[1])
-                    if uq >= reaper.Tq:
+                    if uq >= Tq:
                         huqp_set.add(pfx)
-                        if uv >= reaper.Tv:
+                        if uv >= Tv:
                             hap_set.add(pfx)
-                    if uv >= reaper.Tv:
+                        else:
+                            huqop_set.add(pfx)
+                    if uv >= Tv:
                         huvp_set.add(pfx)
+                        if uq < Tq:
+                            huvop_set.add(pfx)
                 f.close()
 
                 for p in huqp_set:
@@ -575,6 +583,16 @@ class MultiReaper():
                         hap2lt[p] += 1
                     except:
                         hap2lt[p] = 1
+                for p in huqop_set:
+                    try:
+                        huqop2lt[p] += 1
+                    except:
+                        huqop2lt[p] = 1
+                for p in huvop_set:
+                    try:
+                        huvop2lt[p] += 1
+                    except:
+                        huvop2lt[p] = 1
 
         mydir = self.pfx_root
         outpath = mydir+'lifetime_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'.txt'
@@ -583,6 +601,10 @@ class MultiReaper():
             fo.write('#'+p+':'+str(huqp2lt[p])+'\n')
         for p in huvp2lt:
             fo.write('%'+p+':'+str(huvp2lt[p])+'\n')
+        for p in huqop2lt:
+            fo.write('O#'+p+':'+str(huqop2lt[p])+'\n')
+        for p in huvop2lt:
+            fo.write('O%'+p+':'+str(huvop2lt[p])+'\n')
         for p in hap2lt:
             fo.write('A'+p+':'+str(hap2lt[p])+'\n')
         fo.close()
