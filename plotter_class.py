@@ -34,8 +34,10 @@ font = {'size': 38,}
 matplotlib.rc('font', **font)
 plt.rc('legend',**{'fontsize':28})
 
+spamhaus_s = 1363564800
+spamhaus_e = 1364860800
 
-
+dot_size = 60
 
 default_color = 'k'
 colors = ['r', 'b', 'g', 'm', 'cyan', 'darkorange',\
@@ -1127,7 +1129,7 @@ class Plotter():
         plt.clf() # clear the figure
         plt.close()
 
-    def TS_prefix_mr(self):
+    def TS_hpfx_mr(self):
         unix2huqp = dict()
         unix2huvp = dict()
         unix2h2 = dict()
@@ -1157,7 +1159,7 @@ class Plotter():
         for mydict in dict_list:
             count += 1
 
-            fig = plt.figure(figsize=(100, 20))
+            fig = plt.figure(figsize=(60, 20))
             ax = fig.add_subplot(111)
 
             dt_list = list()
@@ -1167,8 +1169,11 @@ class Plotter():
                 dt_list.append(the_dt)
                 value_list.append(mydict[unix])
 
-            plt.scatter(dt_list, value_list, s=20, facecolor='k', edgecolors='none')
+            plt.scatter(dt_list, value_list, s=60, facecolor='blue', edgecolors='none')
 
+            soccur = datetime.datetime.utcfromtimestamp(spamhaus_s)
+            eoccur = datetime.datetime.utcfromtimestamp(spamhaus_e)
+            plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
             '''
             if count == 1:
                 dt_list = list()
@@ -1184,11 +1189,15 @@ class Plotter():
             dt1 = min(dt_list)
             dt2 = max(dt_list)
             ax.set_xlim([dt1, dt2])
-            ymax = max(value_list)
             ax.set_ylim([100, 10000]) # FIXME for test only
-            #for dt in dt_list:
-            #    if dt.weekday() == 0:
-            #        plt.plot((dt, dt), (0, ymax), 'k--', lw=4)
+
+            ymax = max(value_list)
+            pre_wd = -1
+            for dt in sorted(dt_list):
+                wd = dt.weekday()
+                if wd == 0 and wd != pre_wd:
+                    plt.plot((dt, dt), (0, ymax), 'k--', lw=3)
+                pre_wd = wd
 
             ax.set_yscale('log')
             ax.set_ylabel('Quantity')
@@ -1329,7 +1338,7 @@ class Plotter():
         count = 0
         for mydict in dlist:
 
-            fig = plt.figure(figsize=(100, 20))
+            fig = plt.figure(figsize=(60, 20))
             ax = fig.add_subplot(111)
 
             dt_list = list()
@@ -1339,19 +1348,29 @@ class Plotter():
                 dt_list.append(the_dt)
                 value_list.append(mydict[unix])
 
-            plt.scatter(dt_list, value_list, s=20, facecolor='r', edgecolors='none')
+            plt.scatter(dt_list, value_list, s=60, facecolor='blue', edgecolors='none')
 
             dt1 = min(dt_list)
             dt2 = max(dt_list)
             ax.set_xlim([dt1, dt2])
-            #ymax = max(value_list)
             #ax.set_ylim([100, 10000]) # FIXME for test only
+
+            ymax = max(value_list)
+            pre_wd = -1
+            for dt in sorted(dt_list):
+                wd = dt.weekday()
+                if wd == 0 and wd != pre_wd:
+                    plt.plot((dt, dt), (0, ymax), 'k--', lw=3)
+                pre_wd = wd
 
             ax.set_yscale('log')
             ax.set_ylabel('Quantity')
             myFmt = mpldates.DateFormatter('%b\n%d')
             ax.xaxis.set_major_formatter(myFmt)
 
+            soccur = datetime.datetime.utcfromtimestamp(spamhaus_s)
+            eoccur = datetime.datetime.utcfromtimestamp(spamhaus_e)
+            plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
             ax.tick_params(axis='y',pad=10)
             ax.tick_params(axis='x',pad=10)
             #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
@@ -1404,7 +1423,7 @@ class Plotter():
         for mydict in dict_list:
             index += 1
 
-            fig = plt.figure(figsize=(100, 20))
+            fig = plt.figure(figsize=(60, 20))
             ax = fig.add_subplot(111)
 
             dt_list = list()
@@ -1414,13 +1433,25 @@ class Plotter():
                 dt_list.append(the_dt)
                 value_list.append(mydict[unix])
 
-            plt.scatter(dt_list, value_list, s=30, facecolor='r', edgecolors='none')
+            plt.scatter(dt_list, value_list, s=dot_size, facecolor='blue', edgecolors='none')
 
             dt1 = min(dt_list)
             dt2 = max(dt_list)
             ax.set_xlim([dt1, dt2])
-            #ymax = max(value_list)
-            #ax.set_ylim([100, 10000]) # FIXME for test only
+            if index in [0,1,2]:
+                ax.set_ylim([1, 10000]) # FIXME for test only
+
+            ymax = max(value_list)
+            pre_wd = -1
+            for dt in sorted(dt_list):
+                wd = dt.weekday()
+                if wd == 0 and wd != pre_wd:
+                    plt.plot((dt, dt), (0, ymax), 'k--', lw=3)
+                pre_wd = wd
+
+            soccur = datetime.datetime.utcfromtimestamp(spamhaus_s)
+            eoccur = datetime.datetime.utcfromtimestamp(spamhaus_e)
+            plt.axvspan(mpldates.date2num(soccur),mpldates.date2num(eoccur),facecolor='0.3',alpha=0.3)
 
             ax.set_yscale('log')
             ax.set_ylabel('Quantity')

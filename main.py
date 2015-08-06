@@ -136,7 +136,7 @@ if action['MR']:
     f.close()
     '''
     #mr.AS_exist_in_ASpath_in_updt(dt_list, 9121, pfx_set)
-    #mr.new_huqp_huvp() # note: data from previous slot will be used (run once)
+    #mr.new_hpfx() # note: data from previous slot will be used (run once)
     #mr.hpfx_life_time() # (run once for used months only)
 
     #mr.get_common_pfx_set(dt_list)
@@ -145,9 +145,9 @@ if action['MR']:
 
     pl = Plotter(reaper)
     pl.set_multi_reaper(mr)
-    pl.hpfx_lifetime_distr_mr()
-    #pl.TS_prefix_mr()
-    #pl.new_pfx_mr()
+    #pl.hpfx_lifetime_distr_mr()
+    #pl.TS_hpfx_mr()
+    pl.new_pfx_mr()
     #pl.TS_total_huvp_huqp_updt_mr()
     #pl.HUQOP_uv_distr_mr() # TODO
     #pl.hratio_box()

@@ -401,7 +401,7 @@ class MultiReaper():
                             logging.info(line)
                 myf.close()
 
-    def new_huqp_huvp(self):
+    def new_hpfx(self):
         # all h prefixes that have existed
         all_huvp = set()
         all_huqp = set()
@@ -512,6 +512,7 @@ class MultiReaper():
                          '|'+str(len(new_hap_N))+'\n')
 
             fo.close()
+
 
     def hpfx_life_time(self):
         Tv = self.rlist[0].Tv
