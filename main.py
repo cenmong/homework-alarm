@@ -11,11 +11,13 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR': 1}
+action = {'middle':0, 'final':0, 'micro':0, 'plot':1, 'plot_matrix':0, 'MR': 0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
+#index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
+#index_list = [284, 285] # for NOMS 2016 short paper
+index_list = [281]
 
 # the largest cluster in 01~10 2013 (for IPCCC 2015)
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
@@ -43,6 +45,8 @@ for i in index_list:
     reaper.set_event_thre(0.005, 0.4, 0.8) # set this threshold to a small value
     reaperlist.append(reaper) 
     reaper.set_Tq_Tv(100, 0.4)
+    #reaper.set_Tq_Tv(85, 0.35)
+    #reaper.set_Tq_Tv(115, 0.45)
 
     if action['final']:
         #----------------------------------
@@ -84,6 +88,14 @@ for i in index_list:
         reaper_list = [reaper31, reaper, reaper32]
         plotter.TS_all_event_curve(reaper_list)
         '''
+        reaper1 = Reaper(my_period,20,0)
+        reaper1.set_Tq_Tv(85, 0.35)
+        reaper2 = Reaper(my_period,20,0)
+        reaper2.set_Tq_Tv(100, 0.4)
+        reaper3 = Reaper(my_period,20,0)
+        reaper3.set_Tq_Tv(115, 0.45)
+        reaper_list = [reaper1, reaper2, reaper3]
+        plotter.hpfx_compare(reaper_list)
 
         # plotter.scatter_all_rwidth_rsize()
         # plotter.scatter_all_ASratio_rsize()
@@ -145,9 +157,10 @@ if action['MR']:
 
     pl = Plotter(reaper)
     pl.set_multi_reaper(mr)
-    #pl.hpfx_lifetime_distr_mr()
+    pl.hpfx_lifetime_distr_mr()
     #pl.TS_hpfx_mr()
-    pl.new_pfx_mr()
+    #pl.box_hpfx_mr()
+    #pl.new_pfx_mr()
     #pl.TS_total_huvp_huqp_updt_mr()
     #pl.HUQOP_uv_distr_mr() # TODO
     #pl.hratio_box()

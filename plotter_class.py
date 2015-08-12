@@ -1129,6 +1129,122 @@ class Plotter():
         plt.clf() # clear the figure
         plt.close()
 
+
+    def hpfx_compare(self, rlist):
+        to_avg = 18 # number of slots to average
+
+        unix2huqp = dict()
+        unix2huvp = dict()
+        for reaper in rlist:
+            Tq = reaper.Tq
+            unix2huqp[Tq] = dict()
+            Tv = reaper.Tv
+            unix2huvp[Tv] = dict()
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                 line = line.rstrip('\n')
+                 unix = int(line.split(':')[0])
+                 tmp = line.split(':')[1].split('|')
+                 huqp_num = int(tmp[0])
+                 unix2huqp[Tq][unix] = huqp_num
+                 huvp_num = int(tmp[1])
+                 unix2huvp[Tv][unix] = huvp_num
+            f.close()
+
+
+        fig = plt.figure(figsize=(30, 15))
+        ax = fig.add_subplot(111)
+        count = -1
+        for Tq in sorted(unix2huqp.keys()):
+            print Tq
+            count += 1
+            mydict = unix2huqp[Tq]
+
+            dt_list = list()
+            value_list = list()
+            for unix in sorted(mydict.keys()):
+                the_dt = datetime.datetime.utcfromtimestamp(unix)
+                dt_list.append(the_dt)
+                value_list.append(mydict[unix])
+
+            new_dlist = list()
+            new_vlist = list()
+            sum = 0
+            for index in xrange(0, len(dt_list)): # initialize
+                dt = dt_list[index]
+                sum += value_list[index]
+                if index != 0 and (index+1) % to_avg == 0:
+                    new_dlist.append(dt)
+                    new_vlist.append(sum)
+                    sum = 0
+
+            ax.plot(new_dlist,new_vlist,colors[count]+'-', label='Tq='+str(Tq))
+
+        dt1 = min(dt_list)
+        dt2 = max(dt_list)
+        ax.set_xlim([dt1, dt2])
+
+        ax.set_ylabel('Quantity')
+        myFmt = mpldates.DateFormatter('%b %d')
+        ax.xaxis.set_major_formatter(myFmt)
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        legend = ax.legend(loc='best',shadow=False)
+
+        output_loc = pub_plot_dir + 'Tq_compare.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+
+        fig = plt.figure(figsize=(30, 15))
+        ax = fig.add_subplot(111)
+        count = -1
+        for Tv in sorted(unix2huvp.keys()):
+            print Tv
+            count += 1
+            mydict = unix2huvp[Tv]
+
+            dt_list = list()
+            value_list = list()
+            for unix in sorted(mydict.keys()):
+                the_dt = datetime.datetime.utcfromtimestamp(unix)
+                dt_list.append(the_dt)
+                value_list.append(mydict[unix])
+
+            new_dlist = list()
+            new_vlist = list()
+            sum = 0
+            for index in xrange(0, len(dt_list)): # initialize
+                dt = dt_list[index]
+                sum += value_list[index]
+                if index != 0 and (index+1) % to_avg == 0:
+                    new_dlist.append(dt)
+                    new_vlist.append(sum)
+                    sum = 0
+
+            ax.plot(new_dlist,new_vlist,colors[count]+'-', label='Tv='+str(Tv))
+
+        dt1 = min(dt_list)
+        dt2 = max(dt_list)
+        ax.set_xlim([dt1, dt2])
+
+        ax.set_ylabel('Quantity')
+        myFmt = mpldates.DateFormatter('%b %d')
+        ax.xaxis.set_major_formatter(myFmt)
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        legend = ax.legend(loc='best',shadow=False)
+
+        output_loc = pub_plot_dir + 'Tv_compare.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
     def TS_hpfx_mr(self):
         unix2huqp = dict()
         unix2huvp = dict()
@@ -1150,6 +1266,7 @@ class Plotter():
                  unix2huqp[unix] = huqp_num
                  unix2huvp[unix] = huvp_num
                  unix2h2[unix] = h2_num
+            f.close()
 
         Tv = reaper.Tv
         Tq = reaper.Tq
@@ -1213,6 +1330,58 @@ class Plotter():
             plt.clf() # clear the figure
             plt.close()
 
+    def box_hpfx_mr(self):
+        huqp = list()
+        huvp = list()
+        hap = list()
+        for reaper in self.mr.rlist:
+            Tv = reaper.Tv
+            Tq = reaper.Tq
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                 line = line.rstrip('\n')
+                 tmp = line.split(':')[1].split('|')
+                 huqp_num = int(tmp[0])
+                 huvp_num = int(tmp[1])
+                 hap_num = int(tmp[2])
+
+                 huqp.append(huqp_num)
+                 huvp.append(huvp_num)
+                 hap.append(hap_num)
+
+        for n in huqp:
+            if n > 10000:
+                print '#', n
+        for n in huvp:
+            if n > 10000:
+                print '%', n
+        for n in hap:
+            if n > 10000:
+                print 'A', n
+
+
+        Tv = reaper.Tv
+        Tq = reaper.Tq
+        the_lists = list()
+        the_lists.append(huqp)
+        the_lists.append(huvp)
+        the_lists.append(hap)
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.boxplot(the_lists, showmeans=True)
+        ax.set_yscale('log')
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('quantity')
+
+        output_loc = pub_plot_dir + 'hpfx_number_'+str(Tq)+'_'+str(Tv)+'.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
     def hratio_box(self):
         the_lists = list() # list of lists
 
@@ -1246,6 +1415,22 @@ class Plotter():
 
         Tv = reaper.Tv
         Tq = reaper.Tq
+
+        print 'hap/huqp average', float(sum(h2_huqp_list))/float(len(h2_huqp_list))
+        c = 0
+        for r in h2_huqp_list:
+            if r < 0.5:
+                c += 1
+        print c
+
+        print 'hap/huvp percentile', np.percentile(h2_huvp_list, 85)
+        print 'hap/huvp percentile', np.percentile(h2_huvp_list, 15)
+        c = 0
+        for r in h2_huvp_list:
+            if r < 0.5:
+                c += 1
+        print c
+
         the_lists.append(h2_huqp_list)
         the_lists.append(h2_huvp_list)
 
@@ -1292,6 +1477,11 @@ class Plotter():
         the_lists.append(updt_ratio_huvp)
         the_lists.append(updt_ratio_h2p)
         the_lists.append(h2p_huqp)
+
+        print float(sum(updt_ratio_huqp))/float(len(updt_ratio_huqp))
+        print float(sum(updt_ratio_huvp))/float(len(updt_ratio_huvp))
+        print float(sum(updt_ratio_h2p))/float(len(updt_ratio_h2p))
+        print float(sum(h2p_huqp))/float(len(h2p_huqp))
 
         fig = plt.figure(figsize=(10, 10))
         ax = fig.add_subplot(111)
@@ -1525,6 +1715,12 @@ class Plotter():
                 xlist.append(key)
                 ylist.append(cdf_dict[key])
 
+            ymax = float(max(ylist))
+            for i in xrange(0, len(ylist)):
+                ratio = float(ylist[i]) / ymax
+                if ratio > 0.78:
+                    print count, ratio, xlist[i]
+
             ax.plot(xlist, ylist, 'k-', color=colors[count], label=index2name[count])
             count += 1
 
@@ -1536,6 +1732,52 @@ class Plotter():
         plt.grid()
 
         output_loc = pub_plot_dir + 'LifeTimeDistribution_'+str(Tq)+'_'+str(Tv)+'.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def new_pfx_box_mr(self): # discarded: incorrect in concept
+        hap_in_huqp_total = list()
+        hap_in_huvp_total = list()
+        hap_in_huqp = list()
+        hap_in_huvp = list()
+
+        Tq = None
+        Tv = None
+
+        for reaper in self.mr.rlist:
+            Tq = reaper.Tq
+            Tv = reaper.Tv
+
+            mydir = reaper.pfx_final_dir + 'default/'
+            fpath = mydir+'new_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                tmp1 = line.split(':')[1].split('&')[0]
+                totalnew_hap = float(tmp1.split('|')[2])
+                hap_in_huqp_total.append(totalnew_hap / float(tmp1.split('|')[0]))
+                hap_in_huvp_total.append(totalnew_hap / float(tmp1.split('|')[1]))
+                tmp2 = line.split(':')[1].split('&')[1]
+                new_hap = float(tmp2.split('|')[2])
+                hap_in_huqp.append(new_hap / float(tmp2.split('|')[0]))
+                hap_in_huvp.append(new_hap / float(tmp2.split('|')[1]))
+            f.close()
+
+        the_lists = list()
+        the_lists.append(hap_in_huqp_total)
+        the_lists.append(hap_in_huvp_total)
+        the_lists.append(hap_in_huqp)
+        the_lists.append(hap_in_huvp)
+
+        fig = plt.figure(figsize=(20, 10))
+        ax = fig.add_subplot(111)
+        ax.boxplot(the_lists, showmeans=True)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('ratio')
+
+        output_loc = pub_plot_dir + 'new_hap_ratio_'+str(Tq)+'_'+str(Tv)+'.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
