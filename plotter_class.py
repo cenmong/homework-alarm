@@ -720,6 +720,9 @@ class Plotter():
 
             ax.plot(xlist, ylist, linestyle='None', marker=styles[count],\
                     color=colors[count], markersize=15, label=month_labels[count])
+            for i in xrange(0, len(xlist)):
+                if xlist[i] > 0.0065 and xlist[i] < 0.0075:
+                    print count, xlist[i], ylist[i]
             #ax.plot(xlist, ylist, 'k--')
 
             count += 1
@@ -999,7 +1002,7 @@ class Plotter():
             top2uv_list[top] = list()
 
         for reaper in self.mr.rlist:
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir + 'uq_uv_top.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1130,6 +1133,77 @@ class Plotter():
         plt.close()
 
 
+
+    def hpfx_compare_slot(self, rlist):
+        to_avg = dict() # number of slots to average
+        to_avg[20] = 18
+        to_avg[10] = 36
+        to_avg[30] = 12
+
+        unix2hap = dict()
+        for reaper in rlist:
+            Tq = reaper.Tq
+            Tv = reaper.Tv
+            granu = reaper.granu
+            unix2hap[granu] = dict()
+
+            mydir = reaper.get_output_dir_pfx()
+            fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
+            f = open(fpath, 'r')
+            for line in f:
+                 line = line.rstrip('\n')
+                 unix = int(line.split(':')[0])
+                 tmp = line.split(':')[1].split('|')
+                 hap_num = int(tmp[2])
+                 unix2hap[granu][unix] = hap_num
+            f.close()
+
+        fig = plt.figure(figsize=(20, 15))
+        ax = fig.add_subplot(111)
+        count = -1
+        for granu in sorted(unix2hap.keys()):
+            print granu
+            count += 1
+            mydict = unix2hap[granu]
+
+            dt_list = list()
+            value_list = list()
+            for unix in sorted(mydict.keys()):
+                the_dt = datetime.datetime.utcfromtimestamp(unix)
+                dt_list.append(the_dt)
+                value_list.append(mydict[unix])
+
+            new_dlist = list()
+            new_vlist = list()
+            sum = 0
+            for index in xrange(0, len(dt_list)): # initialize
+                dt = dt_list[index]
+                sum += value_list[index]
+                if index != 0 and (index+1) % to_avg[granu] == 0:
+                    new_dlist.append(dt)
+                    new_vlist.append(sum)
+                    sum = 0
+
+            ax.plot(new_dlist,new_vlist,colors[count]+'-', label='Granularity='+str(granu))
+
+        dt1 = min(dt_list)
+        dt2 = max(dt_list)
+        ax.set_xlim([dt1, dt2])
+
+        ax.set_ylabel('Quantity')
+        myFmt = mpldates.DateFormatter('%b %d')
+        ax.xaxis.set_major_formatter(myFmt)
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        legend = ax.legend(loc='best',shadow=False)
+
+        output_loc = pub_plot_dir + 'granu_compare.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+
     def hpfx_compare(self, rlist):
         to_avg = 18 # number of slots to average
 
@@ -1140,7 +1214,7 @@ class Plotter():
             unix2huqp[Tq] = dict()
             Tv = reaper.Tv
             unix2huvp[Tv] = dict()
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1154,7 +1228,7 @@ class Plotter():
             f.close()
 
 
-        fig = plt.figure(figsize=(30, 15))
+        fig = plt.figure(figsize=(20, 15))
         ax = fig.add_subplot(111)
         count = -1
         for Tq in sorted(unix2huqp.keys()):
@@ -1200,7 +1274,7 @@ class Plotter():
         plt.close()
 
 
-        fig = plt.figure(figsize=(30, 15))
+        fig = plt.figure(figsize=(20, 15))
         ax = fig.add_subplot(111)
         count = -1
         for Tv in sorted(unix2huvp.keys()):
@@ -1252,7 +1326,7 @@ class Plotter():
         for reaper in self.mr.rlist:
             Tv = reaper.Tv
             Tq = reaper.Tq
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1286,6 +1360,7 @@ class Plotter():
                 dt_list.append(the_dt)
                 value_list.append(mydict[unix])
 
+            print len(dt_list)
             plt.scatter(dt_list, value_list, s=60, facecolor='blue', edgecolors='none')
 
             soccur = datetime.datetime.utcfromtimestamp(spamhaus_s)
@@ -1337,7 +1412,7 @@ class Plotter():
         for reaper in self.mr.rlist:
             Tv = reaper.Tv
             Tq = reaper.Tq
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1390,7 +1465,7 @@ class Plotter():
         for reaper in self.mr.rlist:
             Tv = reaper.Tv
             Tq = reaper.Tq
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1457,7 +1532,7 @@ class Plotter():
             Tq = reaper.Tq
             Tv = reaper.Tv
 
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'TS_updt_num_'+str(Tv)+'_'+str(Tq)+'.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1506,7 +1581,7 @@ class Plotter():
             Tq = reaper.Tq
             Tv = reaper.Tv
 
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'TS_updt_num_'+str(Tv)+'_'+str(Tq)+'.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1588,7 +1663,7 @@ class Plotter():
             Tq = reaper.Tq
             Tv = reaper.Tv
 
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'new_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:
@@ -1749,7 +1824,7 @@ class Plotter():
             Tq = reaper.Tq
             Tv = reaper.Tv
 
-            mydir = reaper.pfx_final_dir + 'default/'
+            mydir = reaper.get_output_dir_pfx()
             fpath = mydir+'new_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
             f = open(fpath, 'r')
             for line in f:

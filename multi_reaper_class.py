@@ -514,6 +514,77 @@ class MultiReaper():
             fo.close()
 
 
+    def hpfx_life_time_details(self):
+        Tv = self.rlist[0].Tv
+        Tq = self.rlist[0].Tq
+
+        pfx_uq_lt = dict()
+        pfx_uv_lt = dict()
+        pfx_a_lt = dict()
+        pfx_uqo_lt = dict()
+        pfx_uvo_lt = dict()
+
+        mydir = self.pfx_root
+        fpath = mydir+'lifetime_huvp_'+str(Tv)+'_huqp_'+str(Tq)+'.txt'
+        f = open(fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfx = line.split(':')[0]
+            value = int(line.split(':')[1])
+            if line.startswith('#'):
+                pfx_uq_lt[pfx] = value
+            elif line.startswith('%'):
+                pfx_uv_lt[pfx] = value
+            elif line.startswith('O#'):
+                pfx_uqo_lt[pfx] = value
+            elif line.startswith('O%'):
+                pfx_uvo_lt[pfx] = value
+            else:
+                pfx_a_lt[pfx] = value
+        f.close()
+
+        dict_list = [pfx_uq_lt, pfx_uv_lt, pfx_a_lt, pfx_uqo_lt, pfx_uvo_lt]
+        count = -1
+        for mydict in dict_list:
+            count += 1
+            for pfx in mydict:
+                value = mydict[pfx]
+                if value > 10000:
+                    print count, pfx, value
+
+        '''
+        target_pfx = '120.28.62.0/24'
+        opath = '120_28_62_0_24.txt.test'
+        fo = open(opath, 'w')
+
+        for reaper in self.rlist: 
+            updt_files = list()
+            fmy = open(reaper.period.get_filelist(), 'r')
+            for fline in fmy:
+                updatefile = fline.split('|')[0]
+                updt_files.append(datadir+updatefile)
+
+            for ufile in updt_files:
+                print 'Reading ', ufile
+
+                p = subprocess.Popen(['zcat', ufile],stdout=subprocess.PIPE)
+                f = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+
+                for line in f:
+                    try:
+                        attr = line.split('|') 
+                        pfx = attr[5]
+                        if pfx != target_pfx:
+                            continue
+                        fo.write(line)
+                    except Exception:
+                        pass
+                f.close()
+
+        fo.close()
+        '''
+
     def hpfx_life_time(self):
         Tv = self.rlist[0].Tv
         Tq = self.rlist[0].Tq
@@ -548,7 +619,7 @@ class MultiReaper():
                 huqop_set = set()
                 huvop_set = set()
 
-                mydir = reaper.pfx_final_dir + 'default/'
+                mydir = reaper.get_output_dir_pfx()
                 fpath = mydir + str(unix_dt) + '_pfx.txt'
                 f = open(fpath, 'r')
                 for line in f:

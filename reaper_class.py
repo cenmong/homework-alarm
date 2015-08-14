@@ -1853,15 +1853,14 @@ class Reaper():
     #############################################################################
 
     def get_output_dir_pfx(self):
-        # TODO change the dir name to time granularity
-        mydir = self.pfx_final_dir + 'default/'
+        mydir = self.pfx_final_dir + str(self.granu) + '/'
         cmlib.make_dir(mydir)
         return mydir
 
     def uv_uq_distr(self):
         top_ratios = [0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
         #top_ratios = [0.999, 0.99, 0.98, 0.97, 0.95, 0.9]
-        mydir = self.pfx_final_dir + 'default/'
+        mydir = self.get_output_dir_pfx()
         fpath = mydir + 'uq_uv_top.txt'
         foo = open(fpath, 'w')
 
@@ -1954,7 +1953,7 @@ class Reaper():
         Tq = self.Tq
         Tv = self.Tv
         
-        mydir = self.pfx_final_dir + 'default/'
+        mydir = self.get_output_dir_pfx()
         outpath = mydir+'huvp_'+str(Tv)+'_huqp_'+str(Tq)+'_TS.txt'
 
         fo = open(outpath, 'w')
@@ -1992,7 +1991,7 @@ class Reaper():
         Tq = self.Tq
         Tv = self.Tv
 
-        mydir = self.pfx_final_dir + 'default/'
+        mydir = self.get_output_dir_pfx()
         outpath = mydir+'TS_updt_num_'+str(Tv)+'_'+str(Tq)+'.txt'
         fo = open(outpath, 'w')
 
