@@ -419,6 +419,13 @@ class Period():
                 count += 1
         return count
 
+    def used_monitors(self):
+        monset = set()
+        for co in self.co_mo:
+            for mo in self.co_mo[co]:
+                monset.add(mo)
+        return monset
+
     def get_filelist(self):
         print 'Getting combined file list'
         listdir = ''

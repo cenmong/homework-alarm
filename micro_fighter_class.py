@@ -426,6 +426,154 @@ class Micro_fighter():
             f.write(pfx+':'+str(len(pfx2aadiff[pfx]))+'|'+str(mcount)+'\n')
         f.close()
 
+
+    def analyze_slot(self, unix_dt):
+        #-------------------------------------------------------
+        # identify the HUQP HUVP and HAP sets
+        Tv = self.reaper.Tv
+        Tq = self.reaper.Tq
+        huqp_set = set()
+        huvp_set = set()
+        hap_set = set()
+
+        mydir = self.reaper.get_output_dir_pfx()
+        fpath = mydir + str(unix_dt) + '_pfx.txt'
+        f = open(fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfx = line.split(':')[0]
+            line = line.split(':')[1].split('|')
+
+            uq = int(line[0])
+            uv = float(line[1])
+            if uq >= Tq:
+                huqp_set.add(pfx)
+                if uv >= Tv:
+                    hap_set.add(pfx)
+            if uv >= Tv:
+                huvp_set.add(pfx)
+
+
+        #--------------------------------------------------------
+        # Read update files
+
+        # working monitor set
+        monset = self.reaper.period.used_monitors()
+
+        # origin AS recording
+        huqp2oriAS = dict()
+        hap2oriAS = dict()
+        huqp_oriAS2num = dict()
+        hap_oriAS2num = dict()
+
+        # observing monitor set
+        huqp2mon = dict()
+        hap2mon = dict()
+
+        sdt_unix = unix_dt
+        edt_unix = unix_dt + self.reaper.granu * 60
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+        fmy.close()
+
+        fo = open(datadir+'analyze_slot.txt', 'w')
+
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    mon = attr[3]
+                    type = attr[2]
+                    unix = int(attr[1])
+
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    if mon not in monset:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+                        oriAS = int(as_path.split()[-1])
+
+                        if pfx in huqp_set:
+                            huqp2oriAS[pfx] = oriAS
+
+                        if pfx in hap_set:
+                            hap2oriAS[pfx] = oriAS
+
+                    try:
+                        huqp2mon[pfx].add(mon)
+                    except:
+                        huqp2mon[pfx] = set([mon])
+                    try:
+                        hap2mon[pfx].add(mon)
+                    except:
+                        hap2mon[pfx] = set([mon])
+
+                except:
+                    pass
+            myf.close()
+
+        for p in huqp2oriAS:
+            asn = huqp2oriAS[p]
+            try:
+                huqp_oriAS2num[asn] += 1
+            except:
+                huqp_oriAS2num[asn] = 1
+        for p in hap2oriAS:
+            asn = hap2oriAS[p]
+            try:
+                hap_oriAS2num[asn] += 1
+            except:
+                hap_oriAS2num[asn] = 1
+
+        for asn in huqp_oriAS2num:
+            fo.write('#'+str(asn)+':'+str(huqp_oriAS2num[asn])+'\n')
+        for asn in hap_oriAS2num:
+            fo.write('A'+str(asn)+':'+str(hap_oriAS2num[asn])+'\n')
+
+        fo.close()
+
+
+        #--------------------------------------------------
+        # the UV and UQ of every pfx
+        mydir = self.reaper.get_output_dir_pfx()
+        fpath = mydir + str(unix_dt) + '_pfx.txt'
+
+        uvsum = 0.0
+        uvcount = 0.0
+        fo2 = open(datadir+'analyze_slot2.txt', 'w')
+        f = open(fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfx = line.split(':')[0]
+            tmp = line.split(':')[1].split('|')
+            uq = int(tmp[0])
+            uv = float(tmp[1])
+            if uq >= Tq:
+                fo2.write('#'+line+'\n')
+                if uv >= Tv:
+                    fo2.write('A'+line+'\n')
+                else:
+                    uvsum += uv
+                    uvcount += 1
+
+        print uvsum/uvcount
+        f.close()
+        fo2.close()
+
+
     def event_update_pattern(self, unix_dt):
         pfx_set = set()
         mon_iset = set()

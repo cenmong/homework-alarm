@@ -30,9 +30,10 @@ from matplotlib.lines import Line2D
 
 line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
 font = {'size': 38,}
+#font = {'size': 80,}
 
 matplotlib.rc('font', **font)
-plt.rc('legend',**{'fontsize':28})
+plt.rc('legend',**{'fontsize':34})
 
 spamhaus_s = 1363564800
 spamhaus_e = 1364860800
@@ -1033,7 +1034,7 @@ class Plotter():
 
         #---------------------------------
         # plot UQ
-        fig = plt.figure(figsize=(16, 10))
+        fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(111)
 
         i = -1
@@ -1063,18 +1064,19 @@ class Plotter():
             print 'ymax=',ymax
 
         legend = ax.legend(loc='lower right',shadow=False)
-        ax.set_ylabel('number of time slots')
-        ax.set_xlabel('Value')
+        ax.set_ylabel('Cumulative number of time slot')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.set_xlabel('UQ value')
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
-        plt.plot((80, 80), (0, 23000), 'k--', lw=2)
-        plt.plot((100, 100), (0, 23000), 'k--', lw=4)
-        plt.plot((200, 200), (0, 23000), 'k--', lw=2)
+        #plt.plot((80, 80), (0, 23000), 'k--', lw=2)
+        plt.plot((100, 100), (0, 23000), 'k--', lw=6)
+        #plt.plot((200, 200), (0, 23000), 'k--', lw=2)
         ax.set_xscale('log')
         plt.xlim(-1,10000)
         #plt.xlim(-1,1000)
-        ax.set_ylim([0,ymax * 1.1])
+        ax.set_ylim([-ymax * 0.02 ,ymax * 1.02])
 
         plt.grid()
 
@@ -1085,7 +1087,7 @@ class Plotter():
 
         #---------------------------------
         # plot UV
-        fig = plt.figure(figsize=(16, 10))
+        fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(111)
 
         i = -1
@@ -1114,16 +1116,17 @@ class Plotter():
             print 'ymax=',ymax
 
         #legend = ax.legend(loc='upper left',shadow=False)
-        ax.set_ylabel('number of time slots')
-        ax.set_xlabel('Value')
+        ax.set_ylabel('Cumulative number of time slot')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.set_xlabel('UV value')
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
         ax.set_xlim([-0.01,1.01])
-        ax.set_ylim([0,ymax * 1.1])
-        plt.plot((0.3, 0.3), (0, 23000), 'k--', lw=2)
-        plt.plot((0.4, 0.4), (0, 23000), 'k--', lw=4)
-        plt.plot((0.5, 0.5), (0, 23000), 'k--', lw=2)
+        ax.set_ylim([-ymax * 0.02 ,ymax * 1.02])
+        #plt.plot((0.3, 0.3), (0, 23000), 'k--', lw=2)
+        plt.plot((0.4, 0.4), (0, 23000), 'k--', lw=6)
+        #plt.plot((0.5, 0.5), (0, 23000), 'k--', lw=2)
 
         plt.grid()
 
@@ -1189,10 +1192,11 @@ class Plotter():
         dt1 = min(dt_list)
         dt2 = max(dt_list)
         ax.set_xlim([dt1, dt2])
-
-        ax.set_ylabel('Quantity')
-        myFmt = mpldates.DateFormatter('%b %d')
+        myFmt = mpldates.DateFormatter('%b\n%d')
         ax.xaxis.set_major_formatter(myFmt)
+
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.set_ylabel('Quantity')
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
@@ -1259,10 +1263,11 @@ class Plotter():
         dt1 = min(dt_list)
         dt2 = max(dt_list)
         ax.set_xlim([dt1, dt2])
-
-        ax.set_ylabel('Quantity')
-        myFmt = mpldates.DateFormatter('%b %d')
+        myFmt = mpldates.DateFormatter('%b\n%d')
         ax.xaxis.set_major_formatter(myFmt)
+
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.set_ylabel('Quantity')
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
@@ -1305,10 +1310,11 @@ class Plotter():
         dt1 = min(dt_list)
         dt2 = max(dt_list)
         ax.set_xlim([dt1, dt2])
-
-        ax.set_ylabel('Quantity')
-        myFmt = mpldates.DateFormatter('%b %d')
+        myFmt = mpldates.DateFormatter('%b\n%d')
         ax.xaxis.set_major_formatter(myFmt)
+
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.set_ylabel('Quantity')
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
@@ -1478,6 +1484,8 @@ class Plotter():
                 try:
                     ratio1 = h2_num / huqp_num
                     h2_huqp_list.append(ratio1)
+                    if ratio1 < 0.1:
+                        print line, ratio1
                 except:
                     print 'no huqp'
                 
@@ -1514,7 +1522,8 @@ class Plotter():
         ax.boxplot(the_lists, showmeans=True)
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
-        ax.set_ylabel('ratio')
+        ax.set_ylabel('Ratio of HAP')
+        plt.xticks([1, 2],['HUQP', 'HUVP'])
 
         output_loc = pub_plot_dir + 'h2_ratio_'+str(Tq)+'_'+str(Tv)+'.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -1551,7 +1560,7 @@ class Plotter():
         the_lists.append(updt_ratio_huqp)
         the_lists.append(updt_ratio_huvp)
         the_lists.append(updt_ratio_h2p)
-        the_lists.append(h2p_huqp)
+        #the_lists.append(h2p_huqp)
 
         print float(sum(updt_ratio_huqp))/float(len(updt_ratio_huqp))
         print float(sum(updt_ratio_huvp))/float(len(updt_ratio_huvp))
@@ -1563,8 +1572,9 @@ class Plotter():
         ax.boxplot(the_lists, showmeans=True)
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
-        ax.set_ylabel('update ratio')
+        ax.set_ylabel('Ratio of updates')
 
+        plt.xticks([1, 2, 3],['HUQP', 'HUVP', 'HAP'])
         Tq = reaper.Tq
         Tv = reaper.Tv
         output_loc = pub_plot_dir + 'update_ratio_'+str(Tq)+'_'+str(Tv)+'.pdf'
@@ -1641,7 +1651,7 @@ class Plotter():
             #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
             output_loc = pub_plot_dir + index2name[count]+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
-            plt.savefig(output_loc, bbox_inches='tight')
+            plt.savefig(output_loc, bbox_inches='tight', pad_inches=0.3)
             plt.clf() # clear the figure
             plt.close()
 
@@ -1703,7 +1713,9 @@ class Plotter():
             dt1 = min(dt_list)
             dt2 = max(dt_list)
             ax.set_xlim([dt1, dt2])
-            if index in [0,1,2]:
+            if index != 2:
+                ax.set_ylim([10, 10000]) # FIXME for test only
+            else:
                 ax.set_ylim([1, 10000]) # FIXME for test only
 
             ymax = max(value_list)
@@ -1728,7 +1740,7 @@ class Plotter():
             #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
             output_loc = pub_plot_dir + index2name[index]+'_'+str(Tq)+'_'+str(Tv)+'.pdf'
-            plt.savefig(output_loc, bbox_inches='tight')
+            plt.savefig(output_loc, bbox_inches='tight', pad_inches=0.3)
             plt.clf() # clear the figure
             plt.close()
 
@@ -1775,9 +1787,9 @@ class Plotter():
         f.close()
 
         dict_list = [uq_lt, uv_lt, a_lt, uqo_lt, uvo_lt]
-        index2name = {0:'UQ_LT',1:'UV_LT',2:'A_LT',3:'UQO_LT',4:'UVO_LT'}
+        index2name = {0:'HUQP',1:'HUVP',2:'HAP',3:'HUQOP',4:'HUVOP'}
 
-        fig = plt.figure(figsize=(16, 10))
+        fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(111)
 
         count = 0
@@ -1796,16 +1808,19 @@ class Plotter():
                 if ratio > 0.78:
                     print count, ratio, xlist[i]
 
-            ax.plot(xlist, ylist, 'k-', color=colors[count], label=index2name[count])
+            ax.plot(xlist, ylist, 'k-', color=colors[count], label=index2name[count], lw=4)
             count += 1
 
         legend = ax.legend(loc='lower right',shadow=False)
-        ax.set_ylabel('cumulative distribution')
-        ax.set_xlabel('value')
+        ax.set_ylabel('Cumulative distribution')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.set_xlabel('Life time (quantity of slot)')
         #ax.set_xlim([-1, 1000])
         ax.set_xscale('log')
         plt.grid()
 
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
         output_loc = pub_plot_dir + 'LifeTimeDistribution_'+str(Tq)+'_'+str(Tv)+'.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
@@ -1856,3 +1871,84 @@ class Plotter():
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
+
+
+    def HUQOP_UV_box_mr(self):
+        Tq = self.mr.rlist[0].Tq
+        Tv = self.mr.rlist[0].Tv
+        uv_list = dict()
+
+        count = 0
+        for reaper in self.mr.rlist:
+            for fg in reaper.filegroups:
+                count += 1
+                print count
+                unix_dt = int(fg[0].rstrip('.txt.gz')) # timestamp of current file group
+                mydir = reaper.get_output_dir_pfx()
+                fpath = mydir + str(unix_dt) + '_pfx.txt'
+                f = open(fpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    line = line.split(':')[1].split('|')
+                    uq = int(line[0])
+                    uv = float(line[1])
+                    if uq >= Tq:
+                        try:
+                            uv_list[unix_dt].append(uv)
+                        except:
+                            uv_list[unix_dt] = [uv]
+
+                f.close()
+    
+        small_uvs = [0.02, 0.03, 0.04, 0.05, 0.1, 0.2]
+        ratio_list = dict()
+        for suv in small_uvs:
+            ratio_list[suv] = list()
+
+        for unix in uv_list:
+            small_count = dict()
+            for suv in small_uvs:
+                small_count[suv] = 0.0
+
+            uvs = uv_list[unix]
+            length = len(uvs) * 1.0
+            for uv in uvs:
+                for suv in small_uvs:
+                    if uv < suv:
+                        small_count[suv] += 1
+
+            for suv in small_count:
+                ratio = small_count[suv] / length
+                ratio_list[suv].append(ratio)
+                        
+            
+        the_lists = list()
+        for suv in ratio_list:
+            the_lists.append(ratio_list[suv])
+            if suv in [0.1, 0.2]:
+                mylist = ratio_list[suv]
+                mean = float(sum(mylist)) / float(len(mylist))
+                print 'mean=',mean
+
+                count = 0
+                for r in mylist:
+                    if r > 0.5:
+                        print r
+                        count += 1
+                print 'count=', count
+
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.boxplot(the_lists, showmeans=True)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('ratio')
+
+        output_loc = pub_plot_dir + 'low_uv_ratio_'+str(Tq)+'_'+str(Tv)+'.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+        
+
+
