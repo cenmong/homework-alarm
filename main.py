@@ -12,12 +12,12 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':1, 'plot_matrix':0, 'MR':0}
+action = {'middle':0, 'final':1, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-#index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
-index_list = [281]
+index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
+#index_list = [281]
 
 # the largest cluster in 01~10 2013 (for IPCCC 2015)
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
@@ -50,11 +50,10 @@ for i in index_list:
         #----------------------------------
         # for the prefix paper 
         #reaper.TS_updt_num()
-        reaper.huvp_huqp_TS() # run only once!
+        #reaper.huvp_huqp_TS() # run only once!
         #reaper.get_pfx_data() # get the uv and uq for every prefix in every slot (run only once)
         #reaper.uv_uq_distr()# (run only once)
         #reaper.analyze_pfx() # no use any more
-        pass
 
         #--------------------------------
         # for detecting large-scale BGP events
@@ -62,7 +61,9 @@ for i in index_list:
         #reaper.all_events_cluster()
         #reaper.all_events_tpattern()
         #reaper.all_events_ratios()
-        #reaper.all_events_oriAS_distri()
+        reaper.all_events_oriAS_distri()
+
+        pass
 
     if action['plot']:
         plotter = Plotter(reaper)
@@ -176,8 +177,8 @@ if action['MR']:
 
     pl = Plotter(reaper)
     pl.set_multi_reaper(mr)
-    pl.hpfx_lifetime_distr_mr()
-    #pl.TS_hpfx_mr()
+    #pl.hpfx_lifetime_distr_mr()
+    pl.TS_hpfx_mr()
     #pl.box_hpfx_mr()
     #pl.new_pfx_mr()
     #pl.TS_total_huvp_huqp_updt_mr()

@@ -69,6 +69,7 @@ class Reaper():
                 group = []
 
         #self.filegroups = self.filegroups[:3] #XXX test
+        self.updt_filel = self.period.get_filelist()
 
         # DV and UQ thresholds (set by a self function)
         self.dv_thre = None
@@ -1790,7 +1791,108 @@ class Reaper():
     def events_ratios_path(self):
         return self.get_output_dir_event() + 'ratios.txt'
 
-    # FIXME too many -1. maybe I should get the last hop of update
+
+    def oriAS_in_updt(self, unix_dt):
+        print 'Getting origin AS for all the prefixes in slot ', unix_dt
+
+        pfx_set = set()
+        mon_iset = set() # index 
+        mon_set = set() # IP
+
+        event_fpath = self.get_output_dir_event() + str(unix_dt) + '.txt'
+        f = open(event_fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('Mo'):
+                mon_iset = ast.literal_eval(line.split('set')[1])
+            else:
+                pfx_set.add(line.split(':')[0])
+        f.close()
+
+        i2ip = dict()
+        f = open(self.period.get_mon2index_file_path(), 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            ip = line.split(':')[0]
+            index = int(line.split(':')[1])
+            i2ip[index] = ip
+        f.close()
+
+        for index in mon_iset:
+            mon_set.add(i2ip[index])
+
+        #--------------------------------------------------------
+        # Read update files
+        sdt_unix = unix_dt
+        edt_unix = unix_dt + self.granu * 60
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+
+        # Note:
+        # (1) we record the last existence if multiple A exist
+        # (2) we record when only W exist!
+        # (3) we record when inconsistency exists between monitors (no such anomaly)
+        pfx2oriAS = dict()
+        for pfx in pfx_set:
+            pfx2oriAS[pfx] = -10
+
+        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    if (mon not in mon_set) or (pfx not in pfx_set):
+                        continue
+
+                    unix = int(attr[1])
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    if type == 'A':
+                        as_path = attr[6]
+
+                    oriAS = int(as_path.split()[-1])
+                    pfx2oriAS[pfx] = oriAS
+                        
+                except Exception, err:
+                    if line != '':
+                        logging.info(traceback.format_exc())
+                        logging.info(line)
+            myf.close()
+
+        AS2pfx = dict()
+        for pfx in pfx2oriAS:
+            ASN = pfx2oriAS[pfx]
+            try:
+                AS2pfx[ASN] += 1
+            except:
+                AS2pfx[ASN] = 1
+
+        sorted_list = sorted(AS2pfx.items(), key=operator.itemgetter(1), reverse=True)
+        f = open(self.event_oriAS_path(unix_dt), 'w')
+        for item in sorted_list:
+            ASN = item[0]
+            count = item[1]
+            f.write(str(ASN)+':'+str(count)+'\n')
+        f.close()
+
+
+    def event_oriAS_path(self, unix_dt):
+        return self.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt'
+
+
     def all_events_oriAS_distri(self): # the distribution of origin ASes
         event_dict = self.get_event_dict()
 

@@ -1034,11 +1034,11 @@ class Plotter():
 
         #---------------------------------
         # plot UQ
-        fig = plt.figure(figsize=(20, 10))
+        fig = plt.figure(figsize=(14, 14))
         ax = fig.add_subplot(111)
 
         i = -1
-        for top in top2uq_list:
+        for top in top_ratios:
             print 'top=',top
             print 'list length=', len(top2uq_list[top])
             i += 1
@@ -1059,7 +1059,7 @@ class Plotter():
             ylist.append(sum)
             xlist.append(uq)
 
-            ax.plot(xlist,ylist,'k-', color=colors[i], label=str(top))
+            ax.plot(xlist,ylist,'k-', color=colors[i], label=str(top),lw=3)
             ymax = max(ylist)
             print 'ymax=',ymax
 
@@ -1087,11 +1087,11 @@ class Plotter():
 
         #---------------------------------
         # plot UV
-        fig = plt.figure(figsize=(20, 10))
+        fig = plt.figure(figsize=(14, 14))
         ax = fig.add_subplot(111)
 
         i = -1
-        for top in top2uv_list:
+        for top in top_ratios:
             print 'top=',top
             print 'list length=', len(top2uv_list[top])
             i += 1
@@ -1111,7 +1111,7 @@ class Plotter():
             ylist.append(sum)
             xlist.append(uv)
 
-            ax.plot(xlist,ylist,'k-', color=colors[i])
+            ax.plot(xlist,ylist,'k-', color=colors[i],lw=3)
             ymax = max(ylist)
             print 'ymax=',ymax
 
@@ -1161,7 +1161,7 @@ class Plotter():
                  unix2hap[granu][unix] = hap_num
             f.close()
 
-        fig = plt.figure(figsize=(20, 15))
+        fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)
         count = -1
         for granu in sorted(unix2hap.keys()):
@@ -1187,7 +1187,7 @@ class Plotter():
                     new_vlist.append(sum)
                     sum = 0
 
-            ax.plot(new_dlist,new_vlist,colors[count]+'-', label='Granularity='+str(granu))
+            ax.plot(new_dlist,new_vlist,colors[count]+'-', label='Ls='+str(granu)+' min')
 
         dt1 = min(dt_list)
         dt2 = max(dt_list)
@@ -1196,7 +1196,8 @@ class Plotter():
         ax.xaxis.set_major_formatter(myFmt)
 
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        ax.set_ylabel('Quantity')
+        ax.set_ylabel('Quantity of HAP')
+        ax.set_ylim([5000, 40000])
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
@@ -1232,7 +1233,7 @@ class Plotter():
             f.close()
 
 
-        fig = plt.figure(figsize=(20, 15))
+        fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)
         count = -1
         for Tq in sorted(unix2huqp.keys()):
@@ -1267,7 +1268,8 @@ class Plotter():
         ax.xaxis.set_major_formatter(myFmt)
 
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        ax.set_ylabel('Quantity')
+        ax.set_ylabel('Quantity of HUQP')
+        ax.set_ylim([5000, 40000])
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
@@ -1279,7 +1281,7 @@ class Plotter():
         plt.close()
 
 
-        fig = plt.figure(figsize=(20, 15))
+        fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(111)
         count = -1
         for Tv in sorted(unix2huvp.keys()):
@@ -1314,7 +1316,8 @@ class Plotter():
         ax.xaxis.set_major_formatter(myFmt)
 
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        ax.set_ylabel('Quantity')
+        ax.set_ylabel('Quantity of HUVP')
+        ax.set_ylim([5000, 40000])
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
@@ -1366,8 +1369,10 @@ class Plotter():
                 dt_list.append(the_dt)
                 value_list.append(mydict[unix])
 
-            print len(dt_list)
+            #print len(dt_list)
             plt.scatter(dt_list, value_list, s=60, facecolor='blue', edgecolors='none')
+            print 'the 2.5 percentile value', np.percentile(value_list, 2.5)
+            print 'the 97.5 percentile value', np.percentile(value_list, 97.5)
 
             soccur = datetime.datetime.utcfromtimestamp(spamhaus_s)
             eoccur = datetime.datetime.utcfromtimestamp(spamhaus_e)
@@ -1812,7 +1817,7 @@ class Plotter():
             count += 1
 
         legend = ax.legend(loc='lower right',shadow=False)
-        ax.set_ylabel('Cumulative distribution')
+        ax.set_ylabel('Cumulative number of prefix')
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
         ax.set_xlabel('Life time (quantity of slot)')
         #ax.set_xlim([-1, 1000])
