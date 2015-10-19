@@ -15,8 +15,8 @@ logging.info('Program starts!')
 action = {'middle':0, 'final':1, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-#index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
+index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
+#index_list = [281, 282, 283, 284, 285] # for NOMS 2016 short paper
 #index_list = [281]
 
 # the largest cluster in 01~10 2013 (for IPCCC 2015)

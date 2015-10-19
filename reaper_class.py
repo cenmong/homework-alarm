@@ -1281,7 +1281,7 @@ class Reaper():
 
         return mylist
 
-    def get_event_dict(self):
+    def get_event_dict(self): # get the events whose size is larger than the global threshold
         event_dict = dict()
 
         path = self.get_output_dir_event() + self.events_brief_fname
@@ -1291,6 +1291,9 @@ class Reaper():
             unix_dt = int(line.split(':')[0])
             content = line.split(':')[1]
             thelist = ast.literal_eval(content)
+            rsize = thelist[0]
+            if rsize < global_rsize_threshold:
+                continue
             event_dict[unix_dt] = thelist
         f.close()
 
@@ -1833,13 +1836,13 @@ class Reaper():
 
         # Note:
         # (1) we record the last existence if multiple A exist
-        # (2) we record when only W exist!
-        # (3) we record when inconsistency exists between monitors (no such anomaly)
+        # (2) we record when only W exists for a prefix!
+        # (3) we record when inconsistency exists between monitors
         pfx2oriAS = dict()
         for pfx in pfx_set:
-            pfx2oriAS[pfx] = -10
+            pfx2oriAS[pfx] = -10 # -10 remains to the end means that the prefix is missed
 
-        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
         for fpath in fpathlist:
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
@@ -1888,59 +1891,21 @@ class Reaper():
             f.write(str(ASN)+':'+str(count)+'\n')
         f.close()
 
+        return self.event_oriAS_path(unix_dt)
 
     def event_oriAS_path(self, unix_dt):
         return self.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt'
 
-
     def all_events_oriAS_distri(self): # the distribution of origin ASes
         event_dict = self.get_event_dict()
 
-        pfx2as = self.period.get_pfx2as()
         for unix_dt in event_dict:
-            #---------------------------------------------
-            # obtain the prefix and monitor(index) sets of the event
-            pfx_set = set()
-            mon_set = set()
-
-            event_fpath = self.get_output_dir_event() + str(unix_dt) + '.txt'
-            f = open(event_fpath, 'r')
+            fpath = self.oriAS_in_updt(unix_dt)
+            f = open(fpath, 'r')
             for line in f:
                 line = line.rstrip('\n')
-                if line.startswith('Mo'):
-                    mon_set = ast.literal_eval(line.split('set')[1])
-                else:
-                    pfx_set.add(line.split(':')[0])
+                print line
             f.close()
-
-            '''
-            #--------------------------------------------
-            # analyze prefixes
-            all_pfx_num = self.period.get_fib_size()
-            prefix_ratio = float(height) / float(all_pfx_num) # ratio of prefix
-            print prefix_ratio
-
-            #-------------------------------------------
-            # distribution of origin ASes TODO: move to somewhere else
-            all_AS_num = self.period.get_AS_num() # ratio of origin AS
-            '''
-            asn_dict = dict()
-            for pfx in pfx_set:
-                try:
-                    asn = pfx2as[pfx]
-                except:
-                    asn = -1
-                try:
-                    asn_dict[asn] += 1
-                except:
-                    asn_dict[asn] = 1
-
-            #for asn in asn_dict:
-            #    asn_dict[asn] = float(asn_dict[asn]) / float(all_AS_num)
-            print asn_dict
-
-    def events_oriAS_distri_path(self):
-        return self.get_output_dir_event() + 'oriAS_distri.txt'
 
     '''
     def get_rel_width(self): # XXX: run this for only once
