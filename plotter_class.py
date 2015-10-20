@@ -74,13 +74,112 @@ class Plotter():
         self.event_plot_dir = reaper.get_output_dir_event() + 'plot/'
         cmlib.make_dir(self.pfx_plot_dir)
         cmlib.make_dir(self.event_plot_dir)
+
+        #--------------------------------
+        # multiple reapers
         self.TS_events_dot_dir = pub_plot_dir + 'TS_events_dot/'
         cmlib.make_dir(self.TS_events_dot_dir)
         self.events_tpattern_dir = pub_plot_dir + 'events_time_pattern/'
         cmlib.make_dir(self.events_tpattern_dir)
+        self.events_analysis_dir = pub_plot_dir + 'events_analysis/'
+        cmlib.make_dir(self.events_analysis_dir)
 
     def set_multi_reaper(self, mr):
         self.mr = mr
+
+
+    def events_oriAS_distr_mr(self):
+        unix2dict = dict()
+
+        for reaper in self.mr.rlist:
+            event_dict = reaper.get_event_dict()
+            for unix_dt in event_dict:
+                ASN2num = dict()
+                fpath = reaper.event_oriAS_path(unix_dt) # directly read the result
+                f = open(fpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    ASN = int(line.split(':')[0])
+                    num = int(line.split(':')[1])
+                    ASN2num[ASN] = num
+                f.close()
+
+                unix2dict[unix_dt] = ASN2num
+                
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        for unix_dt in unix2dict:
+            ASN2num = unix2dict[unix_dt]
+            sorted_list = sorted(ASN2num.items(), key=operator.itemgetter(1), reverse=True)
+
+            xlist = [0]
+            ylist = [0]
+
+            count = 1
+            total = 0
+            for item in sorted_list:
+                num = item[1]
+                total += num
+                xlist.append(count)
+                ylist.append(total)
+                count += 1
+
+            ax.plot(xlist, ylist, 'k-')
+            
+        #xmax = max(xlist)
+        #ymax = max(ylist)
+        #ax.set_ylim([-0.1*ymax, 1.1*ymax])
+        #ax.set_xlim([-0.1*xmax, 1.1*xmax])
+        ax.set_ylabel('Num. of prefix')
+        ax.set_xlabel('Num. of AS')
+        ax.set_xscale('log')
+
+        output_loc = self.events_analysis_dir + 'oriAS_distr.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+
+        for unix_dt in unix2dict:
+            ASN2num = unix2dict[unix_dt]
+            sorted_list = sorted(ASN2num.items(), key=operator.itemgetter(1), reverse=True)
+
+            xlist = [0]
+            ylist = list()
+            tmplist = [0]
+
+            count = 1
+            total = 0
+            for item in sorted_list:
+                num = item[1]
+                total += num
+                xlist.append(count)
+                tmplist.append(total)
+                count += 1
+
+            for v in tmplist:
+                ylist.append(float(v)/float(tmplist[-1]))
+
+            ax.plot(xlist, ylist, 'k-')
+            
+        #xmax = max(xlist)
+        #ymax = max(ylist)
+        #ax.set_ylim([-0.1*ymax, 1.1*ymax])
+        ax.set_xlim([-0.1, 50])
+        ax.set_ylabel('Ratio of prefix')
+        ax.set_xlabel('Num. of AS')
+        #ax.set_xscale('log')
+
+        output_loc = self.events_analysis_dir + 'oriAS_distr_ratio.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
 
     def all_events_tpattern_curve(self):
         index = self.reaper.period.index

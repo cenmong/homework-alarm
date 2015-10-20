@@ -1898,14 +1898,27 @@ class Reaper():
 
     def all_events_oriAS_distri(self): # the distribution of origin ASes
         event_dict = self.get_event_dict()
+        unix2dict = dict()
 
         for unix_dt in event_dict:
-            fpath = self.oriAS_in_updt(unix_dt)
+            ASN2num = dict()
+        
+            #fpath = self.oriAS_in_updt(unix_dt) # XXX run only once
+            fpath = self.event_oriAS_path(unix_dt) # directly read the result
             f = open(fpath, 'r')
             for line in f:
                 line = line.rstrip('\n')
-                print line
+                ASN = int(line.split(':')[0])
+                num = int(line.split(':')[1])
+                ASN2num[ASN] = num
             f.close()
+
+            unix2dict[unix_dt] = ASN2num
+
+        for unix in unix2dict:
+            ASN2num = unix2dict[unix]
+            if -10 in ASN2num.keys():
+                print '-10', ASN2num[-10]
 
     '''
     def get_rel_width(self): # XXX: run this for only once
@@ -1914,7 +1927,7 @@ class Reaper():
         for unix_dt in event_dict:
     '''
 
-    ##############################################################################
+    #############################################################################
     #############################################################################
     #############################################################################
     #############################################################################
