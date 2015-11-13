@@ -12,6 +12,7 @@ import patricia
 import os
 import datetime
 import logging
+import time as time_lib
 logging.basicConfig(filename='main.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 # Work as input to update analysis functions
@@ -21,6 +22,9 @@ class Period():
         self.index = index
         self.sdate = daterange[index][0] 
         self.edate = daterange[index][1] 
+
+        self.sdatetime_obj = datetime.datetime.strptime(self.sdate, '%Y%m%d')
+        self.edatetime_obj = datetime.datetime.strptime(self.edate, '%Y%m%d') + datetime.timedelta(days=1)
         
         # location to store supporting files
         self.spt_dir = spt_dir + self.sdate + '_' + self.edate + '/'
@@ -46,6 +50,7 @@ class Period():
 
     def get_mon2index_file_path(self):
         return rib_info_dir + self.sdate + '_' + self.edate + '_mo2index.txt'
+        # Note that we map id to ip in alarm class instead of here
 
     def get_middle_dir(self):
         return datadir+'middle_output/'+self.sdate+'_'+self.edate+'/'

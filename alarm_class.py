@@ -9,7 +9,6 @@ import gzip
 import traceback
 import logging
 import subprocess
-import os
 
 from netaddr import *
 from env import *

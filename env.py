@@ -26,6 +26,8 @@ update_list_dir = datadir + 'update_list/'
 
 pub_plot_dir = datadir + 'plot_pub/'
 
+metrics_output_root = datadir + 'metrics_output/'
+
 #------------------------------------------------------
 # according to http://en.wikipedia.org/wiki/Tier_1_network
 tier1_asn = [3320,3356,3549,1,2914,5511,1239,6453,6762,12956,1299,701,702,703,1273,2828,6461]

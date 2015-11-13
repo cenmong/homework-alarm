@@ -466,10 +466,14 @@ def get_file_list_indate(updtlist_file, sdt_obj, edt_obj):
     return filepath_list
 
     
-def select_update_files(flist, sdt_unix, edt_unix):
+def select_update_files(flist, sdt, edt):
     goallist = list()
-    sdt_obj = datetime.datetime.utcfromtimestamp(sdt_unix)
-    edt_obj = datetime.datetime.utcfromtimestamp(edt_unix)
+    if isinstance(sdt_unix, int):
+        sdt_obj = datetime.datetime.utcfromtimestamp(sdt)
+        edt_obj = datetime.datetime.utcfromtimestamp(edt)
+    else:
+        sdt_obj = sdt
+        edt_obj = edt
 
     for fpath in flist:
         file_attr = fpath.split('.')
