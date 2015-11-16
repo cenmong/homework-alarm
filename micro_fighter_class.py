@@ -653,6 +653,7 @@ class Micro_fighter():
             mp_last_A[m] = dict() # NOTE: does not record W, only record A
             mp_last_type[m] = dict()
 
+        # FIXME found a bug: mp_last_type not updated
         fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
         for fpath in fpathlist:
             print 'Reading ', fpath

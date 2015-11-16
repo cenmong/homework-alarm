@@ -57,21 +57,31 @@ class UpdateDetailScanner():
         sdt_unix = calendar.timegm(slot[0].utctimetuple())
         edt_unix = calendar.timegm(slot[1].utctimetuple())
 
-        # 0:update 1:A 2:W 
-        # 3:updated prefix 4:announced prefix 5:withdrawn prefix
-        # 6:WW 7:AADup1 8:AADup2 9:AADiff 10:WAUnknown 11:WADup 12:WADiff 13:AW
-        metric_num = 14
+        # Numerical metrics
+        # 0:updates 1:A 2:W    3:WW 4:AADup1 5:AADup2 6:AADiff 7:WAUnknown 8:WADup 9:WADiff 10:AW
+        metric_num = 11
         tmetrics = dict() # total metrics
 
         mon2metrics = dict()
         for m in self.monitors:
             mon2metrics[m] = dict()
 
+        # Updated prefix sets
+        # updated prefix set announced prefix set withdrawn prefix set
+        # TODO
+
         # initialization
         for i in range(metric_num):
             tmetrics[i] = 0
             for key in mon2metrics:
                 mon2metrics[key][i] = 0
+
+        # tmp variables
+        mp_last_A = dict() # mon: prefix: latest announcement full content
+        mp_last_type = dict()
+        for m in self.monitors:
+            mp_last_A[m] = dict() # NOTE: does not record W, only record A
+            mp_last_type[m] = dict()
 
         # obtain and read the update files
         flist = cmlib.select_update_files(self.uflist, slot[0], slot[1])
@@ -91,6 +101,71 @@ class UpdateDetailScanner():
                     pfx = attr[5]
                     type = attr[2]
                     mon = attr[3]
+
+                    mon2metrics[mon][0] += 1
+                    tmetrics[0] += 1
+
+                    if type == 'A':
+                        as_path = attr[6]
+                        mon2metrics[mon][1] += 1
+                        tmetrics[1] += 1
+                    else:
+                        mon2metrics[mon][2] += 1
+                        tmetrics[2] += 1
+
+                    # Obtain existent information
+                    try:
+                        last_A = mp_last_A[mon][pfx]
+                        last_as_path = last_A.split('|')[6]
+                    except:
+                        last_A = None
+                        last_as_path = None
+
+                    try:
+                        last_type = mp_last_type[mon][pfx]
+                    except: # this is the first update for the mon-pfx pair
+                        last_type = None
+
+                    if last_type == 'W':
+                        if type == 'W':
+                            mon2metrics[mon][3] += 1
+                            tmetrics[3] += 1
+                        elif type == 'A':
+                            if last_as_path:
+                                if as_path == last_as_path:
+                                    mon2metrics[mon][8] += 1
+                                    tmetrics[8] += 1
+                                else:
+                                    mon2metrics[mon][9] += 1
+                                    tmetrics[9] += 1
+                            else:
+                                mon2metrics[mon][7] += 1
+                                tmetrics[7] += 1
+                            mp_last_A[mon][pfx] = line
+                    elif last_type == 'A':
+                        if type == 'W':
+                            mon2metrics[mon][10] += 1
+                            tmetrics[10] += 1
+                        elif type == 'A':
+                            if line == last_A:
+                                mon2metrics[mon][4] += 1
+                                tmetrics[4] += 1
+                            elif as_path == last_as_path:
+                                mon2metrics[mon][5] += 1
+                                tmetrics[5] += 1
+                            else:
+                                mon2metrics[mon][6] += 1
+                                tmetrics[6] += 1
+                            mp_last_A[mon][pfx] = line
+                    else: # last_type == None
+                        pass
+                
+                    if type == 'W':
+                        mp_last_type[mon][pfx] = 'W'
+                    elif type == 'A':
+                        mp_last_type[mon][pfx] = 'A'
+                        mp_last_A[mon][pfx] = line
+
                 except:
                     pass
 
