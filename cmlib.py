@@ -468,7 +468,7 @@ def get_file_list_indate(updtlist_file, sdt_obj, edt_obj):
     
 def select_update_files(flist, sdt, edt):
     goallist = list()
-    if isinstance(sdt_unix, int):
+    if isinstance(sdt, int):
         sdt_obj = datetime.datetime.utcfromtimestamp(sdt)
         edt_obj = datetime.datetime.utcfromtimestamp(edt)
     else:

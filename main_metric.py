@@ -10,7 +10,7 @@ from UpdateDetailScanner_class import UpdateDetailScanner
 import cmlib
 import os
 
-index_list = [285]
+index_list = [285, 286, 287, 288, 289, 2810]
 
 for i in index_list:
     my_period = Period(i)
@@ -19,3 +19,4 @@ for i in index_list:
     my_period.mo_filter_same_as()
 
     UDS = UpdateDetailScanner(my_period, 20)
+    UDS.analyze_metrics()

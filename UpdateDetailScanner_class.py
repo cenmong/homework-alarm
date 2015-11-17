@@ -17,6 +17,7 @@ from cStringIO import StringIO
 class UpdateDetailScanner():
 
     def __init__(self, period, granu):
+        self.period = period
         self.filelist = period.get_filelist()
         self.sdate = period.sdate
         self.edate = period.edate
@@ -25,7 +26,11 @@ class UpdateDetailScanner():
         self.edt_obj = period.edatetime_obj
         self.granu = granu
 
-        self.uflist = self.period.get_filelist()
+        self.uflist = list()
+        f = open(self.period.get_filelist(), 'r')
+        for line in f:
+            ufile = line.split('|')[0]
+            self.uflist.append(datadir + ufile)
 
         self.monitors = list()
         for co in self.period.co_mo.keys():
@@ -46,19 +51,22 @@ class UpdateDetailScanner():
             next += datetime.timedelta(minutes=self.granu)
 
     def output_dir(self):
-        return  metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
+        dir = metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
+        cmlib.make_dir(dir)
+        return dir
 
     def analyze_metrics(self):
         for slot in self.dtobj_list:
             print '********************Now processing slot ', slot
             self.get_metrics_for_slot(slot)
         
-    def get_metics_for_slot(self, slot):
+    def get_metrics_for_slot(self, slot):
         sdt_unix = calendar.timegm(slot[0].utctimetuple())
         edt_unix = calendar.timegm(slot[1].utctimetuple())
 
-        # Numerical metrics
+        #------------------ Numerical metrics ------------------
         # 0:updates 1:A 2:W    3:WW 4:AADup1 5:AADup2 6:AADiff 7:WAUnknown 8:WADup 9:WADiff 10:AW
+        # 11: updates pfx 12: announced pfx 13: withdrawn pfx (11,12,13 are obtianed in the end)
         metric_num = 11
         tmetrics = dict() # total metrics
 
@@ -66,24 +74,41 @@ class UpdateDetailScanner():
         for m in self.monitors:
             mon2metrics[m] = dict()
 
-        # Updated prefix sets
-        # updated prefix set announced prefix set withdrawn prefix set
-        # TODO
-
         # initialization
         for i in range(metric_num):
             tmetrics[i] = 0
             for key in mon2metrics:
                 mon2metrics[key][i] = 0
 
-        # tmp variables
+
+        # ------------------ a special mechanism -----------------
+        # the number of pfx (unconfined) can be quite large, which may lead to memory issue
+        # So we map pfx to an integer (0~1,000,000) to save memory 
+        pfxindex = 0
+        pfx2num = dict()
+
+
+        # ----------------- Update prefix metrics ----------------
+        # updated prefix set    announced prefix set    withdrawn prefix set
+        Am2pset = dict()
+        Wm2pset = dict()
+        Tm2pset = dict() # total
+        Apset = set()
+        Wpset = set()
+        Tpset = set() # total
+
+        # ----------------- tmp variables ----------------
         mp_last_A = dict() # mon: prefix: latest announcement full content
         mp_last_type = dict()
         for m in self.monitors:
             mp_last_A[m] = dict() # NOTE: does not record W, only record A
             mp_last_type[m] = dict()
 
-        # obtain and read the update files
+            Am2pset[m] = set()
+            Wm2pset[m] = set()
+            Tm2pset[m] = set()
+
+        # ----------------- Obtain and read the update files ----------------
         flist = cmlib.select_update_files(self.uflist, slot[0], slot[1])
         for fpath in flist:
             print 'Reading ', fpath
@@ -99,9 +124,18 @@ class UpdateDetailScanner():
                         continue
                     
                     pfx = attr[5]
+                    try:
+                        pfx = pfx2num[pfx] # pfx string to num to save memory
+                    except:
+                        pfx2num[pfx] = pfxindex
+                        pfx = pfxindex
+                        pfxindex += 1
+
                     type = attr[2]
                     mon = attr[3]
 
+                    # (1) increase the number of U, A, and W
+                    # (2) increase the number of prefix sets
                     mon2metrics[mon][0] += 1
                     tmetrics[0] += 1
 
@@ -109,9 +143,15 @@ class UpdateDetailScanner():
                         as_path = attr[6]
                         mon2metrics[mon][1] += 1
                         tmetrics[1] += 1
+
+                        Apset.add(pfx)
+                        Am2pset[mon].add(pfx)
                     else:
                         mon2metrics[mon][2] += 1
                         tmetrics[2] += 1
+
+                        Wpset.add(pfx)
+                        Wm2pset[mon].add(pfx)
 
                     # Obtain existent information
                     try:
@@ -160,19 +200,49 @@ class UpdateDetailScanner():
                     else: # last_type == None
                         pass
                 
-                    if type == 'W':
-                        mp_last_type[mon][pfx] = 'W'
-                    elif type == 'A':
+                    # Update existent information
+                    if type == 'A':
                         mp_last_type[mon][pfx] = 'A'
                         mp_last_A[mon][pfx] = line
+                    else:
+                        mp_last_type[mon][pfx] = 'W'
 
                 except:
                     pass
 
             myf.close()
 
+        # obtain the 11th, 12th, and 13th metrics
+        Tpset = Apset | Wpset
+        for m in Wm2pset:
+            Tm2pset[m] = Am2pset[m] | Wm2pset[m]
+
+        tmetrics[11] = len(Tpset)
+        tmetrics[12] = len(Apset)
+        tmetrics[13] = len(Wpset)
+
+        for m in mon2metrics:
+            mon2metrics[m][11] = len(Tm2pset[m])
+            mon2metrics[m][12] = len(Am2pset[m])
+            mon2metrics[m][13] = len(Wm2pset[m])
+
         # Output the overall and per-monitor statistics
         outpath = self.output_dir() + str(sdt_unix) + '.txt'
+        f = open(outpath, 'w')
+        f.write('T:'+str(tmetrics)+'\n')
+        for m in mon2metrics:
+            f.write(m+':'+str(mon2metrics[m])+'\n')
+        f.close()
+
+        # free memory
+        del Am2pset
+        del Wm2pset
+        del Apset
+        del Wpset
+        del mp_last_A
+        del mp_last_type
+        del tmetrics
+        del mon2metrics
 
 
     # TODO def analyze_active_pfx(self): 
