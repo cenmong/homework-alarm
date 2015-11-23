@@ -9,6 +9,7 @@ import gzip
 import traceback
 import logging
 import subprocess
+import ast
 
 from netaddr import *
 from env import *
@@ -50,17 +51,17 @@ class UpdateDetailScanner():
             now = next
             next += datetime.timedelta(minutes=self.granu)
 
-    def output_dir(self):
+    def numf_distr_output_dir(self):
         dir = metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
         cmlib.make_dir(dir)
         return dir
 
-    def analyze_metrics(self):
+    def get_num_feature_distr(self):
         for slot in self.dtobj_list:
             print '********************Now processing slot ', slot
-            self.get_metrics_for_slot(slot)
+            self.get_distr_for_slot(slot)
         
-    def get_metrics_for_slot(self, slot):
+    def get_distr_for_slot(self, slot):
         sdt_unix = calendar.timegm(slot[0].utctimetuple())
         edt_unix = calendar.timegm(slot[1].utctimetuple())
 
@@ -227,7 +228,7 @@ class UpdateDetailScanner():
             mon2metrics[m][13] = len(Wm2pset[m])
 
         # Output the overall and per-monitor statistics
-        outpath = self.output_dir() + str(sdt_unix) + '.txt'
+        outpath = self.numf_distr_output_dir() + str(sdt_unix) + '.txt'
         f = open(outpath, 'w')
         f.write('T:'+str(tmetrics)+'\n')
         for m in mon2metrics:
@@ -243,6 +244,100 @@ class UpdateDetailScanner():
         del mp_last_type
         del tmetrics
         del mon2metrics
+
+
+    def get_num_feature_metric(self):
+        slot2metrics = dict() # slot sdt_unix: metric: a list of metric values
+
+        for slot in self.dtobj_list:
+            print '********************Getting metrics for slot ', slot
+            total_dict = None
+            mon2dict = dict() 
+
+            sdt_unix = calendar.timegm(slot[0].utctimetuple())
+            slot2metrics[sdt_unix] = dict()
+
+            rpath = self.numf_distr_output_dir() + str(sdt_unix) + '.txt'
+            f = open(rpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                name = line.split(':')[0]
+                mydict = line.replace(name+':', '')
+                mydict = ast.literal_eval(mydict)
+
+                if name == 'T':
+                    total_dict = mydict
+                else:
+                    mon2dict[name] = mydict
+            f.close()
+
+            feature_num = len(total_dict.keys()) # number of features
+
+
+            # Obtain the HI values
+            slot2metrics[sdt_unix]['HI'] = dict()
+            for i in range(feature_num):
+                HI = 0
+                tvalue = total_dict[i]
+                for mon in mon2dict:
+                    mvalue = mon2dict[mon][i]
+                    if mvalue != 0:
+                        ratio = float(mvalue) / float(tvalue)
+                        HI += ratio * ratio
+                slot2metrics[sdt_unix]['HI'][i] = HI
+
+            # Obtain the Dynamic Visibiliy values
+            slot2metrics[sdt_unix]['DV'] = dict()
+            for i in range(feature_num):
+                DV = 0
+                tvalue = total_dict[i]
+                for mon in mon2dict:
+                    mvalue = mon2dict[mon][i]
+                    if mvalue != 0:
+                        DV += 1
+                DV = float(DV) / float(len(self.monitors))
+                slot2metrics[sdt_unix]['DV'][i] = DV
+
+            # Obtain the concentration ratios
+            CR_ints = [1, 4, 8]
+            for my_int in CR_ints:
+                slot2metrics[sdt_unix][my_int] = dict()
+
+            CR_ratios = [0.1, 0.2, 0.3]
+            for my_r in CR_ratios:
+                slot2metrics[sdt_unix][my_r] = dict()
+
+            for i in range(feature_num):
+                tvalue = total_dict[i]
+                mvalues = list()
+                for mon in mon2dict:
+                    mvalue = mon2dict[mon][i]
+                    mvalues.append(mvalue)
+                mvalues.sort(reverse=True) # large to small
+
+                for my_int in CR_ints:
+                    sum = 0
+                    for j in range(my_int):
+                        sum += mvalues[j]
+                    final = float(sum) / float(tvalue)
+                    slot2metrics[sdt_unix][my_int][i] = final
+
+                for my_r in CR_ratios:
+                    sum = 0
+                    mon_num = int(len(self.monitors)*my_r)
+                    for j in range(mon_num):
+                        sum += mvalues[j]
+                    final = float(sum) / float(tvalue)
+                    slot2metrics[sdt_unix][my_r][i] = final
+
+        # output
+        dir = metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
+        cmlib.make_dir(dir)
+        f = open(dir+'num_fea_metrics.txt', 'w')
+        for slot in sorted(slot2metrics.keys()):
+            for metric in slot2metrics[slot]:
+                f.write(str(slot)+'|'+str(metric)+'|'+str(slot2metrics[slot][metric])+'\n')
+        f.close()
 
 
     # TODO def analyze_active_pfx(self): 
