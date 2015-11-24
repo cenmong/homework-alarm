@@ -327,7 +327,7 @@ class UpdateDetailScanner():
                     mvalue = mon2dict[mon][i]
                     if mvalue != 0:
                         DV += 1
-                DV = float(DV) / float(len(self.monitors))
+                DV = float(DV) / float(len(mon2dict.keys()))
                 slot2metrics[sdt_unix]['DV'][i] = DV
 
             # Obtain the concentration ratios
@@ -359,7 +359,7 @@ class UpdateDetailScanner():
 
                 for my_r in CR_ratios:
                     sum = 0
-                    mon_num = int(len(self.monitors)*my_r)
+                    mon_num = int(len(mon2dict.keys())*my_r)
                     for j in range(mon_num):
                         sum += mvalues[j]
                     if tvalue != 0:
@@ -381,6 +381,90 @@ class UpdateDetailScanner():
         cmlib.make_dir(dir)
         return dir+'num_fea_metrics.txt'
 
-    # TODO def analyze_active_pfx(self): 
-    # note: use middle files
-    # note: monitor id -> ip
+
+    def analyze_active_pfx(self): 
+        mdir = self.period.get_middle_dir()
+        mfiles = os.listdir(mdir)
+        for f in mfiles:
+            if not f.endswith('.gz'):
+                mfiles.remove(f)
+        mfiles.sort(key=lambda x:int(x.rstrip('.txt.gz')))
+
+        # get granularity of middle files
+        m_granu = (int(mfiles[1].rstrip('.txt.gz')) - int(mfiles[0].rstrip('.txt.gz'))) / 60
+        group_size = self.granu / m_granu
+
+        filegroups = list() # list of file groups
+        group = []
+        for f in mfiles:
+            group.append(f)
+            if len(group) == group_size:
+                filegroups.append(group)
+                group = []
+
+        fo = open(self.apfx_metrics_fpath(), 'w')
+
+        count = 0
+        for fg in filegroups:
+            c_pfx_data = dict() # current pfx -> data mapping
+            count += 1
+            print '******************Round ', count
+            for f in fg:
+                floc = mdir+f
+                print 'Reading ', floc
+                p = subprocess.Popen(['zcat', floc],stdout=subprocess.PIPE)
+                fin = StringIO(p.communicate()[0])
+                assert p.returncode == 0
+                for line in fin:
+                    line = line.rstrip('\n')
+                    if line == '':
+                        continue
+
+                    pfx = line.split(':')[0]
+                    datalist = ast.literal_eval(line.split(':')[1])
+
+                    try:
+                        c_datalist = c_pfx_data[pfx]
+                        combined = [x+y for x,y in zip(datalist, c_datalist)]
+                        c_pfx_data[pfx] = combined
+                    except:
+                        c_pfx_data[pfx] = datalist
+                fin.close()
+
+
+            # obtain the information we need
+            for pfx in c_pfx_data:
+                datalist = c_pfx_data[pfx]
+                uq = sum(datalist)
+                
+                if uq >= 100: # activeness threshold: 100
+                    # DV
+                    DV = 0.0
+                    for v in datalist:
+                        if v > 0:
+                            DV += 1
+                    DV = DV / float(len(datalist))
+
+                    # GINI
+                    
+
+                    # CR
+
+
+
+                    pass
+
+            del c_pfx_data
+
+            # write to output file
+            # UQ|DV|GINI|CRint|CRratio
+            fo.write() # TODO
+
+        fo.close()
+
+    def apfx_metrics_fpath(self):
+        dir = metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
+        cmlib.make_dir(dir)
+        return dir+'active_pfx_metrics.txt'
+
+    def get_GINI_index(self, thelist):

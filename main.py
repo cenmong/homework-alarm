@@ -16,7 +16,7 @@ action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR':1}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-index_list = [285]
+index_list = [2810]
 
 # the largest cluster in 01~10 2013 (for IPCCC 2015)
 dt_list = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
