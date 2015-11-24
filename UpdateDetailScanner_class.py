@@ -271,8 +271,38 @@ class UpdateDetailScanner():
                     mon2dict[name] = mydict
             f.close()
 
-            feature_num = len(total_dict.keys()) # number of features
+            # feature_num = len(total_dict.keys()) # number of features
+            feature_num = 11 # we omit the updated prefix quantity
 
+
+            # Obtain the GINI index
+            slot2metrics[sdt_unix]['GINI'] = dict()
+            for i in range(feature_num):
+                tvalue = total_dict[i] * 1.0
+
+                sorted_list = list()
+                for mon in mon2dict:
+                    mvalue = mon2dict[mon][i]
+                    sorted_list.append(mvalue*1.0)
+                sorted_list.sort()
+
+                for j in range(1,len(sorted_list)): 
+                    sorted_list[j] += sorted_list[j-1]
+
+                #print tvalue
+                #print sorted_list
+                assert sorted_list[-1] == tvalue
+
+                num = len(sorted_list) * 1.0
+                sum = 0.0
+                for item in sorted_list:
+                    sum += item
+                sum -= tvalue / 2
+                if tvalue != 0:
+                    result = 1 - 2*sum / (num*tvalue)
+                    slot2metrics[sdt_unix]['GINI'][i] = result
+                else:
+                    slot2metrics[sdt_unix]['GINI'][i] = -1 # XXX not applicable
 
             # Obtain the HI values
             slot2metrics[sdt_unix]['HI'] = dict()
@@ -285,6 +315,8 @@ class UpdateDetailScanner():
                         ratio = float(mvalue) / float(tvalue)
                         HI += ratio * ratio
                 slot2metrics[sdt_unix]['HI'][i] = HI
+                if tvalue == 0:
+                    slot2metrics[sdt_unix]['HI'][i] = -1 # XXX not applicable
 
             # Obtain the Dynamic Visibiliy values
             slot2metrics[sdt_unix]['DV'] = dict()
@@ -319,26 +351,35 @@ class UpdateDetailScanner():
                     sum = 0
                     for j in range(my_int):
                         sum += mvalues[j]
-                    final = float(sum) / float(tvalue)
-                    slot2metrics[sdt_unix][my_int][i] = final
+                    if tvalue != 0:
+                        final = float(sum) / float(tvalue)
+                        slot2metrics[sdt_unix][my_int][i] = final
+                    else:
+                        slot2metrics[sdt_unix][my_int][i] = -1
 
                 for my_r in CR_ratios:
                     sum = 0
                     mon_num = int(len(self.monitors)*my_r)
                     for j in range(mon_num):
                         sum += mvalues[j]
-                    final = float(sum) / float(tvalue)
-                    slot2metrics[sdt_unix][my_r][i] = final
+                    if tvalue != 0:
+                        final = float(sum) / float(tvalue)
+                        slot2metrics[sdt_unix][my_r][i] = final
+                    else:
+                        slot2metrics[sdt_unix][my_r][i] = -1
 
         # output
-        dir = metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
-        cmlib.make_dir(dir)
-        f = open(dir+'num_fea_metrics.txt', 'w')
+        f = open(self.numf_metrics_fpath(), 'w')
         for slot in sorted(slot2metrics.keys()):
             for metric in slot2metrics[slot]:
                 f.write(str(slot)+'|'+str(metric)+'|'+str(slot2metrics[slot][metric])+'\n')
         f.close()
 
+
+    def numf_metrics_fpath(self): 
+        dir = metrics_output_root + str(self.granu) + '/' + self.sdate + '_' + self.edate + '/'
+        cmlib.make_dir(dir)
+        return dir+'num_fea_metrics.txt'
 
     # TODO def analyze_active_pfx(self): 
     # note: use middle files

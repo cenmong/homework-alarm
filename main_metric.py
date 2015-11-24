@@ -4,14 +4,14 @@ from env import *
 from alarm_class import Alarm
 from reaper_class import Reaper
 from multi_reaper_class import MultiReaper
-from plotter_class import Plotter
+from mplotter_class import Mplotter
 from UpdateDetailScanner_class import UpdateDetailScanner
 
 import cmlib
 import os
 
 #index_list = [285, 286, 287, 288, 289, 2810]
-index_list = [285]
+index_list = [286]
 
 for i in index_list:
     my_period = Period(i)
@@ -22,5 +22,8 @@ for i in index_list:
     UDS = UpdateDetailScanner(my_period, 20)
     ### UDS.get_num_feature_distr() # XXX NOTE: run only ONCE for each period
     UDS.get_num_feature_metric() # write to only one file
+    #my_plotter = Mplotter(UDS)
+    #my_plotter.num_features_metrics_TS
+
     # UDS.get_ha_pfx_distr() 
     # UDS.get_ha_pfx_metric()
