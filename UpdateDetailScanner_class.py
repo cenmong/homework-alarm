@@ -10,6 +10,7 @@ import traceback
 import logging
 import subprocess
 import ast
+import os
 
 from netaddr import *
 from env import *
@@ -41,7 +42,7 @@ class UpdateDetailScanner():
         # * Note: I do not stream in all the files and record the statistics for each slot
         # dynamically because I want to eliminate the difficulty of time alignment.
 
-        # Get a list of dt objects (datetime1, datetime2) to specify each slot
+        # Get a list of dt objects [datetime1, datetime2] to specify each slot
         self.dtobj_list = list()
         now = self.sdt_obj
         next = self.sdt_obj + datetime.timedelta(minutes=self.granu)
@@ -280,29 +281,13 @@ class UpdateDetailScanner():
             for i in range(feature_num):
                 tvalue = total_dict[i] * 1.0
 
-                sorted_list = list()
+                mylist = list()
                 for mon in mon2dict:
                     mvalue = mon2dict[mon][i]
-                    sorted_list.append(mvalue*1.0)
-                sorted_list.sort()
+                    mylist.append(mvalue*1.0)
 
-                for j in range(1,len(sorted_list)): 
-                    sorted_list[j] += sorted_list[j-1]
-
-                #print tvalue
-                #print sorted_list
-                assert sorted_list[-1] == tvalue
-
-                num = len(sorted_list) * 1.0
-                sum = 0.0
-                for item in sorted_list:
-                    sum += item
-                sum -= tvalue / 2
-                if tvalue != 0:
-                    result = 1 - 2*sum / (num*tvalue)
-                    slot2metrics[sdt_unix]['GINI'][i] = result
-                else:
-                    slot2metrics[sdt_unix]['GINI'][i] = -1 # XXX not applicable
+                result = self.get_GINI_index(mylist)
+                slot2metrics[sdt_unix]['GINI'][i] = result
 
             # Obtain the HI values
             slot2metrics[sdt_unix]['HI'] = dict()
@@ -348,22 +333,22 @@ class UpdateDetailScanner():
                 mvalues.sort(reverse=True) # large to small
 
                 for my_int in CR_ints:
-                    sum = 0
+                    mysum = 0
                     for j in range(my_int):
-                        sum += mvalues[j]
+                        mysum += mvalues[j]
                     if tvalue != 0:
-                        final = float(sum) / float(tvalue)
+                        final = float(mysum) / float(tvalue)
                         slot2metrics[sdt_unix][my_int][i] = final
                     else:
                         slot2metrics[sdt_unix][my_int][i] = -1
 
                 for my_r in CR_ratios:
-                    sum = 0
+                    mysum = 0
                     mon_num = int(len(mon2dict.keys())*my_r)
                     for j in range(mon_num):
-                        sum += mvalues[j]
+                        mysum += mvalues[j]
                     if tvalue != 0:
-                        final = float(sum) / float(tvalue)
+                        final = float(mysum) / float(tvalue)
                         slot2metrics[sdt_unix][my_r][i] = final
                     else:
                         slot2metrics[sdt_unix][my_r][i] = -1
@@ -432,12 +417,14 @@ class UpdateDetailScanner():
                 fin.close()
 
 
+            CR_ints = [1, 4, 8]
+            CR_ratios = [0.1, 0.2, 0.3]
             # obtain the information we need
             for pfx in c_pfx_data:
                 datalist = c_pfx_data[pfx]
                 uq = sum(datalist)
                 
-                if uq >= 100: # activeness threshold: 100
+                if uq >= 100: # activeness threshold is 100
                     # DV
                     DV = 0.0
                     for v in datalist:
@@ -446,19 +433,45 @@ class UpdateDetailScanner():
                     DV = DV / float(len(datalist))
 
                     # GINI
-                    
+                    GI = self.get_GINI_index(datalist) # XXX it changes datalist
 
                     # CR
+                    datalist = c_pfx_data[pfx]
+                    CRi = dict() # int -> result
+                    CRr = dict() # ratio -> result
 
+                    datalist.sort(reverse=True)
+                    for my_int in CR_ints:
+                        mysum = 0
+                        for j in range(my_int):
+                            mysum += datalist[j]
+                        if uq != 0:
+                            final = float(mysum) / float(uq)
+                            CRi[my_int] = final
+                        else:
+                            CRi[my_int] = -1
 
+                    for my_r in CR_ratios:
+                        mysum = 0
+                        mon_num = int(len(datalist)*my_r)
+                        for j in range(mon_num):
+                            mysum += datalist[j]
+                        if uq != 0:
+                            final = float(mysum) / float(uq)
+                            CRr[my_r] = final
+                        else:
+                            CRr[my_r] = -1
 
-                    pass
+                    # write to output file
+                    # UQ|DV|GINI|CRint|CRratio
+                    fo.write(pfx+'|'+str(uq)+'|'+str(DV)+'|'+str(GI))
+                    for ii in CR_ints:
+                        fo.write('|'+str(CRi[ii]))
+                    for rr in CR_ratios:
+                        fo.write('|'+str(CRr[rr]))
+                    fo.write('\n')
 
             del c_pfx_data
-
-            # write to output file
-            # UQ|DV|GINI|CRint|CRratio
-            fo.write() # TODO
 
         fo.close()
 
@@ -468,3 +481,17 @@ class UpdateDetailScanner():
         return dir+'active_pfx_metrics.txt'
 
     def get_GINI_index(self, thelist):
+        thelist = sorted(thelist)
+
+        for j in range(1,len(thelist)): 
+            thelist[j] += thelist[j-1]
+
+        num = len(thelist) * 1.0
+        sum = 0.0
+        for item in thelist:
+            sum += item
+        sum -= thelist[-1] / 2
+        if thelist[-1] != 0:
+            return 1 - 2*sum / (num*thelist[-1])
+        else:
+            return -1 # XXX not applicable

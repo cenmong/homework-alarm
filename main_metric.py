@@ -11,7 +11,8 @@ import cmlib
 import os
 
 #index_list = [285, 286, 287, 288, 289, 2810]
-index_list = [286]
+index_list = [2810]
+uds_list = list()
 
 for i in index_list:
     my_period = Period(i)
@@ -20,10 +21,12 @@ for i in index_list:
     my_period.mo_filter_same_as()
 
     UDS = UpdateDetailScanner(my_period, 20)
-    ### UDS.get_num_feature_distr() # XXX NOTE: run only ONCE for each period
-    UDS.get_num_feature_metric() # write to only one file
-    #my_plotter = Mplotter(UDS)
-    #my_plotter.num_features_metrics_TS
+    ########UDS.get_num_feature_distr() # XXX NOTE: run only ONCE for each period
+    #UDS.get_num_feature_metric() # write to only one file for each period
 
-    # UDS.get_ha_pfx_distr() 
-    # UDS.get_ha_pfx_metric()
+    #UDS.analyze_active_pfx() # XXX Done. For 2810 only. Adequate for the ISCC paper.
+
+    uds_list.append(UDS)
+
+mplotter = Mplotter(uds_list)
+mplotter.num_features_metrics_TS()
