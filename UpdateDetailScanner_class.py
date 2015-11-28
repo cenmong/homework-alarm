@@ -276,6 +276,12 @@ class UpdateDetailScanner():
             feature_num = 11 # we omit the updated prefix quantity
 
 
+            # Obtain the total values
+            slot2metrics[sdt_unix]['TOTAL'] = dict()
+            for i in range(feature_num):
+                tvalue = total_dict[i]
+                slot2metrics[sdt_unix]['TOTAL'][i] = tvalue
+
             # Obtain the GINI index
             slot2metrics[sdt_unix]['GINI'] = dict()
             for i in range(feature_num):

@@ -5,6 +5,7 @@ import operator
 import os
 import ast
 import calendar # do not use the time module
+import env
 
 from operator import add
 import matplotlib
@@ -25,11 +26,10 @@ dot_size = 60
 
 default_color = 'k'
 colors = ['r', 'b', 'g', 'm', 'cyan', 'darkorange',\
-          'mediumpurple', 'salmon', 'lime', 'hotpink', 'yellow', '',\
+          'mediumpurple', 'salmon', 'lime', 'hotpink', 'yellow',\
           'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
 shapes = ['^', '*', 'D', 'd']
 cluster_labels = ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']
-month_labels = ['Jan.','Feb.','Mar.','Apr','May','June','July','Aug.','Sept.','Oct.','Nov.','Dec.']
 linestyles = ['-', '--', '_', ':']
 markers = []
 for m in Line2D.markers:
@@ -95,8 +95,8 @@ class Mplotter():
                     value = thedict[fea]
                     fea2unix2met2v[fea][unix][mtype] = value
             f.close()
-            # plot all the metrics TS for each feature in ONE figure
 
+        # plot all the metrics TS for each feature in ONE figure
         for fea in fea2unix2met2v:
             print 'Plotting ', fea
             fig = plt.figure(figsize=(50, 100))
@@ -128,3 +128,97 @@ class Mplotter():
             plt.clf() # clear the figure
             plt.close()
 
+
+    def num_features_metrics_CDF(self): 
+        met2unix2fea2v = dict() # Note: different to fea2unix2met2v
+
+        # initialize the huge dict
+        print 'Initializing ...'
+        tmppath = self.uds_list[0].numf_metrics_fpath()
+        f = open(tmppath, 'r')
+        count = 0
+        for line in f:
+            mtype = line.split('|')[1]
+            met2unix2fea2v[mtype] = dict()
+            count += 1
+            if count == 15: # XXX Note: we assume at most 15 metrics
+                break
+        f.close()
+
+        unix_list = list()
+        for uds in self.uds_list:
+            for dtobj in uds.dtobj_list:
+                unix = calendar.timegm(dtobj[0].utctimetuple())
+                unix_list.append(unix)
+
+        for m in met2unix2fea2v.keys():
+            for unix in unix_list:
+                met2unix2fea2v[m][unix] = dict()
+
+        # read output file and store information
+        for uds in self.uds_list:
+            mf_path = uds.numf_metrics_fpath()
+            print 'Reading ', mf_path
+            f = open(mf_path, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                splitted = line.split('|')
+                unix = int(splitted[0])
+                mtype = splitted[1]
+                thedict = ast.literal_eval(splitted[2])
+                for fea in thedict:
+                    value = thedict[fea]
+                    met2unix2fea2v[mtype][unix][fea] = value
+            f.close()
+
+        # Plot M figures for M metrics. In each figure, N curves for N features.
+        for mtype in met2unix2fea2v:
+            print 'Plotting metric ', mtype
+
+            fea2vlist = dict()
+            for unix in met2unix2fea2v[mtype]:
+                for fea in met2unix2fea2v[mtype][unix]:
+                    value = met2unix2fea2v[mtype][unix][fea]
+                    try:
+                        fea2vlist[fea].append(value)
+                    except:
+                        fea2vlist[fea] = [value]
+
+            fea2xlist = dict()
+            fea2ylist = dict()
+            for fea in fea2vlist:
+                v2count = dict()
+                for v in fea2vlist[fea]:
+                    try:
+                        v2count[v] += 1
+                    except:
+                        v2count[v] = 1
+
+                mycdf = cmlib.value_count2cdf(v2count)
+                for key in sorted(mycdf):
+                    try:
+                        fea2xlist[fea].append(key)
+                        fea2ylist[fea].append(mycdf[key])
+                    except:
+                        fea2xlist[fea] = [key]
+                        fea2ylist[fea] = [mycdf[key]]
+
+
+            # Start plotting now! 
+            fig = plt.figure(figsize=(20, 20))
+            ax = fig.add_subplot(111)
+            count = 1
+            for fea in fea2xlist:
+                count += 1
+                ax.plot(fea2xlist[fea], fea2ylist[fea],\
+                        color=colors[count], label=feature_num2name[fea])
+
+            ax.set_ylabel('Cumulative distribution (slots)')
+            ax.set_xlabel(' Metric value')
+            legend = ax.legend(loc='upper left',shadow=False)
+
+            cmlib.make_dir(env.metric_plot_dir)
+            output_loc = env.metric_plot_dir + str(mtype) + '.pdf'
+            plt.savefig(output_loc, bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()

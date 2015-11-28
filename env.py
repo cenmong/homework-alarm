@@ -25,6 +25,7 @@ blank_indo_dir = datadir+'blank_info/'
 update_list_dir = datadir + 'update_list/' 
 
 pub_plot_dir = datadir + 'plot_pub/'
+metric_plot_dir = pub_plot_dir + 'metric/'
 
 metrics_output_root = datadir + 'metrics_output/'
 

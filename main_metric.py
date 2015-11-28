@@ -11,7 +11,8 @@ import cmlib
 import os
 
 #index_list = [285, 286, 287, 288, 289, 2810]
-index_list = [2810]
+index_list = [289, 2810]
+
 uds_list = list()
 
 for i in index_list:
@@ -29,4 +30,5 @@ for i in index_list:
     uds_list.append(UDS)
 
 mplotter = Mplotter(uds_list)
-mplotter.num_features_metrics_TS()
+#mplotter.num_features_metrics_TS()
+mplotter.num_features_metrics_CDF()

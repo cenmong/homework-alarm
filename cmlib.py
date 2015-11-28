@@ -58,6 +58,24 @@ def get_peer_info(rib_full_loc):
 
     return output
 
+def value_count2cdf(vc_dict): # dict keys are contable values
+    cdf = dict()
+    xlist = [0]
+    ylist = [0]
+
+    for key in sorted(vc_dict): # sort by key
+        xlist.append(key)
+        ylist.append(vc_dict[key])
+
+    ## y is the number of values that <= x
+    for i in xrange(1, len(ylist)):
+        ylist[i] += ylist[i-1]
+
+    for i in xrange(0, len(ylist)):
+        cdf[xlist[i]] = ylist[i]
+
+    return cdf 
+
 def peer_path_by_rib_path(rib_full_loc):
     path = get_file_dir(rib_full_loc) + 'peers_' +\
         get_file_name(rib_full_loc).replace('txt.gz','txt')
