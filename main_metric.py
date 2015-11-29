@@ -30,5 +30,5 @@ for i in index_list:
     uds_list.append(UDS)
 
 mplotter = Mplotter(uds_list)
-#mplotter.num_features_metrics_TS()
-mplotter.num_features_metrics_CDF()
+mplotter.num_features_metrics_TS_met2total()
+#mplotter.num_features_metrics_CDF()

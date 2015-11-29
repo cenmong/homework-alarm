@@ -56,7 +56,7 @@ class Mplotter():
         self.uds_list = uds_list
         #self.outdir = 
 
-    def num_features_metrics_TS(self): 
+    def num_features_metrics_TS_met2total(self): 
         fea2unix2met2v = dict()
 
         # initialize the huge dict
@@ -96,11 +96,10 @@ class Mplotter():
                     fea2unix2met2v[fea][unix][mtype] = value
             f.close()
 
+
+        '''
         # plot all the metrics TS for each feature in ONE figure
         for fea in fea2unix2met2v:
-            print 'Plotting ', fea
-            fig = plt.figure(figsize=(50, 100))
-
             m2dt_list = dict()
             m2value_list = dict() # metric type -> value list
             for unix in fea2unix2met2v[fea]:
@@ -113,6 +112,8 @@ class Mplotter():
                         m2dt_list[mtype] = [datetime.datetime.utcfromtimestamp(unix)]
                         m2value_list[mtype] = [value]
 
+            print 'Plotting TS for ', fea
+            fig = plt.figure(figsize=(50, 100))
             subsum = len(m2dt_list.keys())
             count = 1
             for mtype in m2dt_list.keys():
@@ -124,7 +125,46 @@ class Mplotter():
                 ax.xaxis.set_major_formatter(myFmt)
                 ax.set_ylabel(str(mtype))
 
-            plt.savefig('test'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
+            plt.savefig(env.metric_plot_dir+'TS_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()
+        '''
+
+        # plot all the metrics TS for each feature in ONE figure
+        m2unix2v = dict()
+        for fea in fea2unix2met2v:
+            for unix in fea2unix2met2v[fea]:
+                for mtype in fea2unix2met2v[fea][unix]:
+                    value = fea2unix2met2v[fea][unix][mtype]
+                    try:
+                        m2unix2v[mtype][unix] = value
+                    except:
+                        m2unix2v[mtype] = dict()
+                        m2unix2v[mtype][unix] = value
+
+            print 'Plotting total/metric correlation for ', fea
+            fig = plt.figure(figsize=(50, 200))
+            subsum = len(m2unix2v.keys())
+            count = 1
+            for mtype in m2unix2v.keys():
+                if mtype == 'TOTAL':
+                    continue
+
+                ax = fig.add_subplot(subsum-1, 1, count)
+                count += 1
+
+                xlist = list()
+                ylist = list()
+                for unix in m2unix2v[mtype]:
+                    xlist.append(m2unix2v['TOTAL'][unix])
+                    ylist.append(m2unix2v[mtype][unix])
+
+                plt.scatter(xlist, ylist)
+                ax.set_ylabel(str(mtype))
+                ax.set_xlabel('TOTAL')
+                ax.set_xscale('log')
+
+            plt.savefig(env.metric_plot_dir+'met2total_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
 
@@ -218,7 +258,8 @@ class Mplotter():
             legend = ax.legend(loc='upper left',shadow=False)
 
             cmlib.make_dir(env.metric_plot_dir)
-            output_loc = env.metric_plot_dir + str(mtype) + '.pdf'
+            output_loc = env.metric_plot_dir + 'CDF_' + str(mtype) + '.pdf'
             plt.savefig(output_loc, bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
+
