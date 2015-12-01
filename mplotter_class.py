@@ -263,3 +263,83 @@ class Mplotter():
             plt.clf() # clear the figure
             plt.close()
 
+
+    def pfx_metrics_CDF_met2total(self):
+        uds = self.uds_list[0] # XXX note: in the ISCC paper we only analyze one period!
+        metrics = ['UQ', 'DV', 'GINI', 'CR1', 'CR4', 'CR8', 'CR0.1', 'CR0.2', 'CR0.3']
+        met2list = dict()
+        for met in metrics:
+            met2list[met] = list()
+
+        fname = uds.apfx_metrics_fpath()
+        f = open(fname, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            attr = line.split('|')
+            met2list['UQ'].append(int(attr[1])) # get the metrics. Hard-coding is bad. But we save time here.
+            met2list['DV'].append(float(attr[2]))
+            met2list['GINI'].append(float(attr[3]))
+            met2list['CR1'].append(float(attr[4]))
+            met2list['CR4'].append(float(attr[5]))
+            met2list['CR8'].append(float(attr[6]))
+            met2list['CR0.1'].append(float(attr[7]))
+            met2list['CR0.2'].append(float(attr[8]))
+            met2list['CR0.3'].append(float(attr[9]))
+        f.close()
+
+
+        '''
+        fig = plt.figure(figsize=(20, 20))
+        ax = fig.add_subplot(111)
+        count = 0
+        for mtype in met2list:
+            if mtype == 'UQ':
+                continue
+            v2count = dict()
+            for v in met2list[mtype]:
+                try:
+                    v2count[v] += 1
+                except:
+                    v2count[v] = 1
+            mycdf = cmlib.value_count2cdf(v2count)
+            xlist = list()
+            ylist = list()
+
+            for key in sorted(mycdf):
+                xlist.append(key)
+                ylist.append(mycdf[key])
+
+            ax.plot(xlist, ylist, color=colors[count], label=mtype)
+            count += 1
+
+        ax.set_ylabel('Cumulative distribution (slots)')
+        ax.set_xlabel(' Metric value')
+        legend = ax.legend(loc='upper left',shadow=False)
+        
+        cmlib.make_dir(env.metric_plot_dir)
+        output_loc = env.metric_plot_dir + 'pfx_metrics_CDF.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+        '''
+
+
+        tlist = met2list['UQ']
+        mcount = len(metrics) - 1
+        count = 1
+        for mtype in met2list:
+            if mtype == 'UQ':
+                continue
+            fig = plt.figure(figsize=(20, 20))
+            ax = fig.add_subplot(mcount, 1, count)
+            count += 1
+
+            plt.scatter(tlist, met2list[mtype])
+            ax.set_ylabel(str(mtype))
+            ax.set_xlabel('TOTAL')
+            ax.set_xscale('log')
+
+            output_loc = env.metric_plot_dir + 'pfx_met2total_' + mtype + '.pdf'
+            plt.savefig(output_loc, bbox_inches='tight')
+            plt.clf() # clear the figure
+            plt.close()

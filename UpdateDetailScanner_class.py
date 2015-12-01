@@ -501,3 +501,87 @@ class UpdateDetailScanner():
             return 1 - 2*sum / (num*thelist[-1])
         else:
             return -1 # XXX not applicable
+
+
+
+class Multi_UDS:
+
+    def __init__(self, uds_list):
+        self.uds_list = uds_list
+
+    def num_feature_actmon(self):
+
+        # Get the average of each feature
+        total_f2avg = dict()
+
+        total_f2vlist = dict()
+        feature_num = 11 # we omit the updated prefix quantity
+        for i in range(feature_num):
+            total_f2vlist[i] = list()
+
+        for uds in self.uds_list:
+            for slot in uds.dtobj_list:
+                print '*************Getting total feature values for slot ', slot
+                sdt_unix = calendar.timegm(slot[0].utctimetuple())
+                rpath = uds.numf_distr_output_dir() + str(sdt_unix) + '.txt'
+                f = open(rpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    name = line.split(':')[0]
+                    mydict = line.replace(name+':', '')
+                    mydict = ast.literal_eval(mydict)
+
+                    if name == 'T':
+                        for fea in mydict:
+                            total_f2vlist[fea].append(mydict[fea])
+                f.close()
+
+        for fea in total_f2vlist: 
+            total_f2avg[fea] = float(sum(total_f2vlist[fea])) / float(len(total_f2vlist[fea]))
+
+
+        # Simply set the threshold for active monitors to average/10
+        f2thre = dict()
+        for i in range(feature_num):
+            f2thre[i] = total_f2avg/10.0
+
+        print 'Get the set of active monitors for each slot and each feature'
+        # To save memory, we map monitor ip to an integer
+        mon2id = dict()
+        count = 0
+        for uds in self.uds_list:
+            for mon in uds.monitors:
+                try:
+                    test = mon2id[mon]
+                except:
+                    mon2id[mon] = count
+                    count += 1
+
+        unix2fea2monset = dict()
+        for uds in self.uds_list:
+            for slot in uds.dtobj_list:
+                print '*************Getting highly active monitors for slot ', slot
+                sdt_unix = calendar.timegm(slot[0].utctimetuple())
+                unix2fea2monset[sdt_unix] = dict()
+
+                rpath = uds.numf_distr_output_dir() + str(sdt_unix) + '.txt'
+                f = open(rpath, 'r')
+                for line in f:
+                    line = line.rstrip('\n')
+                    name = line.split(':')[0]
+                    mydict = line.replace(name+':', '')
+                    mydict = ast.literal_eval(mydict)
+
+                    if name != 'T':
+                        id = mon2id(name)
+                        for fea in mydict:
+                            if mydict[fea] >= f2thre[fea]:
+                                try:
+                                    unix2fea2monset[sdt_unix][fea].add(id)
+                                except:
+                                    unix2fea2monset[sdt_unix][fea] = set([id])
+                f.close()
+
+
+        # TODO store the info in a middle file
+        # TODO analyze per-faeture and cross-feature active monitors

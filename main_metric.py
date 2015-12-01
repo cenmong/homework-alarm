@@ -5,7 +5,7 @@ from alarm_class import Alarm
 from reaper_class import Reaper
 from multi_reaper_class import MultiReaper
 from mplotter_class import Mplotter
-from UpdateDetailScanner_class import UpdateDetailScanner
+from UpdateDetailScanner_class import UpdateDetailScanner, Multi_UDS
 
 import cmlib
 import os
@@ -24,11 +24,18 @@ for i in index_list:
     UDS = UpdateDetailScanner(my_period, 20)
     ########UDS.get_num_feature_distr() # XXX NOTE: run only ONCE for each period
     #UDS.get_num_feature_metric() # write to only one file for each period
+    
 
-    #UDS.analyze_active_pfx() # XXX Done. For 2810 only. Adequate for the ISCC paper.
+    ####UDS.analyze_active_pfx() # XXX Done. For 2810 only. Adequate for the ISCC paper.
 
     uds_list.append(UDS)
 
-mplotter = Mplotter(uds_list)
-mplotter.num_features_metrics_TS_met2total()
+# Analyze multiple UDSes
+muds = Multi_UDS(uds_list)
+muds.num_feature_actmon() # cross-feature active monitor analysis
+
+# Plot 
+#mplotter = Mplotter(uds_list)
+#mplotter.num_features_metrics_TS_met2total()
 #mplotter.num_features_metrics_CDF()
+#mplotter.pfx_metrics_CDF_met2total()
