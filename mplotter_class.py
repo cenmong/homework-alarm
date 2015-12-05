@@ -227,8 +227,12 @@ class Mplotter():
             fea2xlist = dict()
             fea2ylist = dict()
             for fea in fea2vlist:
+                not_applicable = 0
                 v2count = dict()
                 for v in fea2vlist[fea]:
+                    if v == -1:
+                        not_applicable += 1
+                        continue
                     try:
                         v2count[v] += 1
                     except:
@@ -242,6 +246,13 @@ class Mplotter():
                     except:
                         fea2xlist[fea] = [key]
                         fea2ylist[fea] = [mycdf[key]]
+                if len(mycdf.keys()) == 2: # highest disparity
+                    fea2xlist[fea].append(mycdf.keys()[-1])
+                    tmp = fea2ylist[fea][-1]
+                    fea2ylist[fea][-1] = 0
+                    fea2ylist[fea].append(tmp)
+                if not_applicable > 0:
+                    print 'fea:',fea,'. mtype:',mtype,'. not_applicable:',not_applicable
 
 
             # Start plotting now! 
@@ -249,13 +260,22 @@ class Mplotter():
             ax = fig.add_subplot(111)
             count = 1
             for fea in fea2xlist:
+                if fea == 7:
+                    continue
                 count += 1
                 ax.plot(fea2xlist[fea], fea2ylist[fea],\
                         color=colors[count], label=feature_num2name[fea])
 
             ax.set_ylabel('Cumulative distribution (slots)')
-            ax.set_xlabel(' Metric value')
-            legend = ax.legend(loc='upper left',shadow=False)
+            if mtype == 'TOTAL':
+                ax.set_xlabel(' total quantity')
+                ax.set_xscale('log')
+                ax.set_ylim([-500, 13500])
+            else:
+                ax.set_xlabel(' Metric value')
+                ax.set_xlim([-0.1, 1.1])
+                ax.set_ylim([-500, 13500])
+            legend = ax.legend(loc='best',shadow=False)
 
             cmlib.make_dir(env.metric_plot_dir)
             output_loc = env.metric_plot_dir + 'CDF_' + str(mtype) + '.pdf'

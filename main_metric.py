@@ -10,8 +10,8 @@ from UpdateDetailScanner_class import UpdateDetailScanner, Multi_UDS
 import cmlib
 import os
 
-#index_list = [285, 286, 287, 288, 289, 2810]
-index_list = [289, 2810]
+index_list = [285, 286, 287, 288, 289, 2810]
+#index_list = [289, 2810]
 
 uds_list = list()
 
@@ -31,11 +31,11 @@ for i in index_list:
     uds_list.append(UDS)
 
 # Analyze multiple UDSes
-muds = Multi_UDS(uds_list)
-muds.num_feature_actmon() # cross-feature active monitor analysis
+#muds = Multi_UDS(uds_list)
+#muds.num_feature_actmon() # cross-feature active monitor analysis
 
 # Plot 
-#mplotter = Mplotter(uds_list)
+mplotter = Mplotter(uds_list)
 #mplotter.num_features_metrics_TS_met2total()
-#mplotter.num_features_metrics_CDF()
+mplotter.num_features_metrics_CDF()
 #mplotter.pfx_metrics_CDF_met2total()
