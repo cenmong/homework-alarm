@@ -16,6 +16,10 @@ from netaddr import *
 from env import *
 from cStringIO import StringIO
 
+feature_num = 14 # we omit the updated prefix quantity
+feature_num2name = {0:'U', 1:'A', 2:'W', 3:'WWDup', 4:'AADup1', 5:'AADup2',\
+                    6:'AADiff', 7:'WAUnknown', 8:'WADup', 9:'WADiff', 10:'AW'}
+
 class UpdateDetailScanner():
 
     def __init__(self, period, granu):
@@ -202,7 +206,7 @@ class UpdateDetailScanner():
                     else: # last_type == None
                         pass
                 
-                    # Update existent information
+                    # Important: Get new information
                     if type == 'A':
                         mp_last_type[mon][pfx] = 'A'
                         mp_last_A[mon][pfx] = line
@@ -273,7 +277,6 @@ class UpdateDetailScanner():
             f.close()
 
             # feature_num = len(total_dict.keys()) # number of features
-            feature_num = 11 # we omit the updated prefix quantity
 
 
             # Obtain the total values
@@ -508,14 +511,22 @@ class Multi_UDS:
 
     def __init__(self, uds_list):
         self.uds_list = uds_list
+        self.period = self.uds_list[-1].period
 
-    def num_feature_actmon(self):
+        self.mo2co = dict()
+        for co in self.period.co_mo:
+            for mo in self.period.co_mo[co]:
+                if mo == '157.130.10.233':
+                    print '157.130.10.233', co
+                self.mo2co[mo] = co
+
+
+    def get_num_feature_actmon(self):
 
         # Get the average of each feature
         total_f2avg = dict()
 
         total_f2vlist = dict()
-        feature_num = 11 # we omit the updated prefix quantity
         for i in range(feature_num):
             total_f2vlist[i] = list()
 
@@ -540,10 +551,10 @@ class Multi_UDS:
             total_f2avg[fea] = float(sum(total_f2vlist[fea])) / float(len(total_f2vlist[fea]))
 
 
-        # Simply set the threshold for active monitors to average/10
+        # Simply set the threshold for active monitors to average/N
         f2thre = dict()
         for i in range(feature_num):
-            f2thre[i] = total_f2avg/10.0
+            f2thre[i] = total_f2avg[i]/10.0
 
         print 'Get the set of active monitors for each slot and each feature'
         # To save memory, we map monitor ip to an integer
@@ -573,7 +584,7 @@ class Multi_UDS:
                     mydict = ast.literal_eval(mydict)
 
                     if name != 'T':
-                        id = mon2id(name)
+                        id = mon2id[name]
                         for fea in mydict:
                             if mydict[fea] >= f2thre[fea]:
                                 try:
@@ -583,5 +594,90 @@ class Multi_UDS:
                 f.close()
 
 
-        # TODO store the info in a middle file
-        # TODO analyze per-faeture and cross-feature active monitors
+        # store the info in a middle file. One file for one feature
+        filedict = dict()
+        dir = metrics_output_root + str(self.uds_list[0].granu) + '/actmon/'
+        cmlib.make_dir(dir)
+        for i in range(feature_num):
+            filedict[i] = open(dir+str(i)+'.txt', 'w')
+        for unix in unix2fea2monset:
+            for fea in unix2fea2monset[unix]:
+                filedict[fea].write(str(unix)+':'+str(unix2fea2monset[unix][fea])+'\n')
+        for i in range(feature_num):
+            filedict[i].close()
+
+        f = open(dir+'mon2id.txt', 'w')
+        f.write(str(mon2id))
+        f.close()
+
+    def analyze_num_feature_actmon(self):
+        dir = metrics_output_root + str(self.uds_list[0].granu) + '/actmon/'
+        id2mon = dict()
+        f = open(dir+'mon2id.txt', 'r')
+        theline = f.readline()
+        mon2id = ast.literal_eval(theline.rstrip('\n'))
+        for mon in mon2id:
+            id = mon2id[mon]
+            id2mon[id] = mon
+        f.close()
+
+        fea2unix2monset = dict()
+        for i in range(feature_num):
+            if i == 11:
+                break
+            fea2unix2monset[i] = dict()
+            f = open(dir+str(i)+'.txt', 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                unix = int(line.split(':')[0])
+                theset = ast.literal_eval(line.split('set')[1])
+                fea2unix2monset[i][unix] = theset
+            f.close()
+
+        mon2dict = dict() # mon id => {NO. of slots for feature i}
+        for m in id2mon:
+            mon2dict[m] = dict()
+        for fea in fea2unix2monset:
+            for unix in fea2unix2monset[fea]:
+                for m in fea2unix2monset[fea][unix]:
+                    try:
+                        mon2dict[m][fea] += 1
+                    except:
+                        mon2dict[m][fea] = 1
+
+        f = open(dir+'result.txt', 'w')
+        for mon in mon2dict:
+            f.write(str(id2mon[mon])+':'+str(mon2dict[mon])+'\n')
+        f.close()
+
+
+        # Get the top monitor for each feature and overall existence
+        for fea in mon2dict[12].keys():
+            max = mon2dict[12][fea]
+            maxmon = 12
+            for mon in mon2dict:
+                try:
+                    if mon2dict[mon][fea] > max:
+                        max = mon2dict[mon][fea]
+                        maxmon = mon
+                except:
+                    pass
+            print 'fea', fea, ',', id2mon[maxmon], self.mo2co[id2mon[maxmon]], ':', mon2dict[maxmon]
+
+        mon2total = dict()
+        for mon in mon2dict:
+            mon2total[mon] = 0
+        for mon in mon2dict:
+            for fea in mon2dict[mon]:
+                mon2total[mon] += mon2dict[mon][fea]
+
+        sorted_dict = sorted(mon2total.items(), key=operator.itemgetter(1), reverse=True)
+        i = 0
+        for item in sorted_dict:
+            i += 1
+            if i == 18:
+                break
+            mon = item[0]
+            print id2mon[mon], self.mo2co[id2mon[mon]], mon2dict[mon]
+            for key in mon2dict[mon]:
+                print feature_num2name[key], mon2dict[mon][key]

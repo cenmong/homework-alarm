@@ -1,0 +1,4 @@
+-------------------
+plot multiple reapers/periods in one figure: main.py plotter+multi_reaper
+-------------------
+Per-period analysis (other than binary matrix information) and raw data output: main_micro.py and micro_fighter

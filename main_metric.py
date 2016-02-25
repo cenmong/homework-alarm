@@ -11,7 +11,7 @@ import cmlib
 import os
 
 index_list = [285, 286, 287, 288, 289, 2810]
-#index_list = [289, 2810]
+#index_list = [2810]
 
 uds_list = list()
 
@@ -31,8 +31,9 @@ for i in index_list:
     uds_list.append(UDS)
 
 # Analyze multiple UDSes
-#muds = Multi_UDS(uds_list)
-#muds.num_feature_actmon() # cross-feature active monitor analysis
+muds = Multi_UDS(uds_list)
+#muds.get_num_feature_actmon() # Done.
+#muds.analyze_num_feature_actmon()
 
 # Plot 
 mplotter = Mplotter(uds_list)

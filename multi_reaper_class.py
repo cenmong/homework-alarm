@@ -20,6 +20,30 @@ class MultiReaper():
         self.rlist = reaper_list
         self.pfx_root = datadir + 'final_output_pfx/' # TODO change to granularity
 
+    def get_all_LBE_basic(self):
+        # Record the basic information of all the LBEs
+        dt2basic = dict()
+        for rp in self.rlist:
+            ed = rp.get_event_dict()
+            for dt in ed:
+                if ed[dt][0] >= global_rsize_threshold:
+                    dt2basic[dt] = ed[dt]
+
+        dt2cnum = dict()
+        # Get cluster information
+        count = 0
+        for cluster in clusters:
+            count += 1
+            for dt in cluster:
+                dt2cnum[dt] = count
+
+        for dt in dt2basic:
+            try:
+                cnum = dt2cnum[dt]
+            except:
+                cnum = -1
+            print cnum, '|', dt, dt2basic[dt]
+            
 
     def AS_exist_in_ASpath_in_updt(self, dt_list, the_asn, target_pfx):
         pfx2path_num = dict()

@@ -26,8 +26,8 @@ dot_size = 60
 
 default_color = 'k'
 colors = ['r', 'b', 'g', 'm', 'cyan', 'darkorange',\
-          'mediumpurple', 'salmon', 'lime', 'hotpink', 'yellow',\
-          'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
+          'mediumpurple', 'salmon', 'lime', 'hotpink',\
+          'firebrick', 'sienna', 'sandybrown', 'y', 'teal', 'yellow']
 shapes = ['^', '*', 'D', 'd']
 cluster_labels = ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']
 linestyles = ['-', '--', '_', ':']
@@ -47,7 +47,7 @@ styles = markers + [
 
 # used when plotting
 metric_tag2name = {'1':'CR1', '0.1':'CR0.1',}
-feature_num2name = {0:'updates', 1:'A', 2:'W', 3:'WW', 4:'AADup1', 5:'AADup2',\
+feature_num2name = {0:'U', 1:'A', 2:'W', 3:'WWDup', 4:'AADup1', 5:'AADup2',\
                     6:'AADiff', 7:'WAUnknown', 8:'WADup', 9:'WADiff', 10:'AW'}
 
 class Mplotter():
@@ -97,7 +97,6 @@ class Mplotter():
             f.close()
 
 
-        '''
         # plot all the metrics TS for each feature in ONE figure
         for fea in fea2unix2met2v:
             m2dt_list = dict()
@@ -113,24 +112,43 @@ class Mplotter():
                         m2value_list[mtype] = [value]
 
             print 'Plotting TS for ', fea
-            fig = plt.figure(figsize=(50, 100))
-            subsum = len(m2dt_list.keys())
+            fig = plt.figure(figsize=(50, 15))
+            #subsum = len(m2dt_list.keys())
+            subsum = 2 # CR4 and total
             count = 1
             for mtype in m2dt_list.keys():
+                if mtype not in ['4', 'TOTAL']:
+                    continue
                 ax = fig.add_subplot(subsum, 1, count)
+                #ax = fig.add_subplot(111)
+                plt.scatter(m2dt_list[mtype], m2value_list[mtype], facecolor='k', edgecolors='none', alpha=0.8)
+                if count == 2:
+                    myFmt = mpldates.DateFormatter('%b\n%d')
+                    ax.xaxis.set_major_formatter(myFmt)
+
+                if mtype == '4':
+                    ax.set_ylabel('CR4')
+                    ax.set_ylim(-0.05, 1.05)
+                    ax.tick_params(axis='y',pad=10)
+                    #ax.tick_params(axis='x',pad=10)
+                    ax.set_xticklabels([])
+
+                if mtype == 'TOTAL':
+                    ax.set_ylabel('Total quantity')
+                    ax.tick_params(axis='y',pad=10)
+                    ax.tick_params(axis='x',pad=10)
+                    ax.set_yscale('log')
+                    #plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+                ax.set_xlim(min(m2dt_list[mtype]), max(m2dt_list[mtype]))
                 count += 1
 
-                plt.scatter(m2dt_list[mtype], m2value_list[mtype])
-                myFmt = mpldates.DateFormatter('%b\n%d')
-                ax.xaxis.set_major_formatter(myFmt)
-                ax.set_ylabel(str(mtype))
-
-            plt.savefig(env.metric_plot_dir+'TS_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
+            plt.savefig(env.metric_plot_dir+'CR4_TS_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
-        '''
 
-        # plot all the metrics TS for each feature in ONE figure
+        '''
+        # plot all the metrics to total value correlation for each feature in ONE figure
         m2unix2v = dict()
         for fea in fea2unix2met2v:
             for unix in fea2unix2met2v[fea]:
@@ -142,15 +160,19 @@ class Mplotter():
                         m2unix2v[mtype] = dict()
                         m2unix2v[mtype][unix] = value
 
-            print 'Plotting total/metric correlation for ', fea
-            fig = plt.figure(figsize=(50, 200))
-            subsum = len(m2unix2v.keys())
+
+            print 'Plotting total/metric correlation for ', feature_num2name[fea]
+            fig = plt.figure(figsize=(15, 15))
+            #subsum = len(m2unix2v.keys())
             count = 1
             for mtype in m2unix2v.keys():
                 if mtype == 'TOTAL':
                     continue
+                if mtype != 'GINI':
+                    continue
 
-                ax = fig.add_subplot(subsum-1, 1, count)
+                #ax = fig.add_subplot(subsum-1, 1, count)
+                ax = fig.add_subplot(111)
                 count += 1
 
                 xlist = list()
@@ -159,15 +181,28 @@ class Mplotter():
                     xlist.append(m2unix2v['TOTAL'][unix])
                     ylist.append(m2unix2v[mtype][unix])
 
-                plt.scatter(xlist, ylist)
-                ax.set_ylabel(str(mtype))
-                ax.set_xlabel('TOTAL')
-                ax.set_xscale('log')
+                #if fea == 3:
+                    #print xlist
+                    #print ylist
+                    #print len(xlist), len(ylist)
 
-            plt.savefig(env.metric_plot_dir+'met2total_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
+                plt.scatter(xlist, ylist, facecolor='b', edgecolors='none', alpha=0.5)
+                #ax.set_ylabel(str(mtype))
+                ax.set_ylabel('Gini Coefficient')
+                ax.set_xlabel('Total quantity')
+                ax.set_xscale('log')
+                ax.set_ylim([-0.05, 1.05])
+                if fea == 3:
+                    ax.set_xlim([1, 50000])
+                    ax.set_ylim([0.9, 1.05])
+
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
+            plt.savefig(env.metric_plot_dir+'GC2total_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
+            #plt.savefig(env.metric_plot_dir+'met2total_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
-
+        '''
 
     def num_features_metrics_CDF(self): 
         met2unix2fea2v = dict() # Note: different to fea2unix2met2v
@@ -254,9 +289,18 @@ class Mplotter():
                 if not_applicable > 0:
                     print 'fea:',fea,'. mtype:',mtype,'. not_applicable:',not_applicable
 
+            # for showing statistics in paper
+            if mtype == 'DV':
+                #print 'WW:',fea2xlist[3][-1]
+                #print 'AADup1',fea2xlist[4][-1]
+                print 'WADup:',fea2xlist[8][1]
+                print 'AADup2',fea2xlist[5][1]
 
             # Start plotting now! 
-            fig = plt.figure(figsize=(20, 20))
+            if mtype == 'TOTAL':
+                fig = plt.figure(figsize=(20, 13))
+            else:
+                fig = plt.figure(figsize=(17, 13))
             ax = fig.add_subplot(111)
             count = 1
             for fea in fea2xlist:
@@ -264,18 +308,26 @@ class Mplotter():
                     continue
                 count += 1
                 ax.plot(fea2xlist[fea], fea2ylist[fea],\
-                        color=colors[count], label=feature_num2name[fea])
+                        color=colors[count], label=feature_num2name[fea], lw=6, alpha=0.8)
+                #ax.plot(fea2xlist[fea], fea2ylist[fea],\
+                #        color=colors[count], marker=styles[count], markersize=15, markevery=1000, label=feature_num2name[fea], lw=5, alpha=0.8)
 
-            ax.set_ylabel('Cumulative distribution (slots)')
+            ax.set_ylabel('Quantity of time slot')
             if mtype == 'TOTAL':
-                ax.set_xlabel(' total quantity')
+                ax.set_xlabel('Quantity of feature')
                 ax.set_xscale('log')
                 ax.set_ylim([-500, 13500])
+                ax.tick_params(axis='x',pad=10)
             else:
                 ax.set_xlabel(' Metric value')
                 ax.set_xlim([-0.1, 1.1])
                 ax.set_ylim([-500, 13500])
-            legend = ax.legend(loc='best',shadow=False)
+            if mtype == 'GINI' or mtype == 'TOTAL':
+                legend = ax.legend(loc='best',shadow=False)
+
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
             cmlib.make_dir(env.metric_plot_dir)
             output_loc = env.metric_plot_dir + 'CDF_' + str(mtype) + '.pdf'
@@ -286,7 +338,7 @@ class Mplotter():
 
     def pfx_metrics_CDF_met2total(self):
         uds = self.uds_list[0] # XXX note: in the ISCC paper we only analyze one period!
-        metrics = ['UQ', 'DV', 'GINI', 'CR1', 'CR4', 'CR8', 'CR0.1', 'CR0.2', 'CR0.3']
+        metrics = ['UQ', 'PMR', 'GC', 'CR1', 'CR4', 'CR8', 'CR0.1', 'CR0.2', 'CR0.3']
         met2list = dict()
         for met in metrics:
             met2list[met] = list()
@@ -297,8 +349,8 @@ class Mplotter():
             line = line.rstrip('\n')
             attr = line.split('|')
             met2list['UQ'].append(int(attr[1])) # get the metrics. Hard-coding is bad. But we save time here.
-            met2list['DV'].append(float(attr[2]))
-            met2list['GINI'].append(float(attr[3]))
+            met2list['PMR'].append(float(attr[2]))
+            met2list['GC'].append(float(attr[3]))
             met2list['CR1'].append(float(attr[4]))
             met2list['CR4'].append(float(attr[5]))
             met2list['CR8'].append(float(attr[6]))
@@ -308,8 +360,7 @@ class Mplotter():
         f.close()
 
 
-        '''
-        fig = plt.figure(figsize=(20, 20))
+        fig = plt.figure(figsize=(20, 13))
         ax = fig.add_subplot(111)
         count = 0
         for mtype in met2list:
@@ -329,21 +380,24 @@ class Mplotter():
                 xlist.append(key)
                 ylist.append(mycdf[key])
 
-            ax.plot(xlist, ylist, color=colors[count], label=mtype)
+            ax.plot(xlist, ylist, color=colors[count], label=mtype, lw=6, alpha=0.8)
             count += 1
 
-        ax.set_ylabel('Cumulative distribution (slots)')
+        ax.set_ylabel('Quantity of time slot')
         ax.set_xlabel(' Metric value')
         legend = ax.legend(loc='upper left',shadow=False)
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
         
         cmlib.make_dir(env.metric_plot_dir)
         output_loc = env.metric_plot_dir + 'pfx_metrics_CDF.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
+
+
         '''
-
-
         tlist = met2list['UQ']
         mcount = len(metrics) - 1
         count = 1
@@ -363,3 +417,4 @@ class Mplotter():
             plt.savefig(output_loc, bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
+        '''

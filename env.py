@@ -1,22 +1,22 @@
 from os.path import expanduser
 import datetime
 
-global_rsize_threshold = 0.007 # used for filtering events for analysis
+global_rsize_threshold = 0.007 # used for FILTERING events for analysis
+
+
+#--------------------------------------------------------
+# large clusters in 1~10 2013 (DBSCAN parameters: epsilon=0.65, minPts=4)
+cluster1 = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
+cluster2 = [1367502600, 1368941400, 1368942600, 1371538200, 1371539400, 1372660200, 1372661400]
+cluster3 = [1378887000, 1378889400, 1378890600, 1378895400]
+clusters = [cluster1, cluster2, cluster3]
+
+
 #---------------------------------------------------------
 datadir = '/media/usb/' # TODO add 'bgp_project/' at end and really change the directories
 homedir = expanduser('~') + '/'
 projectdir = expanduser('~') + '/alarm/'
 
-#---------------------------------------------------------
-rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
-rrc_root = 'data.ris.ripe.net/'
-
-#--------------------------------------------------------
-# when time zone changed
-dt_anchor1 = datetime.datetime(2003,2,3,19,0) # for all RV collectors. dt=fname_dt+8H
-dt_anchor2 = datetime.datetime(2006,2,1,21,0) # for route-views.eqix only. dt=fname_dt+7H
-
-#--------------------------------------------------------
 spt_dir = datadir + 'support/'
 pub_spt_dir = datadir + 'support/public/'
 rib_info_dir = datadir+'rib_info/'
@@ -26,8 +26,18 @@ update_list_dir = datadir + 'update_list/'
 
 pub_plot_dir = datadir + 'plot_pub/'
 metric_plot_dir = pub_plot_dir + 'metric/'
+LBE_plot_dir = pub_plot_dir + 'LBE/'
 
 metrics_output_root = datadir + 'metrics_output/'
+
+#---------------------------------------------------------
+rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
+rrc_root = 'data.ris.ripe.net/'
+
+#--------------------------------------------------------
+# tag when time zone changed
+dt_anchor1 = datetime.datetime(2003,2,3,19,0) # for all RV collectors. dt=fname_dt+8H
+dt_anchor2 = datetime.datetime(2006,2,1,21,0) # for route-views.eqix only. dt=fname_dt+7H
 
 #------------------------------------------------------
 # according to http://en.wikipedia.org/wiki/Tier_1_network

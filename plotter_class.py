@@ -839,7 +839,7 @@ class Plotter():
         plt.clf() # clear the figure
         plt.close()
 
-    def LBE_updt_pattern(self, dt_list):
+    def LBE_updt_pattern(self, dt_list, num_dt):
         target_types = ['AADiff','AADup2','AADup1','WW','WADup','WADiff',]
         #target_types = ['WAUnknown','AW','WW','WADup','WADiff','AADiff','AADup1','AADup2']
 
@@ -905,7 +905,7 @@ class Plotter():
         ax = fig.add_subplot(111)
 
         loc = list()
-        for i in xrange(1, 19):
+        for i in xrange(1, num_dt+1):
             loc.append(i)
     
         width = 0.6
@@ -927,8 +927,8 @@ class Plotter():
         ax.tick_params(axis='x',pad=10)
         ax.set_ylabel('Ratio')
         ax.set_xlabel('LBE Sequence')
-        plt.xticks([1,9,18],['1','9','18'])
-        ax.set_xlim([0, 19])
+        plt.xticks([1,num_dt/2,num_dt],['1',str(num_dt/2),str(num_dt)])
+        ax.set_xlim([0, num_dt+1])
         ax.set_ylim([0, 1])
         plt.legend((p1[0],p2[0],p3[0],p4[0],p5[0],p6[0]),('AADiff','AADup2','AADup1','WW','WADup','WADiff'),loc='lower left')
         output_loc = pub_plot_dir + 'upattern_num.pdf'
@@ -941,7 +941,7 @@ class Plotter():
         ax = fig.add_subplot(111)
 
         loc = list()
-        for i in xrange(1, 19):
+        for i in xrange(1, num_dt+1):
             loc.append(i)
     
         width = 0.6
@@ -963,8 +963,8 @@ class Plotter():
         ax.tick_params(axis='x',pad=10)
         ax.set_ylabel('Ratio')
         ax.set_xlabel('LBE Sequence')
-        plt.xticks([1,9,18],['1','9','18'])
-        ax.set_xlim([0, 19])
+        plt.xticks([1,num_dt/2,num_dt],['1',str(num_dt/2),str(num_dt)])
+        ax.set_xlim([0, num_dt+1])
         plt.legend((p1[0],p2[0],p3[0],p4[0],p5[0],p6[0]),('AADiff','AADup2','AADup1','WW','WADup','WADiff'),loc='lower left')
         output_loc = pub_plot_dir + 'upattern_one.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -1133,7 +1133,7 @@ class Plotter():
 
         #---------------------------------
         # plot UQ
-        fig = plt.figure(figsize=(14, 14))
+        fig = plt.figure(figsize=(18, 12))
         ax = fig.add_subplot(111)
 
         i = -1
@@ -1163,9 +1163,9 @@ class Plotter():
             print 'ymax=',ymax
 
         legend = ax.legend(loc='lower right',shadow=False)
-        ax.set_ylabel('Cumulative number of time slot')
+        ax.set_ylabel('Quantity of time slot')
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        ax.set_xlabel('UQ value')
+        ax.set_xlabel('Quantity of update')
 
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)

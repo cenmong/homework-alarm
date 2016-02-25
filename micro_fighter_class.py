@@ -382,14 +382,17 @@ class Micro_fighter():
                             mp_last_A[mon][pfx] = line
                 
                     else: # last_type is None
-                        if type == 'W':
-                            mp_last_type[mon][pfx] = 'W'
-                        elif type == 'A':
-                            mp_last_type[mon][pfx] = 'A'
-                            mp_last_A[mon][pfx] = line
-                        else:
-                            assert False
-                        
+                        pass
+
+                    # Important: Get new information
+                    if type == 'W':
+                        mp_last_type[mon][pfx] = 'W'
+                    elif type == 'A':
+                        mp_last_type[mon][pfx] = 'A'
+                        mp_last_A[mon][pfx] = line
+                    else:
+                        assert False
+                    
                 except Exception, err:
                     if line != '':
                         logging.info(traceback.format_exc())
@@ -575,6 +578,8 @@ class Micro_fighter():
 
 
     def event_update_pattern(self, unix_dt):
+        # all the prefixes and monitors in an LBE are considered
+
         pfx_set = set()
         mon_iset = set()
         mon_set = set()
@@ -742,14 +747,16 @@ class Micro_fighter():
                             mp_last_A[mon][pfx] = line
                 
                     else: # last_type is None
-                        if type == 'W':
-                            mp_last_type[mon][pfx] = 'W'
-                        elif type == 'A':
-                            mp_last_type[mon][pfx] = 'A'
-                            mp_last_A[mon][pfx] = line
-                        else:
-                            assert False
-                        
+                        pass
+
+                    if type == 'W':
+                        mp_last_type[mon][pfx] = 'W'
+                    elif type == 'A':
+                        mp_last_type[mon][pfx] = 'A'
+                        mp_last_A[mon][pfx] = line
+                    else:
+                        assert False
+                    
                 except Exception, err:
                     if line != '':
                         logging.info(traceback.format_exc())
