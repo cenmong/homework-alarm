@@ -19,7 +19,7 @@ logging.info('Program starts!')
 index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 pfx_set = set()
-f = open(datadir+'final_output/target_pfx.txt')
+f = open(datadir+'final_output/compfx_cluster4.txt')
 for line in f:
     line = line.rstrip('\n')
     pfx_set.add(line)
@@ -48,13 +48,13 @@ for index in index_list:
 
 
     # Get pfx->origin AS within an LBE for certain prefixes (optional)
-    '''
-    for dt in dt_list:
+    for dt in cluster4:
         try:
             mf.oriAS_in_updt(dt, pfx_set)
         except: # no such dt in the period
             pass
 
+    '''
     # Get update pattern for certain prefixes
     for dt in cluster1:
         try:

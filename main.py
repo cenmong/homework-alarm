@@ -12,11 +12,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR':1}
+action = {'middle':0, 'final':0, 'micro':1, 'plot':0, 'plot_matrix':0, 'MR':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
-index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-#index_list = [2810]
+#index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
+index_list = [2810]
 
 reaperlist = list()
 for i in index_list:
@@ -112,19 +112,17 @@ for i in index_list:
         # plotter.CDF_all_event_updtpctg_CDnum_compare()
 
     if action['micro']:
-        '''
         pfxset = set()
-        f = open(datadir+'final_output/target_pfx.txt', 'r')
+        f = open(datadir+'final_output/compfx_cluster3.txt', 'r')
         for line in f:
             line = line.rstrip('\n')
             pfxset.add(line)
         f.close()
 
         my_period.pfx2as_LPM(pfxset)
-        '''
 
-        mf = Micro_fighter(reaper)
-        mf.analyze_slot(1369102200)
+        #mf = Micro_fighter(reaper)
+        #mf.analyze_slot(1369102200)
 
     #------------------------------------------------------------
     # plot matrices of every middle file
@@ -164,11 +162,11 @@ if action['MR']:
     #mr.hpfx_life_time() # (run once for used months only)
     #mr.hpfx_life_time_details() # interesting details analyzing the output of mr.hpfx_life_time()
 
-    #mr.get_common_pfx_set(dt_list)
+    mr.get_common_pfx_set(cluster4)
     #mr.all_events_cluster()
     #mr.random_slots_upattern(18)
 
-    mr.get_all_LBE_basic() # Get the basic features (e.g., height). Tag clusters
+    #mr.get_all_LBE_basic() # Get the basic features (e.g., height). Tag clusters
 
     #-------------------------------------------------------------
     # plot multiple reapers

@@ -808,8 +808,8 @@ class Micro_fighter():
 
         pfx_set = set()
         pfx_recording = True
-        mon_iset = set()
-        mon_set = set()
+        mon_iset = set() # index set
+        mon_set = set() # ip set
 
         if target_pfx != None:
             pfx_set = target_pfx
@@ -821,7 +821,7 @@ class Micro_fighter():
             line = line.rstrip('\n')
             if line.startswith('Mo'):
                 mon_iset = ast.literal_eval(line.split('set')[1])
-            elif pfx_recording:
+            elif pfx_recording: # Do not record if target_pfx is not None
                 pfx_set.add(line.split(':')[0])
         f.close()
 
@@ -908,7 +908,7 @@ class Micro_fighter():
         if target_pfx == None:
             f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt', 'w')
         else:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_target_pfx_oriAS.txt', 'w')
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_compfx_cluster4_oriAS.txt', 'w')
         for item in sorted_list:
             ASN = item[0]
             count = item[1]

@@ -583,10 +583,9 @@ class Period():
     def pfx2as_LPM(self, pfx_set): # longest prefix matching
         self.get_pfx2as_file()
 
-        pfx_set_9121 = set()
+        #pfx_set_9121 = set()
 
         print 'Calculating prefix to AS number trie...'
-        pfx2as = dict()
         pfx_radix = radix.Radix()
 
         pfx2as_file = ''
@@ -616,36 +615,52 @@ class Period():
                 rnode.data[0] = -1
         f.close()
 
+
         print 'Getting origin ASes of target prefixes'
-        target_p2a = dict()
-        exact_a2p = dict()
+        non_exact_p2a = dict()
+        exact_p2a = dict() # exact prefix matching
         for pfx in pfx_set:
-            rnode = pfx_radix.search_best(pfx)
+            rnode = pfx_radix.search_best(pfx) # longest prefix matching
             try:
                 asn = rnode.data[0]
-                if asn == 9121:
-                   pfx_set_9121.add(rnode.prefix) 
-                target_p2a[pfx] = asn
+                #if asn == 9121:
+                #   pfx_set_9121.add(rnode.prefix) 
                 if pfx == rnode.prefix:
-                    exact_a2p[asn] = pfx
+                    exact_p2a[pfx] = asn
+                else:
+                    non_exact_p2a[pfx] = asn
             except:
                 asn = -1
 
-        a2p = dict()
-        for pfx in target_p2a:
-            asn = target_p2a[pfx]
+        non_exact_a2p = dict() # only for easier output presentation
+        for pfx in non_exact_p2a:
+            asn = non_exact_p2a[pfx]
             try:
-                a2p[asn].add(pfx)
+                non_exact_a2p[asn].add(pfx)
             except:
-                a2p[asn] = set([pfx])
+                non_exact_a2p[asn] = set([pfx])
 
-        f = open(datadir+'final_output/target_pfx2AS_RIB'+str(self.index)+'.txt', 'w')
-        for pfx in target_p2a:
-            f.write(pfx+':'+str(target_p2a[pfx])+'\n')
-        for asn in a2p:
-            f.write('#'+str(asn)+':'+str(len(a2p[asn]))+'\n')
-        f.write('*'+str(exact_a2p)+'\n')
-        f.write('$9121 involved prefix quantity:'+str(len(pfx_set_9121)))
+        exact_a2p = dict() # only for easier output presentation
+        for pfx in exact_p2a:
+            asn = exact_p2a[pfx]
+            try:
+                exact_a2p[asn].add(pfx)
+            except:
+                exact_a2p[asn] = set([pfx])
+
+        # Output everything
+        f = open(datadir+'final_output/cluster3_compfx2AS_RIB'+str(self.index)+'.txt', 'w')
+        for pfx in non_exact_p2a:
+            f.write('N|'+pfx+':'+str(non_exact_p2a[pfx])+'\n')
+        for pfx in exact_p2a:
+            f.write('E|'+pfx+':'+str(exact_p2a[pfx])+'\n')
+
+        for asn in non_exact_a2p:
+            f.write('N#|'+str(asn)+':'+str(len(non_exact_a2p[asn]))+'\n')
+        for asn in exact_a2p:
+            f.write('E#|'+str(asn)+':'+str(len(exact_a2p[asn]))+'\n')
+
+        #f.write('$9121 involved prefix quantity:'+str(len(pfx_set_9121)))
         f.close()
 
 
