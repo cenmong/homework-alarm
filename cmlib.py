@@ -483,7 +483,7 @@ def get_file_list_indate(updtlist_file, sdt_obj, edt_obj):
     f.close()
     return filepath_list
 
-    
+
 def select_update_files(flist, sdt, edt):
     goallist = list()
     if isinstance(sdt, int):

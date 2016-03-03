@@ -170,10 +170,10 @@ class Plotter():
         #xmax = max(xlist)
         #ymax = max(ylist)
         #ax.set_ylim([-0.1*ymax, 1.1*ymax])
-        ax.set_xlim([-0.1, 50])
+        #ax.set_xlim([-0.1, 50])
         ax.set_ylabel('Ratio of prefix')
         ax.set_xlabel('Num. of AS')
-        #ax.set_xscale('log')
+        ax.set_xscale('log')
 
         output_loc = self.events_analysis_dir + 'oriAS_distr_ratio.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
@@ -182,23 +182,8 @@ class Plotter():
 
 
     def all_events_tpattern_curve(self):
-        index = self.reaper.period.index
-        edict = self.reaper.get_events_list()
-
-        pattern_lol = list() # list of lists
-        try:
-            pattern_f = open(self.reaper.events_tpattern_path(), 'r')
-        except:
-            return
-        for line in pattern_f:
-            line = line.rstrip('\n')
-            unix_dt = int(line.split(':')[0])
-            if edict[unix_dt][0] < global_rsize_threshold:
-                continue
-            plist = ast.literal_eval(line.split(':')[1])
-            pattern_lol.append(plist)
-            print plist
-        pattern_f.close()
+        edict = self.reaper.get_event_dict()
+        print edict
 
         n = 4
         total = 2 * n + 1
@@ -206,20 +191,35 @@ class Plotter():
         for i in xrange(1, total + 1):
             xlist.append(i)
             
-        fig = plt.figure(figsize=(16, 10))
-        ax = fig.add_subplot(111)
-        for ylist in pattern_lol:
-            ax.plot(xlist,ylist,'k-')
-        ax.set_ylabel('Density')
-        ax.set_xlabel('slots')
+        try:
+            pattern_f = open(self.reaper.events_tpattern_path(), 'r')
+        except:
+            return
+        for line in pattern_f:
+            line = line.rstrip('\n')
+            unix_dt = int(line.split(':')[0])
 
-        ax.tick_params(axis='y',pad=10)
-        ax.tick_params(axis='x',pad=10)
-        #--------------------------------------------------------------
-        output_loc = self.events_tpattern_dir + str(self.reaper.period.index) + '_tpattern.pdf'
-        plt.savefig(output_loc, bbox_inches='tight')
-        plt.clf()
-        plt.close()
+            if unix_dt not in edict.keys():
+                continue
+            ylist = ast.literal_eval(line.split(':')[1])
+
+            print 'Plotting time pattern for', unix_dt 
+
+            fig = plt.figure(figsize=(16, 10))
+            ax = fig.add_subplot(111)
+            ax.plot(xlist,ylist,'k-')
+            ax.set_ylabel('Density')
+            ax.set_xlabel('slots')
+
+            ax.tick_params(axis='y',pad=10)
+            ax.tick_params(axis='x',pad=10)
+
+            output_dir = pub_plot_dir + 'time_pattern/' + str(self.reaper.period.index) + '/'
+            cmlib.make_dir(output_dir)
+            plt.savefig(output_dir+str(unix_dt)+'.pdf', bbox_inches='tight')
+            plt.clf()
+            plt.close()
+        pattern_f.close()
 
 
     def TS_all_event_curve(self, rlist):
@@ -840,14 +840,14 @@ class Plotter():
         plt.close()
 
     def LBE_updt_pattern(self, dt_list, num_dt):
-        target_types = ['AADiff','AADup2','AADup1','WW','WADup','WADiff',]
+        target_types = ['AADiff','AADup2','AADup1','WW','WADup','WADiff']
         #target_types = ['WAUnknown','AW','WW','WADup','WADiff','AADiff','AADup1','AADup2']
 
         numflist = list()
         oneflist = list()
         for dt in dt_list:
-            numflist.append(str(dt)+'_updt_pattern.txt')
-            oneflist.append(str(dt)+'_updt_pattern_in_ones.txt')
+            numflist.append(str(dt)+'_updt_pattern_tpfx.txt')
+            oneflist.append(str(dt)+'_updt_pattern_in_ones_tpfx.txt')
 
         numtype2list = dict()
         onetype2list = dict()
@@ -877,6 +877,11 @@ class Plotter():
 
                 removed_ratio = type2ratio['AW'] + type2ratio['WAUnknown']
                 multiply_factor = 1.0 / (1-removed_ratio)
+                for t in target_types:
+                    if t not in type2ratio.keys():
+                        type2num[t] = 0
+                        type2ratio[t] = 0
+
                 for t in target_types:
                     type2ratio[t] = type2ratio[t] * multiply_factor
                     print t, type2num[t], type2ratio[t]
@@ -931,7 +936,7 @@ class Plotter():
         ax.set_xlim([0, num_dt+1])
         ax.set_ylim([0, 1])
         plt.legend((p1[0],p2[0],p3[0],p4[0],p5[0],p6[0]),('AADiff','AADup2','AADup1','WW','WADup','WADiff'),loc='lower left')
-        output_loc = pub_plot_dir + 'upattern_num.pdf'
+        output_loc = pub_plot_dir + 'upattern_num_compfx.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()
@@ -966,7 +971,7 @@ class Plotter():
         plt.xticks([1,num_dt/2,num_dt],['1',str(num_dt/2),str(num_dt)])
         ax.set_xlim([0, num_dt+1])
         plt.legend((p1[0],p2[0],p3[0],p4[0],p5[0],p6[0]),('AADiff','AADup2','AADup1','WW','WADup','WADiff'),loc='lower left')
-        output_loc = pub_plot_dir + 'upattern_one.pdf'
+        output_loc = pub_plot_dir + 'upattern_one_compfx.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()

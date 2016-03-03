@@ -140,14 +140,24 @@ class MultiReaper():
             f.write(pfx+':'+str(pfx2path_num[pfx])+'|'+str(pfx2path_exist[pfx])+'\n')
         f.close()
 
-
-    def get_common_pfx_set(self, dt_list):
+    def get_common_pfx_mon_set(self, dt_list):
         pfxset_list = list()
+        monset_list = list()
+
         unix2event, unix2reaper = self.get_dt2event_dt2reaper()
         for unix_dt in unix2event:
             if unix_dt not in dt_list:
                 continue
             reaper = unix2reaper[unix_dt]
+
+            i2ip = dict()
+            f = open(reaper.period.get_mon2index_file_path(), 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                ip = line.split(':')[0]
+                index = int(line.split(':')[1])
+                i2ip[index] = ip
+            f.close()
 
             pfx_set = set()
             mon_set = set()
@@ -163,17 +173,31 @@ class MultiReaper():
                     pfx_set.add(line.split(':')[0])
             f.close()
 
+            mon_set_ip = set()
+            for index in mon_set:
+                mon_set_ip.add(i2ip[index])
+
             pfxset_list.append(pfx_set)
-            print len(pfx_set)
+            monset_list.append(mon_set_ip)
 
-        comset = set.intersection(*pfxset_list)
-        print 'pfx num:', len(comset)
+        pcomset = set.intersection(*pfxset_list)
+        print 'common pfx num:', len(pcomset)
 
+        mcomset = set.intersection(*monset_list)
+        print 'common mon num:', len(mcomset)
 
-        f = open(cmlib.datadir+'final_output/target_pfx.txt', 'w')
-        for pfx in comset:
+        '''
+        f = open(final_output_root+'compfx.txt', 'w')
+        for pfx in pcomset:
             f.write(pfx+'\n')
         f.close()
+        '''
+
+        f = open(final_output_root+'com_mon.txt', 'w')
+        for mon in mcomset:
+            f.write(mon+'\n')
+        f.close()
+
 
     def get_dt2event_dt2reaper(self):
         event_dict = dict()

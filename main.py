@@ -12,11 +12,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':1, 'plot':0, 'plot_matrix':0, 'MR':0}
+action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR':1}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-index_list = [2810]
+index_list = [284, 286]
 
 reaperlist = list()
 for i in index_list:
@@ -62,7 +62,7 @@ for i in index_list:
         plotter = Plotter(reaper)
         #plotter.TS_event_dot()
         #plotter.TS_event_cluster_dot()
-        #plotter.all_events_tpattern_curve()
+        plotter.all_events_tpattern_curve()
 
         ''' 
         #--------------------------------------------
@@ -80,7 +80,6 @@ for i in index_list:
         reaper_list = [reaper21, reaper, reaper22]
         reaper_list = [reaper31, reaper, reaper32]
         plotter.TS_all_event_curve(reaper_list)
-        '''
 
         #------------------------------------------
         # the impact of Tv and Tq
@@ -101,6 +100,7 @@ for i in index_list:
         reaper3.set_Tq_Tv(100, 0.4)
         reaper_list = [reaper1, reaper2, reaper3]
         plotter.hpfx_compare_slot(reaper_list)
+        '''
 
         # plotter.scatter_all_rwidth_rsize()
         # plotter.scatter_all_ASratio_rsize()
@@ -162,7 +162,7 @@ if action['MR']:
     #mr.hpfx_life_time() # (run once for used months only)
     #mr.hpfx_life_time_details() # interesting details analyzing the output of mr.hpfx_life_time()
 
-    mr.get_common_pfx_set(cluster4)
+    mr.get_common_pfx_mon_set(cluster1_1)
     #mr.all_events_cluster()
     #mr.random_slots_upattern(18)
 
@@ -173,7 +173,7 @@ if action['MR']:
 
     #pl = Plotter(reaper)
     #pl.set_multi_reaper(mr)
-    #pl.LBE_updt_pattern(cluster3, len(cluster3))
+    #pl.LBE_updt_pattern(cluster1, len(cluster1))
     #pl.events_oriAS_distr_mr() # The origin ASes of LBEs
 
     #pl.hpfx_lifetime_distr_mr()

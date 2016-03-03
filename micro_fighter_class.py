@@ -2,7 +2,7 @@ import radix # takes 1/4 the time as patricia
 import datetime
 import numpy as np
 import calendar # do not use the time module
-from cmlib import *
+import cmlib
 import operator
 import string
 import gzip
@@ -219,6 +219,7 @@ class Micro_fighter():
         return pfx_set
 
 
+    # Not used at any place ???
     def upattern_for_pfx(self, unix_dt, pset):
         pfx_set = pset
         mon_iset = set()
@@ -270,9 +271,7 @@ class Micro_fighter():
             updatefile = fline.split('|')[0]
             updt_files.append(datadir+updatefile)
 
-        num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
-                    41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
-                    800:'patho',801:'patho(include WADup)',802:'policy'}
+        num2type = num2upattern
         for n in num2type:
             pattern2count[n] = set()
         #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
@@ -577,10 +576,13 @@ class Micro_fighter():
         fo2.close()
 
 
-    def event_update_pattern(self, unix_dt):
+    def event_update_pattern(self, unix_dt, target_pset):
         # all the prefixes and monitors in an LBE are considered
 
         pfx_set = set()
+        if target_pset != None:
+            pfx_set = target_pset
+
         mon_iset = set()
         mon_set = set()
 
@@ -590,7 +592,7 @@ class Micro_fighter():
             line = line.rstrip('\n')
             if line.startswith('Mo'):
                 mon_iset = ast.literal_eval(line.split('set')[1])
-            else:
+            elif target_pset == None:
                 pfx_set.add(line.split(':')[0])
         f.close()
 
@@ -621,18 +623,7 @@ class Micro_fighter():
             mon2tag[mon] = str(start)
             start += 1
 
-        # get the number of ones within the event
-        ones_num = 0
-        f = open(self.reaper.events_ratios_path(), 'r')
-        for line in f:
-            if not line.startswith('ONE'):
-                continue
-            attr = line.rstrip('\n').split('|')
-            unix = int(attr[1])
-            if unix == unix_dt:
-                ones_num = int(attr[4])
-        f.close()
-        print 'ones_num=',ones_num
+        tag_set = set() # record all existed tags (element '1's)
 
         #--------------------------------------------------------
         # Read update files
@@ -644,12 +635,10 @@ class Micro_fighter():
             updatefile = fline.split('|')[0]
             updt_files.append(datadir+updatefile)
 
-        num2type = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
-                    41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
-                    800:'patho',801:'patho(include WADup)',802:'policy'}
+        num2type = num2upattern
         for n in num2type:
             pattern2count[n] = set()
-        #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4(WADup:41,WADiff:42,WAUnknown:40),AW:5
+
         mp_dict = dict() # mon: prefix: successive update type series (0~5)
         mp_last_A = dict() # mon: prefix: latest full update
         mp_last_type = dict()
@@ -658,7 +647,6 @@ class Micro_fighter():
             mp_last_A[m] = dict() # NOTE: does not record W, only record A
             mp_last_type[m] = dict()
 
-        # FIXME found a bug: mp_last_type not updated
         fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
         for fpath in fpathlist:
             print 'Reading ', fpath
@@ -684,6 +672,7 @@ class Micro_fighter():
                         as_path = attr[6]
 
                     the_tag = pfx2tag[pfx] + mon2tag[mon]
+                    tag_set.add(the_tag)
 
                     try:
                         test = mp_dict[mon][pfx]
@@ -746,9 +735,6 @@ class Micro_fighter():
                                 pattern2count[798].add(the_tag)
                             mp_last_A[mon][pfx] = line
                 
-                    else: # last_type is None
-                        pass
-
                     if type == 'W':
                         mp_last_type[mon][pfx] = 'W'
                     elif type == 'A':
@@ -783,7 +769,11 @@ class Micro_fighter():
         print type2num
         print type2ratio
         sorted_list = sorted(type2num.items(), key=operator.itemgetter(1), reverse=True)
-        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern.txt', 'w')
+        if target_pset == None:
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern.txt', 'w')
+        else:
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_tpfx.txt', 'w')
+
         for item in sorted_list:
             tp = item[0]
             count = item[1]
@@ -793,14 +783,63 @@ class Micro_fighter():
 
         p2ratio = dict()
         for p in pattern2count:
-            p2ratio[num2type[p]] = float(len(pattern2count[p])) / float(ones_num)
+            p2ratio[num2type[p]] = float(len(pattern2count[p])) / float(len(tag_set))
         sorted_list = sorted(p2ratio.items(), key=operator.itemgetter(1), reverse=True)
-        f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones.txt', 'w')
+        if target_pset == None:
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones.txt', 'w')
+        else:
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones_tpfx.txt', 'w')
+
         for item in sorted_list:
             p = item[0]
             ratio = item[1]
             f.write(str(p)+':'+str(ratio)+'\n')
         f.close()
+
+
+    def get_update_pattern(self, last_type, type, last_as_path, as_path, last_A, line):
+        upattern = dict()
+        upattern['nom'] = -1 # normal upattern types
+        upattern['ext'] = list() # extend upattern types
+
+        if last_type == 'W':
+            if type == 'W':
+                upattern['nom'] = 0
+                upattern['ext'] = [800, 801]
+                return upattern
+            elif type == 'A':
+                if last_as_path: # if not None
+                    if as_path == last_as_path:
+                        upattern['nom'] = 41
+                        upattern['ext'] = [799, 801]
+                        return upattern
+                    else:
+                        upattern['nom'] = 42
+                        upattern['ext'] = [799, 798]
+                        return upattern
+                else: # no A record
+                    upattern['nom'] = 40
+                    return upattern
+    
+        elif last_type == 'A':
+            if type == 'W':
+                upattern['nom'] = 5
+                return upattern
+            elif type == 'A':
+                if line == last_A:
+                    upattern['nom'] = 1
+                    upattern['ext'] = [800, 801]
+                    return upattern
+                elif as_path == last_as_path:
+                    upattern['nom'] = 2
+                    upattern['ext'] = [802]
+                    return upattern
+                else:
+                    upattern['nom'] = 3
+                    upattern['ext'] = [798, 799]
+                    return upattern
+        else:
+            return upattern # the first update
 
 
     def oriAS_in_updt(self, unix_dt, target_pfx):
@@ -879,16 +918,17 @@ class Micro_fighter():
                     if type == 'A':
                         as_path = attr[6]
 
-                    oriAS = int(as_path.split()[-1])
-                    '''
-                    # seems not necessary. The origin AS is the same
-                    existed = pfx2oriAS[pfx]
-                    if existed != -10:
-                        assert existed == oriAS
-                    else:
+                        # a bug fixed!
+                        oriAS = int(as_path.split()[-1])
+                        '''
+                        # seems not necessary. The origin AS is the same
+                        existed = pfx2oriAS[pfx]
+                        if existed != -10:
+                            assert existed == oriAS
+                        else:
+                            pfx2oriAS[pfx] = oriAS
+                        ''' 
                         pfx2oriAS[pfx] = oriAS
-                    ''' 
-                    pfx2oriAS[pfx] = oriAS
                         
                 except Exception, err:
                     if line != '':
@@ -908,7 +948,7 @@ class Micro_fighter():
         if target_pfx == None:
             f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt', 'w')
         else:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_compfx_cluster4_oriAS.txt', 'w')
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_compfx_cluster3_oriAS.txt', 'w')
         for item in sorted_list:
             ASN = item[0]
             count = item[1]
@@ -942,7 +982,7 @@ class Micro_fighter():
         for index in mon_iset:
             mon_set.add(i2ip[index])
 
-        # get the number of ones within the event
+        # get the number of element '1' within the event
         ones_num = 0
         f = open(self.reaper.events_ratios_path(), 'r')
         for line in f:
@@ -1074,28 +1114,24 @@ class Micro_fighter():
         f.close()
 
 
-    def analyze_pfx_indate(self, ASes, sdt_obj, edt_obj):
+    # pfile_path: None or the prefix file path
+    def upattern_mon_pfxset_intime(self, mip, pfile_path, sdt_unix, edt_unix):
         fmy = open(self.updt_filel, 'r')
-        sdt_unix = calendar.timegm(sdt_obj.utctimetuple())
-        edt_unix = calendar.timegm(edt_obj.utctimetuple())
-        print sdt_unix, edt_unix
+        sdt_obj = datetime.datetime.utcfromtimestamp(sdt_unix)
+        edt_obj = datetime.datetime.utcfromtimestamp(edt_unix)
 
-        #pfx_set = set() # 2156 prefixes in total
-
-        target_mon = (['195.66.224.138', '89.149.178.10'])
         target_pfx = set()
-        f = open('target_pfx.txt','r')
+        f = open(pfile_path,'r')
         for line in f:
             line = line.rstrip('\n')
             target_pfx.add(line)
         f.close()
 
-        #WW:0,AAdu1:1,AAdu2:2,AAdiff:3,WA:4,AW:5
-        target_dict = dict() # mon: prefix: successive update type series (0~5)
-        target_record = dict() # mon: prefix: latest full update
-        for m in target_mon:
-            target_dict[m] = dict()
-            target_record[m] = dict()
+        mp_dict = dict() # prefix: successive update type series (0~5)
+        mp_last_A = dict() # prefix: latest full announcement update
+        mp_last_type = dict()
+        for p in target_pfx:
+            mp_dict[p] = list()
 
         for fline in fmy:
             # get date from file name
@@ -1121,8 +1157,7 @@ class Micro_fighter():
             if co == 'bgpdata':  # route-views2, the special case
                 co = ''
 
-
-            # Deal with several special time zone problems
+            # Deal with several special time zone problems according to collector name
             if co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # PST time
                 fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX (not 8)
             elif not co.startswith('rrc') and fname_dt_obj <= dt_anchor1:
@@ -1133,8 +1168,7 @@ class Micro_fighter():
             else:
                 shift = -30
 
-
-            # Check whether the file is a possible target
+            # Check whether the file is within our intended time range
             if not sdt_obj+datetime.timedelta(minutes=shift)<=fname_dt_obj<=edt_obj:
                 continue
 
@@ -1147,97 +1181,59 @@ class Micro_fighter():
                 try:
                     line = line.rstrip('\n')
                     attr = line.split('|')
-                    pfx = attr[5]
-                    type = attr[2]
                     mon = attr[3]
-
-                    #if type == 'W':
-                    #    continue
-                    if mon not in target_mon:
+                    if mon != mip:
                         continue
                         
+                    pfx = attr[5]
                     if pfx not in target_pfx:
                         continue
 
+                    type = attr[2]
                     if type == 'A':
                         as_path = attr[6]
-                        #as_list = as_path.split()
-                        #mylen = len(as_list)
-                        #for i in xrange(0, mylen-1):
-                        #    as1 = int(as_list[i])
-                        #    as2 = int(as_list[i+1])
-
-                        #    if as1 == as2:
-                        #        continue
-                        #    
-                        #    if as1 in ASes and as2 in ASes and i == mylen-2: # last hop
-                        #        analyze = True
-                        #        break
-
-                    #pfx_set.add(pfx)
-                    try:
-                        test = target_dict[mon][pfx]
-                    except:
-                        target_dict[mon][pfx] = list() # list of 0~5
+                    else:
+                        as_path = None
 
                     try:
-                        last_update = target_record[mon][pfx]
-                        last_attr = last_update.split('|')
-                        last_type = last_attr[2]
-                        if last_type is 'A':
-                            last_as_path = last_attr[6]
+                        last_A = mp_last_A[pfx]
+                        last_as_path = last_A.split('|')[6]
                     except:
-                        last_type = 'W'
-                        last_as_path = 'Nothing'
+                        last_A = None
+                        last_as_path = None
 
-                    if last_type is 'W':
-                        if type is 'W':
-                            print 'WW'
-                            target_dict[mon][pfx].append(0)
-                        elif type is 'A':
-                            print 'WA'
-                            target_dict[mon][pfx].append(4)
-                            target_record[mon][pfx] = line
+                    try:
+                        last_type = mp_last_type[pfx]
+                    except: # this is the first update
+                        last_type = None
+
+                    up = self.get_update_pattern(last_type, type, last_as_path, as_path, last_A, line)
+                    up_num = up['nom']
+                    if up_num != -1: # not the first update
+                        mp_dict[pfx].append(up_num)
+
+                    if type == 'W':
+                        mp_last_type[pfx] = 'W'
+                    elif type == 'A':
+                        mp_last_type[pfx] = 'A'
+                        mp_last_A[pfx] = line
+                    else:
+                        assert False
                 
-                    elif last_type is 'A':
-                        if type is 'W':
-                            print 'AW'
-                            target_dict[mon][pfx].append(5)
-                            target_record[mon][pfx] = 'Nothing'
-                        elif type is 'A':
-                            if line == last_update:
-                                print 'AAdu1'
-                                target_dict[mon][pfx].append(1)
-                            elif as_path == last_as_path:
-                                print 'AAdu2'
-                                target_dict[mon][pfx].append(2)
-                                target_record[mon][pfx] = line
-                            else:
-                                print 'AAdiff'
-                                target_dict[mon][pfx].append(3)
-                                target_record[mon][pfx] = line
-                
-                    else: # abnormal
-                        continue
-                        
                 except Exception, err:
                     if line != '':
                         logging.info(traceback.format_exc())
                         logging.info(line)
-                print len(target_dict['195.66.224.138'])
             myf.close()
-            '''
-            f3 = open('target_pfx.txt', 'w')
-            for pfx in pfx_set:
-                f3.write(pfx+'\n')
-            f3.close()
-            '''
-        for mon in target_dict:
-            print len(target_dict[mon])
-            ff = open(mon+'result.txt','w')
-            for pfx in target_dict[mon]:
-                ff.write(pfx+':'+str(target_dict[mon][pfx])+'\n')
-            ff.close()
+
+        outdir = final_output_root + 'upattern_TS/' + str(sdt_unix) + '_' + str(edt_unix) + '/' +\
+                pfile_path.split('/')[-1] + '/'
+        cmlib.make_dir(outdir)
+
+        ff = open(outdir+mip+'.txt','w')
+        for pfx in mp_dict:
+            ff.write(pfx+':'+str(mp_dict[pfx])+'\n')
+        ff.close()
 
         f.close()
 
@@ -1480,3 +1476,4 @@ class Micro_fighter():
             count = item[1]
             f.write(str(asn)+':'+str(count)+'\n')
         f.close()
+

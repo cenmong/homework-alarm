@@ -7,6 +7,9 @@ global_rsize_threshold = 0.007 # used for FILTERING events for analysis
 #--------------------------------------------------------
 # large clusters in 1~10 2013 (DBSCAN parameters: epsilon=0.65, minPts=4)
 cluster1 = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800, 1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
+cluster1_1 = [1365579000, 1365604200, 1365630600, 1365631800, 1365634200, 1365636600, 1365637800, 1365639000, 1365640200, 1365642600, 1365646200, 1365658200, 1365661800]
+cluster1_2 = [1371748200, 1371749400, 1371751800, 1371753000, 1371754200]
+
 cluster2 = [1367502600, 1368941400, 1368942600, 1371538200, 1371539400, 1372660200, 1372661400]
 cluster3 = [1378887000, 1378889400, 1378890600, 1378895400]
 cluster4 = [1380112200, 1380833400, 1380834600, 1380835800, 1380838200]
@@ -31,9 +34,18 @@ LBE_plot_dir = pub_plot_dir + 'LBE/'
 
 metrics_output_root = datadir + 'metrics_output/'
 
+final_output_root = datadir + 'final_output/'
+
 #---------------------------------------------------------
 rv_root = 'archive.routeviews.org/' # routeviews.org does not support v6
 rrc_root = 'data.ris.ripe.net/'
+
+
+#--------------------------------------------------------
+# Indexing update patterns
+num2upattern = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
+            41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
+            800:'patho',801:'patho(include WADup)',802:'policy'}
 
 #--------------------------------------------------------
 # tag when time zone changed
