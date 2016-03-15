@@ -186,12 +186,10 @@ class MultiReaper():
         mcomset = set.intersection(*monset_list)
         print 'common mon num:', len(mcomset)
 
-        '''
         f = open(final_output_root+'compfx.txt', 'w')
         for pfx in pcomset:
             f.write(pfx+'\n')
         f.close()
-        '''
 
         f = open(final_output_root+'com_mon.txt', 'w')
         for mon in mcomset:

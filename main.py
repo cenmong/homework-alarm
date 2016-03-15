@@ -12,11 +12,11 @@ import os
 import logging
 logging.info('Program starts!')
 
-action = {'middle':0, 'final':0, 'micro':0, 'plot':0, 'plot_matrix':0, 'MR':1}
+action = {'middle':0, 'final':0, 'micro':1, 'plot':0, 'plot_matrix':0, 'MR':0}
 option = {'mid_granu':10, 'final_granu':20} # fin_gra should be mid_gra * N # pfx paper
 
 #index_list = [281, 282, 283, 284,285,286,287,288,289,2810]
-index_list = [284, 286]
+index_list = [282]
 
 reaperlist = list()
 for i in index_list:
@@ -113,7 +113,7 @@ for i in index_list:
 
     if action['micro']:
         pfxset = set()
-        f = open(datadir+'final_output/compfx_cluster3.txt', 'r')
+        f = open(datadir+'final_output/compfx_largestLBE.txt', 'r')
         for line in f:
             line = line.rstrip('\n')
             pfxset.add(line)
@@ -162,7 +162,8 @@ if action['MR']:
     #mr.hpfx_life_time() # (run once for used months only)
     #mr.hpfx_life_time_details() # interesting details analyzing the output of mr.hpfx_life_time()
 
-    mr.get_common_pfx_mon_set(cluster1_1)
+    tmplist = [largest_dt]
+    mr.get_common_pfx_mon_set(tmplist)
     #mr.all_events_cluster()
     #mr.random_slots_upattern(18)
 

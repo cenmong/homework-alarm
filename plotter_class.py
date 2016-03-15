@@ -27,6 +27,8 @@ from matplotlib.dates import DayLocator
 from matplotlib.patches import Ellipse
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
+from matplotlib import colors as colors_lib
+import matplotlib.patches as mpatches
 
 line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
 font = {'size': 38,}
@@ -2060,4 +2062,89 @@ class Plotter():
         plt.close()
         
 
+    # upfile: upattern file path
+    def upattern_TS_for_mon(self, upfile):
 
+        len2count = dict()
+        pfx2list = dict()
+        pfx2len = dict()
+
+        f = open(upfile, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfx = line.split(':')[0]
+            ulist = ast.literal_eval(line.split(':')[1])
+            pfx2list[pfx] = ulist
+            ll = len(ulist)
+            pfx2len[pfx] = ll
+            try:
+                len2count[ll] += 1
+            except:
+                len2count[ll] = 1
+        f.close()
+
+        #maxlen = max(len2count.keys())
+        pfxnum = len(pfx2len.keys())
+
+        # order prefix by list length
+        sorted_pfx2len = sorted(pfx2len.items(), key=operator.itemgetter(1))
+        median = pfx2len[sorted_pfx2len[pfxnum/2][0]]
+        print 'median=', median
+        maxlen = median * 2
+
+        lol = list() # list of lists for plot
+        lol_long = list() # store long lists
+
+        # extend the lists to the maximum length by filling in -1
+        for item in sorted_pfx2len:
+            pfx = item[0]
+            thel = pfx2len[pfx]
+            extendl = maxlen - thel
+            to_extend = [-1]*extendl
+            l = pfx2list[pfx]
+            l.extend(to_extend)
+            if thel > median * 2:
+                lol_long.append(l)
+            else:
+                lol.append(l)
+
+        short_num = len(lol)
+        long_num = len(lol_long)
+
+        value2color = {-1:'white',0:'cyan',1:'green',2:'red',3:'yellow',40:'grey',411:'blueviolet',412:'blue',42:'fuchsia',5:'black'}
+
+        #-------plot----------
+        fig = plt.figure(figsize=(24,20))
+        ax = fig.add_subplot(111)
+
+        cmap = matplotlib.colors.ListedColormap(['white','cyan','green','red','yellow','black','grey','fuchsia','blueviolet','blue'])
+        cmap.set_over('0.25')
+        cmap.set_under('0.75')
+        bounds = [-2,-0.5,0.5,1.5,2.5,3.5,5.5,40.5,42.5,411.5,412.5,]  #FIXME
+        norm = colors_lib.BoundaryNorm(bounds, cmap.N)
+
+        cax = ax.imshow(lol, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm)
+        #cbar = fig.colorbar(cax)
+
+        c_patch = mpatches.Patch(color='cyan',label='WW')
+        b_patch = mpatches.Patch(color='blue',label='WADup2')
+        bv_patch = mpatches.Patch(color='blueviolet',label='WADup1')
+        s_patch = mpatches.Patch(color='red',label='AADup2')
+        g_patch = mpatches.Patch(color='green',label='AADup1')
+        y_patch = mpatches.Patch(color='yellow',label='AADiff')
+        v_patch = mpatches.Patch(color='grey',label='WAUnknown')
+        k_patch = mpatches.Patch(color='black',label='AW')
+        fc_patch = mpatches.Patch(color='fuchsia',label='WADiff')
+        plt.legend(handles=[c_patch,b_patch,bv_patch,s_patch,y_patch,v_patch,k_patch,g_patch,fc_patch], loc='upper right', fontsize=14)
+
+        ax.set_ylabel(str(short_num) + ' prefixes')
+        ax.set_xlabel('Update pattern')
+        ax.get_yaxis().set_ticks([])
+        #ax.label_params(axis='y',pad=50)
+
+        tmp = upfile.split('.txt')
+        fpath = tmp[0] + '.txt' + tmp[1] + '.pdf'
+        plt.savefig(fpath, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+        

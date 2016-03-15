@@ -15,6 +15,8 @@ cluster3 = [1378887000, 1378889400, 1378890600, 1378895400]
 cluster4 = [1380112200, 1380833400, 1380834600, 1380835800, 1380838200]
 clusters = [cluster1, cluster2, cluster3, cluster4]
 
+largest_dt = 1360813800
+
 
 #---------------------------------------------------------
 datadir = '/media/usb/' # TODO add 'bgp_project/' at end and really change the directories
@@ -44,7 +46,7 @@ rrc_root = 'data.ris.ripe.net/'
 #--------------------------------------------------------
 # Indexing update patterns
 num2upattern = {0:'WW',1:'AADup1',2:'AADup2',3:'AADiff',40:'WAUnknown',\
-            41:'WADup',42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
+                411:'WADup1', 412:'WADup2', 42:'WADiff',5:'AW',798:'FD',799:'FD(include WADup)',\
             800:'patho',801:'patho(include WADup)',802:'policy'}
 
 #--------------------------------------------------------

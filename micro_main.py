@@ -15,11 +15,11 @@ import ast
 logging.info('Program starts!')
 
 #index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-index_list = [284]
+index_list = [282]
 #index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 pfx_set = set()
-f = open(datadir+'final_output/compfx_cluster3.txt')
+f = open(datadir+'final_output/compfx_cluster1_1.txt')
 for line in f:
     line = line.rstrip('\n')
     pfx_set.add(line)
@@ -46,7 +46,6 @@ for index in index_list:
     #mf.top_AS_ASlink(1360813800)
     #mf.oriAS_in_updt(1360813800, None)
 
-
     '''
     #----------------------------------------
     # Get pfx->origin AS within all LBEs
@@ -59,7 +58,7 @@ for index in index_list:
 
     #----------------------------------------
     # Get pfx->origin AS within an LBE for certain prefixes (optional)
-    for dt in cluster3:
+    for dt in cluster1_1:
         try:
             mf.oriAS_in_updt(dt, pfx_set)
         except: # no such dt in the period
@@ -81,31 +80,47 @@ for index in index_list:
         rsize = thelist[0]
         if rsize > global_rsize_threshold:
             mf.event_update_pattern(unix_dt, None) # Do only once for each LBE
-    '''
 
     #micro_fighter.set_sedate(sdt_obj, edt_obj)
     #micro_fighter.analyze_pfx()
 
     #mf.event_as_link_rank(1365604200)
     #mf.event_analyze_pfx(1365604200)
+    '''
+
+    pl = Plotter(reaper)
 
     #sdt_unix = 1365579000 
-    sdt_unix = 1365576600 
-    edt_unix = 1365661800
-    pfile_path = final_output_root + 'compfx_cluster1_1.txt'
+    #sdt_unix = 1365576600 
+    #edt_unix = 1365661800
 
-    # get the common monitor set of cluster1_1
-    
-    mfile_path = final_output_root + 'com_mon_cluster1_1.txt'
+    sdt_unix = 1360813800
+    edt_unix = 1360815000
+
+    #sdt_unix = 1378887000
+    #edt_unix = 1378899000
+    pfile_path = final_output_root + 'compfx_largestLBE.txt'
+
+    # get the common monitor set
+    mfile_path = final_output_root + 'com_mon_largestLBE.txt'
+    mf.get_candidate_as(mfile_path, pfile_path, sdt_unix, edt_unix)
+
+    '''
     f = open(mfile_path, 'r')
     count = 0
     for line in f:
-        count += 1
         mip = line.rstrip('\n')
 
+        count += 1
         print '# ', count
         print mip
-        mf.upattern_mon_pfxset_intime(mip, pfile_path, sdt_unix, edt_unix)
+        mf.upattern_mon_pfxset_intime(mip, pfile_path, sdt_unix, edt_unix) # get and record update pattern
 
-    # analyze certain prefixes (optional) define pfx_target = dict() for quick access
-    # group prefixes into ASes (very meaningful)
+        print 'Plotting...'
+        # update pattern file path
+        upfile = final_output_root + 'upattern_TS/' + str(sdt_unix) + '_' + str(edt_unix) + '/' +\
+                pfile_path.split('/')[-1] + '/' + mip + '.txt'
+        pl.upattern_TS_for_mon(upfile)
+
+    f.close()
+    '''

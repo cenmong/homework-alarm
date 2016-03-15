@@ -797,47 +797,44 @@ class Micro_fighter():
         f.close()
 
 
+    # Note: cannot compare unix time in the lines
     def get_update_pattern(self, last_type, type, last_as_path, as_path, last_A, line):
-        upattern = dict()
-        upattern['nom'] = -1 # normal upattern types
-        upattern['ext'] = list() # extend upattern types
+        upattern = -1
 
         if last_type == 'W':
             if type == 'W':
-                upattern['nom'] = 0
-                upattern['ext'] = [800, 801]
+                upattern = 0
                 return upattern
             elif type == 'A':
                 if last_as_path: # if not None
-                    if as_path == last_as_path:
-                        upattern['nom'] = 41
-                        upattern['ext'] = [799, 801]
+                    if line.split('|A|')[1] == last_A.split('|A|')[1]:
+                        upattern = 411
+                        return upattern
+                    elif as_path == last_as_path:
+                        upattern = 412
                         return upattern
                     else:
-                        upattern['nom'] = 42
-                        upattern['ext'] = [799, 798]
+                        upattern = 42
                         return upattern
                 else: # no A record
-                    upattern['nom'] = 40
+                    upattern = 40
                     return upattern
     
         elif last_type == 'A':
             if type == 'W':
-                upattern['nom'] = 5
+                upattern = 5
                 return upattern
             elif type == 'A':
-                if line == last_A:
-                    upattern['nom'] = 1
-                    upattern['ext'] = [800, 801]
+                if line.split('|A|')[1] == last_A.split('|A|')[1]:
+                    upattern = 1
                     return upattern
                 elif as_path == last_as_path:
-                    upattern['nom'] = 2
-                    upattern['ext'] = [802]
+                    upattern = 2
                     return upattern
                 else:
-                    upattern['nom'] = 3
-                    upattern['ext'] = [798, 799]
+                    upattern = 3
                     return upattern
+
         else:
             return upattern # the first update
 
@@ -894,7 +891,8 @@ class Micro_fighter():
         for pfx in pfx_set:
             pfx2oriAS[pfx] = -10
 
-        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+        print fpathlist
         for fpath in fpathlist:
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
@@ -948,7 +946,7 @@ class Micro_fighter():
         if target_pfx == None:
             f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_pfx_oriAS.txt', 'w')
         else:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_compfx_cluster3_oriAS.txt', 'w')
+            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_compfx_cluster1_1_oriAS.txt', 'w')
         for item in sorted_list:
             ASN = item[0]
             count = item[1]
@@ -1114,6 +1112,199 @@ class Micro_fighter():
         f.close()
 
 
+    def get_candidate_as(self, mfile_path, pfile_path, sdt_unix, edt_unix):
+        pfxset = set()
+        f = open(pfile_path,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile_path,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+        fmy.close()
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+
+        mp_last_A = dict() # mon: prefix: latest full announcement update
+        mp_last_type = dict()
+        for m in monset:
+            mp_last_A[m] = dict()
+            mp_last_type[m] = dict()
+        # AS number->[a,b,c] where a=common-segment,b=FROM-seg,c=TO-seg 
+        asn2path = dict()
+        # segment change to count
+        sc2count = dict() #'321|234#678|12|23': 19
+        # community_change->count
+        com_change2count = dict() # [from_set, to_set]: count
+        
+        count = 0
+        community_change = 0
+        other_change = 0
+
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    unix = int(attr[1])
+
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    mon = attr[3]
+                    if mon not in monset:
+                        continue
+
+                    pfx = attr[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    type = attr[2]
+                    if type == 'A':
+                        as_path = attr[6]
+                    else:
+                        as_path = None
+
+                    try:
+                        last_A = mp_last_A[mon][pfx]
+                        last_as_path = last_A.split('|')[6]
+                    except:
+                        last_A = None
+                        last_as_path = None
+
+                    try:
+                        last_type = mp_last_type[mon][pfx]
+                    except: # this is the first update
+                        last_type = None
+
+                    up = self.get_update_pattern(last_type, type, last_as_path, as_path, last_A, line)
+                    if up in [3, 42]: # AADiff and WADiff
+                        last_list = last_as_path.split()
+                        now_list = as_path.split()
+                        last_set = set(last_list)
+                        now_set = set(now_list)
+
+                        comset = last_set & now_set
+                        for asn in comset:
+                            last_list.remove(asn)
+                            now_list.remove(asn)
+                            last_set.remove(asn)
+                            now_set.remove(asn)
+                            try:
+                                asn2path[asn][0] += 1
+                            except:
+                                asn2path[asn] = [1,0,0]
+
+                        for asn in last_set:
+                            try:
+                                asn2path[asn][1] += 1
+                            except:
+                                asn2path[asn] = [0,1,0]
+                        for asn in now_set:
+                            try:
+                                asn2path[asn][2] += 1
+                            except:
+                                asn2path[asn] = [0,0,1]
+    
+                        sc_symbol = ''
+                        for asn in last_list:
+                            sc_symbol += str(asn)
+                            sc_symbol += '|'
+                        sc_symbol += '#'
+                        for asn in now_list:
+                            sc_symbol += str(asn)
+                            sc_symbol += '|'
+
+                        try:
+                            sc2count[sc_symbol] += 1
+                        except:
+                            sc2count[sc_symbol] = 1
+                    
+                    elif up in [2, 412]: # AADup2 and WADup2
+                        try:
+                            last_comm_seg = last_A.split('|')[11]
+                            now_comm_seg = attr[11]
+                            if last_comm_seg == now_comm_seg:# not community change
+                                assert False
+                            last_clist = last_comm_seg.split()
+                            now_clist = now_comm_seg.split()
+                            last_cset = set(last_comm_seg.split())
+                            now_cset = set(now_comm_seg.split())
+
+                            com_cset = last_cset & now_cset
+                            for c in com_cset:
+                                last_clist.remove(c)
+                                now_clist.remove(c)
+
+                            combo = str(last_clist) + '#' + str(now_clist)
+                            try:
+                                com_change2count[combo] += 1
+                            except:
+                                com_change2count[combo] = 0
+                            community_change += 1
+                        except:
+                            other_change += 1
+                            pass # not community change
+
+                    '''
+                        count += 1
+                        if count < 6:
+                            print last_as_path
+                            print as_path
+                            print asn2path
+                            print '========================================'
+                    '''
+
+                    if type == 'W':
+                        mp_last_type[mon][pfx] = 'W'
+                    elif type == 'A':
+                        mp_last_type[mon][pfx] = 'A'
+                        mp_last_A[mon][pfx] = line
+                    else:
+                        assert False
+
+                except:
+                    pass
+            myf.close()
+
+        out_dir = final_output_root + 'change_analysis/' + str(sdt_unix) + '_' +\
+                str(edt_unix) + '/'
+        cmlib.make_dir(out_dir)
+
+        
+        out_path = out_dir + 'asn2path.txt'
+        fo = open(out_path, 'w')
+        for asn in sorted(asn2path.keys(), key=lambda k: asn2path[k][0], reverse=True):
+            fo.write(str(asn)+':'+str(asn2path[asn])+'\n')
+        fo.close()
+
+        tmp_list = sorted(sc2count.items(), key=operator.itemgetter(1), reverse=True)
+        fo2 = open(out_dir + 'segment_change.txt', 'w')
+        for item in tmp_list:
+            fo2.write(item[0]+':'+str(item[1])+'\n')
+        fo2.close()
+        
+        tmp_list = sorted(com_change2count.items(), key=operator.itemgetter(1), reverse=True)
+        fo3 = open(out_dir + 'community_change.txt', 'w')
+        for item in tmp_list:
+            fo3.write(str(item[0])+':'+str(item[1])+'\n')
+        fo3.close()
+        print community_change, other_change
+
     # pfile_path: None or the prefix file path
     def upattern_mon_pfxset_intime(self, mip, pfile_path, sdt_unix, edt_unix):
         fmy = open(self.updt_filel, 'r')
@@ -1208,9 +1399,22 @@ class Micro_fighter():
                         last_type = None
 
                     up = self.get_update_pattern(last_type, type, last_as_path, as_path, last_A, line)
-                    up_num = up['nom']
-                    if up_num != -1: # not the first update
-                        mp_dict[pfx].append(up_num)
+                    if up != -1: # not the first update
+                        mp_dict[pfx].append(up)
+
+                    # for debugging
+                    '''
+                    if count < 30 and up_num == 0:
+                        print '================================================'
+                        print up_num, num2upattern[up_num] 
+                        print 'last_type:', last_type
+                        print 'type:', type
+                        print 'last_as_path:', last_as_path
+                        print 'as_path:', as_path
+                        print 'last_A:', last_A
+                        print 'line:', line
+                        count += 1
+                    '''
 
                     if type == 'W':
                         mp_last_type[pfx] = 'W'
