@@ -1112,6 +1112,144 @@ class Micro_fighter():
         f.close()
 
 
+    def get_as_frequency_in_rib(self, as_set): 
+        # get the locations of RIBs
+        rib_list = list()
+        ribf = open(self.period.rib_info_file, 'r')
+        for line in ribf:
+            rib_path = line.rstrip('\n').split(':')[1]
+            rib_list.append(rib_path)
+        ribf.close()
+
+        asn2count = dict()
+        for asn in as_set:
+            asn2count[asn] = 0
+
+        ignore_monset = set() # avoid duplicate count of a monitor
+
+        total = 0
+        for fline in rib_list:
+            rib_monset = set() # the monitors in this RIB
+            print 'Reading ', fline
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attrs = line.split('|')
+                    path = attrs[6]
+                    mon = attrs[3]
+                    if mon in ignore_monset:
+                        continue
+
+                    total += 1
+                    as_path = set(path.split())
+                    common_set = as_path & as_set
+                    for asn in common_set:
+                        asn2count[asn] += 1
+
+                    rib_monset.add(mon)
+                except: # format error
+                    pass
+            myf.close()
+            ignore_monset = ignore_monset | rib_monset
+
+        print 'total=',total
+
+        out_dir = final_output_root + 'event_RIB_analysis/' + 'largestLBE/'
+        cmlib.make_dir(out_dir)
+
+        tmp_list = sorted(asn2count.items(), key=operator.itemgetter(1), reverse=True)
+        fo = open(out_dir + 'top_as_frenquency.txt', 'w')
+        for item in tmp_list:
+            fo.write(item[0]+':'+str(item[1])+'\n')
+        fo.close()
+    
+
+    def get_common_as_in_rib(self, mfile_path, pfile_path):
+        pfxset = set()
+        f = open(pfile_path,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile_path,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+
+        mon2pfx2as_list = dict() 
+        for mon in monset:
+            mon2pfx2as_list[mon] = dict()
+            for pfx in pfxset:
+                mon2pfx2as_list[mon][pfx] = list()
+
+
+        tpath = 0 # the number of total path
+        # get the locations of RIBs
+        rib_list = list()
+        ribf = open(self.period.rib_info_file, 'r')
+        for line in ribf:
+            rib_path = line.rstrip('\n').split(':')[1]
+            rib_list.append(rib_path)
+        ribf.close()
+
+        for fline in rib_list:
+            rib_monset = set() # the monitors in this RIB
+
+            print 'Reading ', fline
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attrs = line.split('|')
+
+                    pfx = attrs[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    mon = attrs[3]
+                    if mon not in monset:
+                        continue
+                    
+                    path = attrs[6]
+                    tpath += 1
+                    as_list = path.split()
+                    mon2pfx2as_list[mon][pfx] = as_list
+                    rib_monset.add(mon)
+                except: # format error
+                    pass
+            myf.close()
+            monset -= rib_monset
+
+        asn2count = dict()
+        for mon in mon2pfx2as_list:
+            for pfx in mon2pfx2as_list[mon]:
+                for asn in mon2pfx2as_list[mon][pfx]:
+                    try:
+                        asn2count[asn] += 1
+                    except:
+                        asn2count[asn] = 1
+
+        print 'total path: ', tpath
+
+        out_dir = final_output_root + 'event_RIB_analysis/' + 'largestLBE/'
+        cmlib.make_dir(out_dir)
+
+        tmp_list = sorted(asn2count.items(), key=operator.itemgetter(1), reverse=True)
+        fo2 = open(out_dir + 'frequent_as_in_path.txt', 'w')
+        for item in tmp_list:
+            fo2.write(item[0]+':'+str(item[1])+'\n')
+        fo2.close()
+
+
     def get_candidate_as(self, mfile_path, pfile_path, sdt_unix, edt_unix):
         pfxset = set()
         f = open(pfile_path,'r')

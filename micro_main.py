@@ -18,12 +18,12 @@ logging.info('Program starts!')
 index_list = [282]
 #index_list = [281,282,283,284,285,286,287,288,289,2810]
 
-pfx_set = set()
-f = open(datadir+'final_output/compfx_cluster1_1.txt')
-for line in f:
-    line = line.rstrip('\n')
-    pfx_set.add(line)
-f.close()
+#pfx_set = set()
+#f = open(datadir+'final_output/compfx_cluster1_1.txt')
+#for line in f:
+#    line = line.rstrip('\n')
+#    pfx_set.add(line)
+#f.close()
 
 for index in index_list:
     print 'index = ', index
@@ -103,7 +103,10 @@ for index in index_list:
 
     # get the common monitor set
     mfile_path = final_output_root + 'com_mon_largestLBE.txt'
-    mf.get_candidate_as(mfile_path, pfile_path, sdt_unix, edt_unix)
+    #mf.get_candidate_as(mfile_path, pfile_path, sdt_unix, edt_unix)
+    #mf.get_common_as_in_rib(mfile_path, pfile_path)
+    as_set = set(['209', '721', '27064', '3356', '22561', '174', '3257', '2914', '1299', '3549'])
+    mf.get_as_frequency_in_rib(as_set)
 
     '''
     f = open(mfile_path, 'r')
