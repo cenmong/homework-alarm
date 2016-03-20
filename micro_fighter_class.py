@@ -608,7 +608,7 @@ class Micro_fighter():
         for index in mon_iset:
             mon_set.add(i2ip[index])
 
-        pattern2count = dict()
+        pattern2tag = dict()
         # pfx=>xxxxxx, mon=>xxx, pfx+mon=>xxxxxxxxx, to save memory
         pfx2tag = dict()
         mon2tag = dict()
@@ -637,7 +637,7 @@ class Micro_fighter():
 
         num2type = num2upattern
         for n in num2type:
-            pattern2count[n] = set()
+            pattern2tag[n] = set()
 
         mp_dict = dict() # mon: prefix: successive update type series (0~5)
         mp_last_A = dict() # mon: prefix: latest full update
@@ -647,7 +647,9 @@ class Micro_fighter():
             mp_last_A[m] = dict() # NOTE: does not record W, only record A
             mp_last_type[m] = dict()
 
-        fpathlist = select_update_files(updt_files, sdt_unix, edt_unix)
+        total_update = 0
+
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
         for fpath in fpathlist:
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
@@ -667,6 +669,8 @@ class Micro_fighter():
                     unix = int(attr[1])
                     if unix < sdt_unix or unix > edt_unix:
                         continue
+
+                    total_update += 1
 
                     if type == 'A':
                         as_path = attr[6]
@@ -691,49 +695,14 @@ class Micro_fighter():
                     except: # this is the first update for the mon-pfx pair
                         last_type = None
 
-                    if last_type == 'W':
-                        if type == 'W':
-                            mp_dict[mon][pfx].append(0)
-                            pattern2count[0].add(the_tag)
-                            pattern2count[800].add(the_tag)
-                            pattern2count[801].add(the_tag)
-                        elif type == 'A':
-                            if last_as_path:
-                                if as_path == last_as_path:
-                                    mp_dict[mon][pfx].append(41)
-                                    pattern2count[41].add(the_tag)
-                                    pattern2count[799].add(the_tag)
-                                    pattern2count[801].add(the_tag)
-                                else:
-                                    mp_dict[mon][pfx].append(42)
-                                    pattern2count[42].add(the_tag)
-                                    pattern2count[799].add(the_tag)
-                                    pattern2count[798].add(the_tag)
-                            else: # no A record
-                                mp_dict[mon][pfx].append(40)
-                                pattern2count[40].add(the_tag)
-                            mp_last_A[mon][pfx] = line
-                
-                    elif last_type == 'A':
-                        if type == 'W':
-                            mp_dict[mon][pfx].append(5)
-                            pattern2count[5].add(the_tag)
-                        elif type == 'A':
-                            if line == last_A:
-                                mp_dict[mon][pfx].append(1)
-                                pattern2count[1].add(the_tag)
-                                pattern2count[800].add(the_tag)
-                                pattern2count[801].add(the_tag)
-                            elif as_path == last_as_path:
-                                mp_dict[mon][pfx].append(2)
-                                pattern2count[2].add(the_tag)
-                                pattern2count[802].add(the_tag)
-                            else:
-                                mp_dict[mon][pfx].append(3)
-                                pattern2count[3].add(the_tag)
-                                pattern2count[799].add(the_tag)
-                                pattern2count[798].add(the_tag)
-                            mp_last_A[mon][pfx] = line
+                    up = self.get_update_pattern(last_type, type, last_as_path, as_path, last_A, line)
+                    if up != -1: # not the first update
+                        try:
+                            mp_dict[mon][pfx].append(up)
+                        except:
+                            mp_dict[mon][pfx] = [up]
+
+                        pattern2tag[up].add(the_tag)
                 
                     if type == 'W':
                         mp_last_type[mon][pfx] = 'W'
@@ -744,9 +713,7 @@ class Micro_fighter():
                         assert False
                     
                 except Exception, err:
-                    if line != '':
-                        logging.info(traceback.format_exc())
-                        logging.info(line)
+                    pass
             myf.close()
 
 
@@ -782,8 +749,8 @@ class Micro_fighter():
         f.close()
 
         p2ratio = dict()
-        for p in pattern2count:
-            p2ratio[num2type[p]] = float(len(pattern2count[p])) / float(len(tag_set))
+        for p in pattern2tag:
+            p2ratio[num2type[p]] = float(len(pattern2tag[p])) / float(len(tag_set))
         sorted_list = sorted(p2ratio.items(), key=operator.itemgetter(1), reverse=True)
         if target_pset == None:
             f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones.txt', 'w')
@@ -795,6 +762,8 @@ class Micro_fighter():
             ratio = item[1]
             f.write(str(p)+':'+str(ratio)+'\n')
         f.close()
+
+        print 'Total update: ', total_update
 
 
     # Note: cannot compare unix time in the lines
@@ -1248,6 +1217,145 @@ class Micro_fighter():
         for item in tmp_list:
             fo2.write(item[0]+':'+str(item[1])+'\n')
         fo2.close()
+
+    def get_rib_end_states(self, mfile_path, pfile_path, sdt_unix, edt_unix):
+        pfxset = set()
+        f = open(pfile_path,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile_path,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+
+
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+        fmy.close()
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+
+        mp_last_update = dict() # mon: prefix: last update
+        for mon in monset:
+            mp_last_update[mon] = dict()
+
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    unix = int(attr[1])
+
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    mon = attr[3]
+                    if mon not in monset:
+                        continue
+
+                    pfx = attr[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    mp_last_update[mon][pfx] = line
+
+                except:
+                    pass
+            myf.close()
+
+
+
+        mp_rib_route = dict()
+        for mon in monset:
+            mp_rib_route[mon] = dict()
+
+        rib_list = list()
+        ribf = open(self.period.rib_info_file, 'r')
+        for line in ribf:
+            rib_path = line.rstrip('\n').split(':')[1]
+            rib_list.append(rib_path)
+        ribf.close()
+
+        for fline in rib_list:
+            rib_monset = set() # the monitors in this RIB
+            print 'Reading ', fline
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attrs = line.split('|')
+
+                    pfx = attrs[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    mon = attrs[3]
+                    if mon not in monset:
+                        continue
+                    
+                    mp_rib_route[mon][pfx] = line
+                    rib_monset.add(mon)
+                except: # format error
+                    pass
+            myf.close()
+            monset -= rib_monset
+
+
+        
+        mp_change = dict()
+        for mon in monset:
+            mp_change[mon] = dict()
+
+        for mon in mp_rib_route:
+            for pfx in mp_rib_route[mon]:
+                rib_route = mp_rib_route[mon][pfx]
+                try:
+                    # we care about only AADiff and AADup2 and ignore other changes
+                    last_update = mp_last_update[mon][pfx]
+                    last_attrs = last_update.split()
+                    last_type = last_attrs[2]
+                    if last_type == 'W':
+                        mp_change[mon][pfx] = -1 # withdrawn
+                        break
+
+                    last_path = last_attrs[6]
+
+                    rib_attrs = rib_route.split()
+                    rib_path = rib_attrs[6]
+
+                    if last_path != rib_path:
+                        mp_change[mon][pfx] = 1 # path change
+                        break
+
+                    # last_path == rib_path
+                    last_comm = last_attrs[11] # communities
+                    rib_comm = rib_attrs[11]
+                    if last_comm != rib_comm:
+                        mp_change[mon][pfx] = 2 # community change
+                    else:
+                        mp_change[mon][pfx] = 10 # path and community no change
+
+                except:
+                    mp_change[mon][pfx] = 0 # no data
+
+
+
+        # TODO present the result (per-monitor analysis? count the ratio of each type)
+
 
 
     def get_candidate_as(self, mfile_path, pfile_path, sdt_unix, edt_unix):
