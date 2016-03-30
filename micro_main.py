@@ -94,20 +94,21 @@ for index in index_list:
     #edt_unix = 1365661800
 
     sdt_unix = 1360813800
-    #edt_unix = 1360815000
-    edt_unix = 1360816200
+    edt_unix = 1360815000
+    #edt_unix = 1360816200
 
     #sdt_unix = 1378887000
     #edt_unix = 1378899000
-    pfile_path = final_output_root + 'compfx_largestLBE.txt'
 
-    # get the common monitor set
-    mfile_path = final_output_root + 'com_mon_largestLBE.txt'
-    mf.get_rib_end_states(mfile_path, pfile_path, sdt_unix, edt_unix)
-    #mf.get_candidate_as(mfile_path, pfile_path, sdt_unix, edt_unix)
-    #mf.get_common_as_in_rib(mfile_path, pfile_path)
-    #as_set = set(['209', '721', '27064', '3356', '22561', '174', '3257', '2914', '1299', '3549'])
-    #mf.get_as_frequency_in_rib(as_set)
+    tagstr = 'largestLBE'
+    pfile_path = final_output_root + 'compfx_' + tagstr +'.txt'
+    mfile_path = final_output_root + 'com_mon_' + tagstr + '.txt'
+
+    #mf.get_rib_end_states(sdt_unix, sdt_unix, sdt_unix, edt_unix)
+    mf.get_change_detail(sdt_unix, sdt_unix, edt_unix)
+    
+    #mf.get_as_recall_in_rib(sdt_unix, sdt_unix)
+    #mf.get_as_precision_in_rib(sdt_unix, sdt_unix)
 
     '''
     f = open(mfile_path, 'r')

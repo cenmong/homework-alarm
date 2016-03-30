@@ -1081,97 +1081,146 @@ class Micro_fighter():
         f.close()
 
 
-    def get_as_frequency_in_rib(self, as_set): 
-        # get the locations of RIBs
-        rib_list = list()
-        ribf = open(self.period.rib_info_file, 'r')
-        for line in ribf:
-            rib_path = line.rstrip('\n').split(':')[1]
-            rib_list.append(rib_path)
-        ribf.close()
+
+    def get_rib_list_for_unix(self, event_start_unix):
+        rlist = list()
+
+        dir = final_output_root + 'additional_rib_list/'
+        fname = str(self.period.index) + '_' + str(event_start_unix) + '.txt'
+        f = open(dir+fname, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            rlist.append(line)
+        f.close()
+
+        return rlist
+
+
+    def get_as_precision_in_rib(self, lbe_unix, rib_unix): 
+        setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
+        monset = setlist[1]
+
+        as_set = set()
+        asn2recall_int = dict()
+
+        out_dir = final_output_root + 'event_RIB_analysis/' + str(self.period.index) + '/' +\
+                str(rib_unix) + '/'
+        fname = str(lbe_unix) + '_as_recall.txt'
+        fi = open(out_dir + fname, 'r')
+
+        count = 0
+        for line in fi:
+            count += 1
+            asn = line.split(':')[0] # string
+            freq = int(line.split('|')[0].split(':')[1]) # ingeter
+            as_set.add(asn)
+            asn2recall_int[asn] = freq
+            if count == 50: # get only the top N ASes
+                break
+        fi.close()
+
+
+
+        rib_list = self.get_rib_list_for_unix(rib_unix)
 
         asn2count = dict()
         for asn in as_set:
             asn2count[asn] = 0
 
-        ignore_monset = set() # avoid duplicate count of a monitor
-
         total = 0
         for fline in rib_list:
-            rib_monset = set() # the monitors in this RIB
             print 'Reading ', fline
-            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+
+            co = cmlib.get_co_from_updt_path(fline)
+            co_monset = set(self.period.co_mo[co])
+            common_monset = co_monset & monset
+
+            p = subprocess.Popen(['zcat', fline], stdout=subprocess.PIPE, close_fds=True)
             myf = StringIO(p.communicate()[0])
             assert p.returncode == 0
             for line in myf:
                 try:
                     line = line.rstrip('\n')
                     attrs = line.split('|')
-                    path = attrs[6]
                     mon = attrs[3]
-                    if mon in ignore_monset:
-                        continue
+                    if mon not in common_monset:
+                         continue
 
+                    path = attrs[6]
                     total += 1
                     as_path = set(path.split())
-                    common_set = as_path & as_set
-                    for asn in common_set:
+                    common_asset = as_path & as_set
+                    for asn in common_asset:
                         asn2count[asn] += 1
 
-                    rib_monset.add(mon)
                 except: # format error
                     pass
             myf.close()
-            ignore_monset = ignore_monset | rib_monset
 
         print 'total=',total
 
-        out_dir = final_output_root + 'event_RIB_analysis/' + 'largestLBE/'
-        cmlib.make_dir(out_dir)
+        fname = str(lbe_unix) + '_as_precision.txt'
 
         tmp_list = sorted(asn2count.items(), key=operator.itemgetter(1), reverse=True)
-        fo = open(out_dir + 'top_as_frenquency.txt', 'w')
+        fo = open(out_dir + fname, 'w')
         for item in tmp_list:
-            fo.write(item[0]+':'+str(item[1])+'\n')
+            asn = item[0]
+            freq = asn2recall_int[asn]
+            fo.write(asn+':'+str(item[1])+'|'+str(float(freq)/float(item[1]))+'\n')
         fo.close()
     
 
-    def get_common_as_in_rib(self, mfile_path, pfile_path):
+    def get_pset_mset_from_lbe_unix(self, lbe_unix):
         pfxset = set()
-        f = open(pfile_path,'r')
+        mon_index_set = set() # index
+        monset = set() # ip
+
+        # get the prefix and monitor sets of this LBE
+        event_detail_fname = self.reaper.get_output_dir_event() + str(lbe_unix) + '.txt'
+        f = open(event_detail_fname, 'r')
         for line in f:
             line = line.rstrip('\n')
-            pfxset.add(line)
+            if '#' in line: # monitor line
+                mon_index_set = set(ast.literal_eval(line.split('set')[1]))
+                print mon_index_set
+            else:
+                pfx = line.split(':')[0]
+                pfxset.add(pfx)
         f.close()
 
-        monset = set()
-        f = open(mfile_path,'r')
+        index2ip = dict()
+        f = open(self.period.get_mon2index_file_path(), 'r')
         for line in f:
             line = line.rstrip('\n')
-            monset.add(line)
+            index2ip[int(line.split(':')[1])] = line.split(':')[0]
         f.close()
 
+        for i in mon_index_set:
+            monset.add(index2ip[i])
 
-        mon2pfx2as_list = dict() 
-        for mon in monset:
-            mon2pfx2as_list[mon] = dict()
-            for pfx in pfxset:
-                mon2pfx2as_list[mon][pfx] = list()
+        return [pfxset, monset]
 
 
+
+    # lbe_unix: the unix time of the LBE under investigation
+    # rib_unix: the unix time that decides the set of RIBs to use
+    def get_as_recall_in_rib(self, lbe_unix, rib_unix):
+        setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
+        pfxset = setlist[0]        
+        monset = setlist[1]
+
+        rib_list = self.get_rib_list_for_unix(rib_unix)
+        asn2count = dict()
         tpath = 0 # the number of total path
-        # get the locations of RIBs
-        rib_list = list()
-        ribf = open(self.period.rib_info_file, 'r')
-        for line in ribf:
-            rib_path = line.rstrip('\n').split(':')[1]
-            rib_list.append(rib_path)
-        ribf.close()
+
 
         for fline in rib_list:
-            rib_monset = set() # the monitors in this RIB
-
             print 'Reading ', fline
+
+            co = cmlib.get_co_from_updt_path(fline)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
             p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
             myf = StringIO(p.communicate()[0])
             assert p.returncode == 0
@@ -1185,53 +1234,40 @@ class Micro_fighter():
                         continue
 
                     mon = attrs[3]
-                    if mon not in monset:
+                    if mon not in common_set:
                         continue
-                    
+
                     path = attrs[6]
                     tpath += 1
-                    as_list = path.split()
-                    mon2pfx2as_list[mon][pfx] = as_list
-                    rib_monset.add(mon)
+                    as_set = set(path.split())
+                    for asn in as_set:
+                        try:
+                            asn2count[asn] += 1
+                        except:
+                            asn2count[asn] = 1
                 except: # format error
                     pass
             myf.close()
-            monset -= rib_monset
 
-        asn2count = dict()
-        for mon in mon2pfx2as_list:
-            for pfx in mon2pfx2as_list[mon]:
-                for asn in mon2pfx2as_list[mon][pfx]:
-                    try:
-                        asn2count[asn] += 1
-                    except:
-                        asn2count[asn] = 1
+        print 'total paths: ', tpath
 
-        print 'total path: ', tpath
-
-        out_dir = final_output_root + 'event_RIB_analysis/' + 'largestLBE/'
+        out_dir = final_output_root + 'event_RIB_analysis/' + str(self.period.index) + '/' +\
+                str(rib_unix) + '/'
         cmlib.make_dir(out_dir)
+        fname = str(lbe_unix) + '_as_recall.txt'
 
         tmp_list = sorted(asn2count.items(), key=operator.itemgetter(1), reverse=True)
-        fo2 = open(out_dir + 'frequent_as_in_path.txt', 'w')
+        fo = open(out_dir + fname, 'w')
         for item in tmp_list:
-            fo2.write(item[0]+':'+str(item[1])+'\n')
-        fo2.close()
+            fo.write(item[0]+':'+str(item[1])+'|'+str(float(item[1])/float(tpath))+'\n')
+        fo.write('total paths:' + str(tpath) + '\n')
+        fo.close()
 
-    def get_rib_end_states(self, mfile_path, pfile_path, sdt_unix, edt_unix):
-        pfxset = set()
-        f = open(pfile_path,'r')
-        for line in f:
-            line = line.rstrip('\n')
-            pfxset.add(line)
-        f.close()
 
-        monset = set()
-        f = open(mfile_path,'r')
-        for line in f:
-            line = line.rstrip('\n')
-            monset.add(line)
-        f.close()
+    def get_rib_end_states(self, lbe_unix, rib_unix, sdt_unix, edt_unix):
+        setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
+        pfxset = setlist[0]        
+        monset = setlist[1]
 
 
 
@@ -1244,14 +1280,23 @@ class Micro_fighter():
         fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
 
         mp_last_update = dict() # mon: prefix: last update
+        mp_rib_route = dict()
+        mp_change = dict()
         for mon in monset:
             mp_last_update[mon] = dict()
+            mp_rib_route[mon] = dict()
+            mp_change[mon] = dict()
 
         for fpath in fpathlist:
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
             myf = StringIO(p.communicate()[0])
             assert p.returncode == 0
+
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
             for line in myf:
                 try:
                     line = line.rstrip('\n')
@@ -1262,7 +1307,7 @@ class Micro_fighter():
                         continue
 
                     mon = attr[3]
-                    if mon not in monset:
+                    if mon not in common_set:
                         continue
 
                     pfx = attr[5]
@@ -1277,23 +1322,17 @@ class Micro_fighter():
 
 
 
-        mp_rib_route = dict()
-        for mon in monset:
-            mp_rib_route[mon] = dict()
-
-        rib_list = list()
-        ribf = open(self.period.rib_info_file, 'r')
-        for line in ribf:
-            rib_path = line.rstrip('\n').split(':')[1]
-            rib_list.append(rib_path)
-        ribf.close()
-
+        rib_list = self.get_rib_list_for_unix(rib_unix)
         for fline in rib_list:
-            rib_monset = set() # the monitors in this RIB
             print 'Reading ', fline
             p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
             myf = StringIO(p.communicate()[0])
             assert p.returncode == 0
+
+            co = cmlib.get_co_from_updt_path(fline)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
             for line in myf:
                 try:
                     line = line.rstrip('\n')
@@ -1304,74 +1343,86 @@ class Micro_fighter():
                         continue
 
                     mon = attrs[3]
-                    if mon not in monset:
+                    if mon not in common_set:
                         continue
                     
                     mp_rib_route[mon][pfx] = line
-                    rib_monset.add(mon)
                 except: # format error
                     pass
             myf.close()
-            monset -= rib_monset
-
 
         
-        mp_change = dict()
-        for mon in monset:
-            mp_change[mon] = dict()
 
         for mon in mp_rib_route:
+            print 'Getting change for monitor ', mon
             for pfx in mp_rib_route[mon]:
-                rib_route = mp_rib_route[mon][pfx]
                 try:
                     # we care about only AADiff and AADup2 and ignore other changes
                     last_update = mp_last_update[mon][pfx]
-                    last_attrs = last_update.split()
+                except: # no last_update or last update incomplete
+                    mp_change[mon][pfx] = 0 # no data
+                    continue
+
+                rib_route = mp_rib_route[mon][pfx]
+                try:
+                    last_attrs = last_update.split('|')
                     last_type = last_attrs[2]
                     if last_type == 'W':
                         mp_change[mon][pfx] = -1 # withdrawn
-                        break
+                        continue
 
                     last_path = last_attrs[6]
 
-                    rib_attrs = rib_route.split()
+                    rib_attrs = rib_route.split('|')
                     rib_path = rib_attrs[6]
 
                     if last_path != rib_path:
                         mp_change[mon][pfx] = 1 # path change
-                        break
+                        continue
 
-                    # last_path == rib_path
                     last_comm = last_attrs[11] # communities
                     rib_comm = rib_attrs[11]
                     if last_comm != rib_comm:
                         mp_change[mon][pfx] = 2 # community change
                     else:
                         mp_change[mon][pfx] = 10 # path and community no change
-
                 except:
-                    mp_change[mon][pfx] = 0 # no data
+                    mp_change[mon][pfx] = 20 # format error
 
 
 
-        # TODO present the result (per-monitor analysis? count the ratio of each type)
+        # present the result
+        mon2change_dict = dict()
+        for mon in mp_change:
+            change2count = dict()
+            for pfx in mp_change[mon]:
+                change = mp_change[mon][pfx]
+                try:
+                    change2count[change] += 1
+                except:
+                    change2count[change] = 1
+
+            mon2change_dict[mon] = change2count
 
 
 
-    def get_candidate_as(self, mfile_path, pfile_path, sdt_unix, edt_unix):
-        pfxset = set()
-        f = open(pfile_path,'r')
-        for line in f:
-            line = line.rstrip('\n')
-            pfxset.add(line)
-        f.close()
+        out_dir = final_output_root + 'change_analysis/' + str(lbe_unix) + '_' +\
+                str(rib_unix) + '_' + str(sdt_unix) + '_' + str(edt_unix) + '/'
+        cmlib.make_dir(out_dir)
 
-        monset = set()
-        f = open(mfile_path,'r')
-        for line in f:
-            line = line.rstrip('\n')
-            monset.add(line)
-        f.close()
+        
+        out_path = out_dir + 'rib_end_change.txt'
+        fo = open(out_path, 'w')
+        for mon in mon2change_dict:
+            fo.write(mon+':'+str(mon2change_dict[mon])+'\n')
+        fo.close()
+
+
+
+    def get_change_detail(self, lbe_unix, sdt_unix, edt_unix):
+        setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
+        pfxset = setlist[0]        
+        monset = setlist[1]
 
         updt_files = list()
         fmy = open(self.updt_filel, 'r')
@@ -1399,6 +1450,11 @@ class Micro_fighter():
 
         for fpath in fpathlist:
             print 'Reading ', fpath
+
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
             p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
             myf = StringIO(p.communicate()[0])
             assert p.returncode == 0
@@ -1412,7 +1468,7 @@ class Micro_fighter():
                         continue
 
                     mon = attr[3]
-                    if mon not in monset:
+                    if mon not in common_set:
                         continue
 
                     pfx = attr[5]
@@ -1500,7 +1556,7 @@ class Micro_fighter():
                             try:
                                 com_change2count[combo] += 1
                             except:
-                                com_change2count[combo] = 0
+                                com_change2count[combo] = 1
                             community_change += 1
                         except:
                             other_change += 1
@@ -1527,7 +1583,7 @@ class Micro_fighter():
                     pass
             myf.close()
 
-        out_dir = final_output_root + 'change_analysis/' + str(sdt_unix) + '_' +\
+        out_dir = final_output_root + 'change_analysis/' + str(lbe_unix) + '_' + str(sdt_unix) + '_' +\
                 str(edt_unix) + '/'
         cmlib.make_dir(out_dir)
 

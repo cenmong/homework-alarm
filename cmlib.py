@@ -528,3 +528,10 @@ def select_update_files(flist, sdt, edt):
             goallist.append(fpath)
 
     return goallist
+
+
+def get_co_from_updt_path(path):
+    co = path.split('/')[4]
+    if co == 'bgpdata':
+        co = ''
+    return co

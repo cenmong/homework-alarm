@@ -19,6 +19,7 @@ import shutil
 import numpy as np
 logging.basicConfig(filename='all.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
+import time as time_lib
 from env import *
 from cStringIO import StringIO
 #from guppy import hpy
@@ -238,6 +239,87 @@ class Downloader():
                 rib_full_loc = self.download_one_rib(date)
                 rib_list.append(rib_full_loc)
             self.rib_list = rib_list
+
+
+    def download_one_rib_before_unix(self, my_date, unix): # my_date for deciding month
+        tmp_month = my_date[0:4] + '.' + my_date[4:6]
+        if self.co.startswith('rrc'):
+            web_location = rrc_root + self.co + '/' + tmp_month + '/' 
+        else:
+            web_location = rv_root + self.co + '/bgpdata/' + tmp_month + '/RIBS/'
+            web_location = web_location.replace('//', '/')
+
+        try:
+            webraw = cmlib.get_weblist('http://' + web_location)
+            print 'Getting list from ' + 'http://' + web_location
+        except:
+            return -1
+
+        cmlib.make_dir(datadir+web_location)
+
+        #----------------------------------------------------------------
+        # select a RIB file right before the unix and with reasonable (not strange) file size
+        rib_list = webraw.split('\n')
+        filter(lambda a: a != '', rib_list)
+        filter(lambda a: a != '\n', rib_list)
+        rib_list = [item for item in rib_list if 'rib' in item or 'bview' in item]
+
+        sizelist = list()
+        for line in rib_list:
+            size = line.split()[-1]
+            fsize = cmlib.parse_size(size)
+            sizelist.append(fsize)
+
+        avg = np.mean(sizelist) 
+
+        ok_rib_list = list() # RIBs whose size is OK
+        for line in rib_list:
+            fsize = cmlib.parse_size(line.split()[-1])
+            if fsize > 0.9 * avg:
+                ok_rib_list.append(line)
+
+        target_line = None # the RIB closest to unix 
+        min = 9999999999
+        for line in ok_rib_list:
+            fdate = line.split()[0].split('.')[-3]
+            ftime = line.split()[0].split('.')[-2][0:2]
+            dtstr = fdate+ftime
+            objdt = datetime.datetime.strptime(dtstr, '%Y%m%d%H') 
+            runix = time_lib.mktime(objdt.timetuple())
+            if runix <= unix and unix-runix < min:
+                min = unix-runix
+                print 'min changed to ', min
+                target_line = line
+
+        print 'Selected RIB:', target_line
+        size = target_line.split()[-1] # claimed RIB file size
+        fsize = cmlib.parse_size(size)
+
+        filename = target_line.split()[0]
+        full_loc = datadir + web_location + filename # .bz2/.gz
+
+        if os.path.exists(full_loc+'.txt'): # only for clearer logic
+            os.remove(full_loc+'.txt')
+
+        #------------------------------------------------------------------
+        # Download the RIB
+        if os.path.exists(full_loc+'.txt.gz'): 
+            print 'existed!!!!!!!!!!!!'
+            return full_loc+'.txt.gz' # Do not download
+
+        if os.path.exists(full_loc): 
+            cmlib.parse_mrt(full_loc, full_loc+'.txt', fsize)
+            cmlib.pack_gz(full_loc+'.txt')
+            return full_loc+'.txt.gz'
+
+
+        cmlib.force_download_file('http://'+web_location, datadir+web_location, filename)
+        cmlib.parse_mrt(full_loc, full_loc+'.txt', fsize)
+        cmlib.pack_gz(full_loc+'.txt')
+        os.remove(full_loc) # remove the original file
+
+        return full_loc+'.txt.gz'
+
 
     def download_one_rib(self, my_date):
         tmp_month = my_date[0:4] + '.' + my_date[4:6]
@@ -580,9 +662,32 @@ class Downloader():
         if time_found == False: # Very rarely happens!
             logging.error('%s:Cannot find time in the files!!!!!!!(Error)', self.co)
 
+if __name__ == '__main__':
+    order = 282
+    unix = 1360813800
+
+    sdate = daterange[order][0]
+    edate = daterange[order][1]
+
+    rib_files = list()
+    for co in all_collectors.keys():
+        dl = Downloader(sdate, edate, co)
+        rfilepath = dl.download_one_rib_before_unix(sdate, unix) # download RIB       
+        if rfilepath != -1: # cannot get 
+            rib_files.append(rfilepath)
+
+    # output the rib file-list
+    dir = final_output_root + 'additional_rib_list/' 
+    cmlib.make_dir(dir)
+    ofpath = dir + str(order) + '_' + str(unix) + '.txt'
+    f = open(ofpath, 'w')
+    for rpath in rib_files:
+        f.write(rpath + '\n')
+    f.close()
+
 #----------------------------------------------------------------------------
 # The main function
-if __name__ == '__main__':
+if __name__ == '__main__' and 1 == 2:
     order_list = [303]
     # we select all collectors that have appropriate start dates
     collector_list = dict()
