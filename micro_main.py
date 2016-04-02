@@ -15,7 +15,7 @@ import ast
 logging.info('Program starts!')
 
 #index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-index_list = [282]
+index_list = [284]
 #index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 #pfx_set = set()
@@ -75,18 +75,19 @@ for index in index_list:
     # obtain the update pattern for all LBEs
     events = reaper.get_event_dict()
     for unix_dt in events.keys():
+        if unix_dt != cluster1_1[0]:
+            continue
         thelist = events[unix_dt]
         rsize = thelist[0]
         if rsize > global_rsize_threshold:
             mf.event_update_pattern(unix_dt, None) # Do only once for each LBE
+    '''
 
     #micro_fighter.set_sedate(sdt_obj, edt_obj)
     #micro_fighter.analyze_pfx()
 
     #mf.event_as_link_rank(1365604200)
     #mf.event_analyze_pfx(1365604200)
-    '''
-
     pl = Plotter(reaper)
 
     #sdt_unix = 1365579000 
@@ -105,10 +106,15 @@ for index in index_list:
     mfile_path = final_output_root + 'com_mon_' + tagstr + '.txt'
 
     #mf.get_rib_end_states(sdt_unix, sdt_unix, sdt_unix, edt_unix)
-    mf.get_change_detail(sdt_unix, sdt_unix, edt_unix)
+    sdt_unix = cluster1_1[0]
+    rib_unix = cluster1_1[0]
+    #mf.get_change_detail(sdt_unix, rib_unix, sdt_unix, sdt_unix + 1200)
+    mf.get_withdrawn_pfx(sdt_unix, rib_unix, sdt_unix, sdt_unix + 1200)
     
-    #mf.get_as_recall_in_rib(sdt_unix, sdt_unix)
-    #mf.get_as_precision_in_rib(sdt_unix, sdt_unix)
+    #for sdt_unix in cluster1_1:
+        #mf.get_as_recall_in_rib(sdt_unix, rib_unix)
+        #mf.get_as_precision_in_rib(sdt_unix, rib_unix)
+    #mf.get_origin_in_rib(sdt_unix, rib_unix)
 
     '''
     f = open(mfile_path, 'r')

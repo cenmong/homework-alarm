@@ -285,13 +285,16 @@ class Downloader():
             ftime = line.split()[0].split('.')[-2][0:2]
             dtstr = fdate+ftime
             objdt = datetime.datetime.strptime(dtstr, '%Y%m%d%H') 
-            runix = time_lib.mktime(objdt.timetuple())
+            runix = time_lib.mktime(objdt.timetuple()) + 8*60*60 # F**k! Time zone!
+            print objdt, runix, unix
             if runix <= unix and unix-runix < min:
                 min = unix-runix
                 print 'min changed to ', min
                 target_line = line
 
         print 'Selected RIB:', target_line
+        if target_line == None:
+            return -1
         size = target_line.split()[-1] # claimed RIB file size
         fsize = cmlib.parse_size(size)
 
@@ -664,7 +667,7 @@ class Downloader():
 
 if __name__ == '__main__':
     order = 282
-    unix = 1360813800
+    unix = largest_dt
 
     sdate = daterange[order][0]
     edate = daterange[order][1]

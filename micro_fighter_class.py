@@ -651,6 +651,10 @@ class Micro_fighter():
 
         fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
         for fpath in fpathlist:
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_monset = co_monset & mon_set
+
             print 'Reading ', fpath
             p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
             myf = StringIO(p.communicate()[0])
@@ -663,7 +667,7 @@ class Micro_fighter():
                     type = attr[2]
                     mon = attr[3]
 
-                    if (mon not in mon_set) or (pfx not in pfx_set):
+                    if (mon not in common_monset) or (pfx not in pfx_set):
                         continue
 
                     unix = int(attr[1])
@@ -1096,6 +1100,102 @@ class Micro_fighter():
         return rlist
 
 
+    def get_origin_in_rib(self, lbe_unix, rib_unix):
+        setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
+        pfxset = setlist[0]        
+        monset = setlist[1]
+
+        print 'Building prefix to origin AS radix tree'
+        pfx2as_radix = radix.Radix()
+        rib_list = self.get_rib_list_for_unix(rib_unix)
+        for fline in rib_list:
+            print 'Reading ', fline
+
+            co = cmlib.get_co_from_updt_path(fline)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attrs = line.split('|')
+
+                    mon = attrs[3]
+                    if mon not in common_set:
+                        continue
+
+                    pfx = attrs[5]
+
+                    path = attrs[6]
+                    origin = path.split()[-1] # origin is a string
+
+                    # FIXME we ignore multi-homing now
+                    rnode = pfx2as_radix.add(pfx)
+                    rnode.data[0] = origin
+                except: # format error
+                    pass
+            myf.close()
+
+
+
+        print 'Getting origin ASes of target prefixes'
+        non_exact_p2a = dict()
+        exact_p2a = dict() # exact prefix matching
+
+
+        for pfx in pfxset:
+            rnode = pfx2as_radix.search_best(pfx) # longest prefix matching
+            try:
+                asn = rnode.data[0]
+                if pfx == rnode.prefix:
+                    exact_p2a[pfx] = asn
+                else:
+                    non_exact_p2a[pfx] = asn
+            except:
+                asn = -1
+
+        non_exact_a2p = dict() # only for easier output presentation
+        for pfx in non_exact_p2a:
+            asn = non_exact_p2a[pfx]
+            try:
+                non_exact_a2p[asn].add(pfx)
+            except:
+                non_exact_a2p[asn] = set([pfx])
+
+        exact_a2p = dict() # only for easier output presentation
+        for pfx in exact_p2a:
+            asn = exact_p2a[pfx]
+            try:
+                exact_a2p[asn].add(pfx)
+            except:
+                exact_a2p[asn] = set([pfx])
+
+
+
+        # Output everything
+        out_dir = final_output_root + 'event_RIB_analysis/' + str(self.period.index) + '/' +\
+                str(rib_unix) + '/'
+        cmlib.make_dir(out_dir)
+        fname = str(lbe_unix) + '_pfx2origin.txt'
+
+        f = open(out_dir + fname, 'w')
+        for pfx in non_exact_p2a:
+            f.write('N|'+pfx+':'+str(non_exact_p2a[pfx])+'\n')
+        for pfx in exact_p2a:
+            f.write('E|'+pfx+':'+str(exact_p2a[pfx])+'\n')
+
+        for asn in non_exact_a2p:
+            f.write('N#|'+str(asn)+':'+str(len(non_exact_a2p[asn]))+'\n')
+        for asn in exact_a2p:
+            f.write('E#|'+str(asn)+':'+str(len(exact_a2p[asn]))+'\n')
+
+        f.close()
+
+
+
     def get_as_precision_in_rib(self, lbe_unix, rib_unix): 
         setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
         monset = setlist[1]
@@ -1417,6 +1517,100 @@ class Micro_fighter():
             fo.write(mon+':'+str(mon2change_dict[mon])+'\n')
         fo.close()
 
+    
+    def get_withdrawn_pfx(self, lbe_unix, rib_unix, sdt_unix, edt_unix):
+        setlist = self.get_pset_mset_from_lbe_unix(lbe_unix)
+        pfxset = setlist[0]        
+        monset = setlist[1]
+
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+        fmy.close()
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+
+        mp_ending_type = dict()
+        for m in monset:
+            mp_ending_type[m] = dict()
+
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
+            p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    unix = int(attr[1])
+
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    mon = attr[3]
+                    if mon not in common_set:
+                        continue
+
+                    pfx = attr[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    type = attr[2]
+                    mp_ending_type[mon][pfx] = type
+                except:
+                    pass
+
+        
+        mon2pfx_set = dict() # monitor -> all observed prefixes in updates
+        mon2withdrawn_set = dict()
+        for mon in monset:
+            mon2withdrawn_set[mon] = set()
+            mon2pfx_set[mon] = set()
+            for pfx in mp_ending_type[mon]:
+                mon2pfx_set[mon].add(pfx)
+                if mp_ending_type[mon][pfx] == 'W':
+                    mon2withdrawn_set[mon].add(pfx)
+            print mon, ':', len(mon2withdrawn_set[mon])
+
+
+
+        # Compare the withdrawn set to the interesting prefixes in cluster 1
+        pfxset_lpm_9121 = set()
+        in_dir = final_output_root + 'event_RIB_analysis/' + str(self.period.index) + '/' +\
+                str(rib_unix) + '/'
+        cmlib.make_dir(in_dir)
+        fname = str(lbe_unix) + '_pfx2origin.txt'
+        f = open(in_dir+fname, 'r')
+        for line in f:
+            if not line.startswith('N|'):
+                continue
+            line = line.rstrip('\n').replace('N|','')
+            pfx = line.split(':')[0]
+            asn = line.split(':')[1]
+            if asn == '9121':
+                pfxset_lpm_9121.add(pfx)
+        f.close()
+    
+
+
+        out_dir = final_output_root + 'change_analysis/' + str(lbe_unix) + '_' + str(sdt_unix) + '_' +\
+                str(edt_unix) + '/'
+        cmlib.make_dir(out_dir)
+        out_path = out_dir + 'withdrawn_pfx_9121_lpm.txt'
+        f = open(out_path, 'w')
+        for mon in mon2pfx_set.keys():
+            common_pset = pfxset_lpm_9121 & mon2pfx_set[mon]
+            w_pset = pfxset_lpm_9121 & mon2withdrawn_set[mon]
+            f.write(mon+':'+str(len(common_pset))+'|'+str(len(w_pset))+'\n')
+        f.close()
+        
 
 
     def get_change_detail(self, lbe_unix, sdt_unix, edt_unix):
@@ -1604,8 +1798,8 @@ class Micro_fighter():
         fo3 = open(out_dir + 'community_change.txt', 'w')
         for item in tmp_list:
             fo3.write(str(item[0])+':'+str(item[1])+'\n')
+        fo3.write('Community change:'+str(community_change)+'. Other change:'+str(other_change))
         fo3.close()
-        print community_change, other_change
 
     # pfile_path: None or the prefix file path
     def upattern_mon_pfxset_intime(self, mip, pfile_path, sdt_unix, edt_unix):
