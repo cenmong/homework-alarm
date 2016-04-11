@@ -2148,3 +2148,61 @@ class Plotter():
         plt.clf() # clear the figure
         plt.close()
         
+    def rib_end_change(self, lbe_unix, rib_unix, sdt_unix, edt_unix):
+        type_num_list = [10, 1, 2, -1]
+        type_list = ['No change', 'Path change', 'Community change', 'Withdrawn']
+        num2name = {10:'No change',1:'Path change',2:'Community change',-1:'Withdrawn'}
+
+        print 'Plotting RIB-end changes'
+
+        dictlist = list() # a list of dict
+        dir = final_output_root+'change_analysis/'+str(lbe_unix)+'_'+\
+                str(rib_unix)+'_'+str(sdt_unix)+'_'+str(edt_unix)+'/'
+        fpath = dir+'rib_end_change.txt'
+        f = open(fpath, 'r')
+        for line in f:
+            line = line.rstrip('\n')
+            thedict = ast.literal_eval('{'+line.split(':{')[1])
+            dictlist.append(thedict)
+        f.close()
+
+        new_dictlist = sorted(dictlist, key=lambda k: k[10], reverse=True)
+
+        t2list = dict()
+        for t in type_num_list:
+            t2list[t] = list()
+        for mydict in new_dictlist:
+            for t in type_num_list:
+                if t in mydict:
+                    t2list[t].append(mydict[t])
+                else:
+                    t2list[t].append(0)
+
+
+        fig = plt.figure(figsize=(30, 10))
+        ax = fig.add_subplot(111)
+        loc = list()
+        for i in xrange(1, len(new_dictlist)+1):
+            loc.append(i)
+
+        width = 0.5
+        p1=plt.bar(loc, t2list[10],width,color=colors[0])
+        p2=plt.bar(loc, t2list[1],width,color=colors[1],bottom=t2list[10])
+        tmp = map(add, t2list[10], t2list[1])
+        p3=plt.bar(loc, t2list[2],width,color=colors[2],bottom=tmp)
+        tmp = map(add, tmp, t2list[2])
+        p4=plt.bar(loc, t2list[-1],width,color=colors[3],bottom=tmp)
+
+
+        ax.tick_params(axis='y',pad=10)
+        ax.tick_params(axis='x',pad=10)
+        ax.set_ylabel('Number of each category')
+        ax.set_xlabel('Monitor sequence')
+        ax.set_xlim([0,len(new_dictlist)+1])
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        plt.legend((p1[0],p2[0],p3[0],p4[0]),('No change', 'Path change', 'Community change', 'Withdrawn'),loc='lower left')
+
+        output_loc = dir + 'rib_end_change.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()

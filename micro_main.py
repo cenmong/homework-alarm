@@ -15,7 +15,7 @@ import ast
 logging.info('Program starts!')
 
 #index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-index_list = [284]
+index_list = [282]
 #index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 #pfx_set = set()
@@ -75,7 +75,7 @@ for index in index_list:
     # obtain the update pattern for all LBEs
     events = reaper.get_event_dict()
     for unix_dt in events.keys():
-        if unix_dt != cluster1_1[0]:
+        if unix_dt not in cluster3:
             continue
         thelist = events[unix_dt]
         rsize = thelist[0]
@@ -90,31 +90,38 @@ for index in index_list:
     #mf.event_analyze_pfx(1365604200)
     pl = Plotter(reaper)
 
-    #sdt_unix = 1365579000 
-    #sdt_unix = 1365576600 
-    #edt_unix = 1365661800
+    sdt_unix = 1378887000
+    edt_unix = 1378899000
 
-    sdt_unix = 1360813800
-    edt_unix = 1360815000
-    #edt_unix = 1360816200
-
-    #sdt_unix = 1378887000
-    #edt_unix = 1378899000
-
-    tagstr = 'largestLBE'
-    pfile_path = final_output_root + 'compfx_' + tagstr +'.txt'
-    mfile_path = final_output_root + 'com_mon_' + tagstr + '.txt'
 
     #mf.get_rib_end_states(sdt_unix, sdt_unix, sdt_unix, edt_unix)
-    sdt_unix = cluster1_1[0]
-    rib_unix = cluster1_1[0]
-    #mf.get_change_detail(sdt_unix, rib_unix, sdt_unix, sdt_unix + 1200)
-    mf.get_withdrawn_pfx(sdt_unix, rib_unix, sdt_unix, sdt_unix + 1200)
+    #sdt_unix = cluster3[0]
+    pfile = final_output_root + 'compfx_cluster3.txt'
+    mfile = final_output_root + 'com_mon_cluster3.txt'
+    #mf.get_LPM_in_rib_pmfile(pfile, mfile, rib_unix)
+    #mf.get_as_recall_in_rib_pmfile(pfile, mfile, rib_unix)
+    #mf.get_as_recall_in_update_pmfile(pfile, mfile, sdt_unix, edt_unix)
+    #mf.get_change_detail(sdt_unix, sdt_unix, sdt_unix + 1200)
+    #mf.get_as_recall_in_rib(sdt_unix, rib_unix)
+    #mf.get_as_precision_in_rib(sdt_unix, rib_unix)
+    #mf.get_origin_in_rib(sdt_unix, rib_unix)
+    count = 0
+    rib_unix = cluster1_2[0]
+    for sdt_unix in cluster1_2:
+        count += 1
+        #print 'Now:', count
+        #mf.get_origin_in_rib(sdt_unix, rib_unix)
+        #mf.get_withdrawn_pfx(sdt_unix, rib_unix, sdt_unix, sdt_unix + 1200)
     
-    #for sdt_unix in cluster1_1:
         #mf.get_as_recall_in_rib(sdt_unix, rib_unix)
         #mf.get_as_precision_in_rib(sdt_unix, rib_unix)
-    #mf.get_origin_in_rib(sdt_unix, rib_unix)
+
+
+    # Plotting...
+    sdt_unix = largest_dt
+    rib_unix = largest_dt
+    edt_unix = sdt_unix + 2400
+    pl.rib_end_change(sdt_unix, rib_unix, sdt_unix, edt_unix)
 
     '''
     f = open(mfile_path, 'r')

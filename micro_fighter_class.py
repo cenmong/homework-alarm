@@ -1282,7 +1282,6 @@ class Micro_fighter():
             line = line.rstrip('\n')
             if '#' in line: # monitor line
                 mon_index_set = set(ast.literal_eval(line.split('set')[1]))
-                print mon_index_set
             else:
                 pfx = line.split(':')[0]
                 pfxset.add(pfx)
@@ -1299,6 +1298,294 @@ class Micro_fighter():
             monset.add(index2ip[i])
 
         return [pfxset, monset]
+
+
+
+    def get_LPM_in_rib_pmfile(self, pfile, mfile, rib_unix):
+        pfxset = set()
+        f = open(pfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+        print 'Building prefix to origin AS radix tree'
+        pfx2as_radix = radix.Radix()
+        rib_list = self.get_rib_list_for_unix(rib_unix)
+        for fline in rib_list:
+            print 'Reading ', fline
+
+            co = cmlib.get_co_from_updt_path(fline)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attrs = line.split('|')
+
+                    mon = attrs[3]
+                    if mon not in common_set:
+                        continue
+
+                    pfx = attrs[5]
+
+                    path = attrs[6]
+                    origin = path.split()[-1] # origin is a string
+
+                    # FIXME we ignore multi-homing now
+                    rnode = pfx2as_radix.add(pfx)
+                    rnode.data[0] = origin
+                except: # format error
+                    pass
+            myf.close()
+
+
+
+        print 'Getting origin ASes of target prefixes'
+        non_exact_p2a = dict()
+        exact_p2a = dict() # exact prefix matching
+
+
+        for pfx in pfxset:
+            rnode = pfx2as_radix.search_best(pfx) # longest prefix matching
+            try:
+                asn = rnode.data[0]
+                if pfx == rnode.prefix:
+                    exact_p2a[pfx] = asn
+                else:
+                    non_exact_p2a[pfx] = asn
+            except:
+                asn = -1
+
+        non_exact_a2p = dict() # only for easier output presentation
+        for pfx in non_exact_p2a:
+            asn = non_exact_p2a[pfx]
+            try:
+                non_exact_a2p[asn].add(pfx)
+            except:
+                non_exact_a2p[asn] = set([pfx])
+
+        exact_a2p = dict() # only for easier output presentation
+        for pfx in exact_p2a:
+            asn = exact_p2a[pfx]
+            try:
+                exact_a2p[asn].add(pfx)
+            except:
+                exact_a2p[asn] = set([pfx])
+
+
+
+        # Output everything
+        out_dir = final_output_root + 'event_RIB_analysis/' + 'pmfile_' + str(self.period.index) + '/' +\
+                str(rib_unix) + '/'
+        cmlib.make_dir(out_dir)
+        fname = 'pfx2LPM.txt'
+
+        f = open(out_dir + fname, 'w')
+        for pfx in non_exact_p2a:
+            f.write('N|'+pfx+':'+str(non_exact_p2a[pfx])+'\n')
+        for pfx in exact_p2a:
+            f.write('E|'+pfx+':'+str(exact_p2a[pfx])+'\n')
+
+        for asn in non_exact_a2p:
+            f.write('N#|'+str(asn)+':'+str(len(non_exact_a2p[asn]))+'\n')
+        for asn in exact_a2p:
+            f.write('E#|'+str(asn)+':'+str(len(exact_a2p[asn]))+'\n')
+
+        f.close()
+
+
+    def get_as_recall_in_rib_pmfile(self, pfile, mfile, rib_unix):
+        pfxset = set()
+        f = open(pfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+        rib_list = self.get_rib_list_for_unix(rib_unix)
+        asn2count = dict()
+        tpath = 0 # the number of total path
+
+
+        for fline in rib_list:
+            print 'Reading ', fline
+
+            co = cmlib.get_co_from_updt_path(fline)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
+            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attrs = line.split('|')
+
+                    pfx = attrs[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    mon = attrs[3]
+                    if mon not in common_set:
+                        continue
+
+                    path = attrs[6]
+                    tpath += 1
+                    as_set = set(path.split())
+                    for asn in as_set:
+                        try:
+                            asn2count[asn] += 1
+                        except:
+                            asn2count[asn] = 1
+                except: # format error
+                    pass
+            myf.close()
+
+        print 'total paths: ', tpath
+
+        out_dir = final_output_root + 'event_RIB_analysis/' + 'pmfile_' + str(self.period.index) + '/' +\
+                str(rib_unix) + '/'
+        cmlib.make_dir(out_dir)
+        fname = 'rib_as_recall.txt'
+
+        tmp_list = sorted(asn2count.items(), key=operator.itemgetter(1), reverse=True)
+        fo = open(out_dir + fname, 'w')
+        for item in tmp_list:
+            fo.write(item[0]+':'+str(item[1])+'|'+str(float(item[1])/float(tpath))+'\n')
+        fo.write('total paths:' + str(tpath) + '\n')
+        fo.close()
+
+
+    def get_as_recall_in_update_pmfile(self, pfile, mfile, sdt_unix, edt_unix):
+        pfxset = set()
+        f = open(pfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+        fmy.close()
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+
+        
+        pfx2mon2path = dict()
+        for pfx in pfxset:
+            pfx2mon2path[pfx] = dict()
+        for fpath in fpathlist:
+            print 'Reading ', fpath
+
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_set = co_monset & monset
+
+            p = subprocess.Popen(['zcat',fpath],stdout=subprocess.PIPE,close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    unix = int(attr[1])
+
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    mon = attr[3]
+                    if mon not in common_set:
+                        continue
+
+                    pfx = attr[5]
+                    if pfx not in pfxset:
+                        continue
+
+                    type = attr[2]
+                    if type == 'A':
+                        as_path = attr[6]
+                        # We get the first path if multiple exist
+                        try:
+                            test = pfx2mon2path[pfx][mon]
+                        except:
+                            pfx2mon2path[pfx][mon] = as_path
+                except:
+                    pass
+
+            myf.close()
+
+        pfx2origin = dict()
+        pfx2suspect = dict()
+        for pfx in pfxset:
+            origin2count = dict()
+            as2count = dict()
+            for mon in pfx2mon2path[pfx]:
+                nowpath = pfx2mon2path[pfx][mon]
+                origin = nowpath.split()[-1]
+                try:
+                    origin2count[origin] += 1
+                except:
+                    origin2count[origin] = 1
+
+                pathset = set(nowpath.split())
+                #if '3549' in pathset and '28207' in pathset:
+                #    mylen = len(nowpath.split())
+                #    print nowpath.split().index('3549')-mylen, nowpath.split().index('28207')-mylen
+                for asn in pathset:
+                    try:
+                        as2count[asn] += 1
+                    except:
+                        as2count[asn] = 1
+            pfx2suspect[pfx] = as2count
+            pfx2origin[pfx] = origin2count
+
+
+        out_dir = final_output_root + 'change_analysis/' + 'pmfile_' + str(sdt_unix) + '_' +\
+                str(edt_unix) + '/'
+        cmlib.make_dir(out_dir)
+
+        
+        out_path = out_dir + 'update_as_recall.txt'
+        fo = open(out_path, 'w')
+        for pfx in pfx2suspect:
+            fo.write(str(pfx)+':')
+            for asn in pfx2suspect[pfx]:
+                if pfx2suspect[pfx][asn] > 50:
+                    fo.write(asn+'|'+str(pfx2suspect[pfx][asn])+'*')
+            for asn in pfx2origin[pfx]:
+                fo.write('$$$$$'+asn+'|'+str(pfx2origin[pfx][asn])+'*')
+            fo.write('\n')
+        fo.close()
+
 
 
 
@@ -1577,10 +1864,10 @@ class Micro_fighter():
                 mon2pfx_set[mon].add(pfx)
                 if mp_ending_type[mon][pfx] == 'W':
                     mon2withdrawn_set[mon].add(pfx)
-            print mon, ':', len(mon2withdrawn_set[mon])
 
 
 
+        # Below: for the CN paper (cluster1) only
         # Compare the withdrawn set to the interesting prefixes in cluster 1
         pfxset_lpm_9121 = set()
         in_dir = final_output_root + 'event_RIB_analysis/' + str(self.period.index) + '/' +\
@@ -1603,7 +1890,7 @@ class Micro_fighter():
         out_dir = final_output_root + 'change_analysis/' + str(lbe_unix) + '_' + str(sdt_unix) + '_' +\
                 str(edt_unix) + '/'
         cmlib.make_dir(out_dir)
-        out_path = out_dir + 'withdrawn_pfx_9121_lpm.txt'
+        out_path = out_dir + str(lbe_unix) + '_withdrawn_pfx_9121_lpm.txt'
         f = open(out_path, 'w')
         for mon in mon2pfx_set.keys():
             common_pset = pfxset_lpm_9121 & mon2pfx_set[mon]

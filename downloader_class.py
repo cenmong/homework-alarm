@@ -282,9 +282,9 @@ class Downloader():
         min = 9999999999
         for line in ok_rib_list:
             fdate = line.split()[0].split('.')[-3]
-            ftime = line.split()[0].split('.')[-2][0:2]
+            ftime = line.split()[0].split('.')[-2]
             dtstr = fdate+ftime
-            objdt = datetime.datetime.strptime(dtstr, '%Y%m%d%H') 
+            objdt = datetime.datetime.strptime(dtstr, '%Y%m%d%H%M') 
             runix = time_lib.mktime(objdt.timetuple()) + 8*60*60 # F**k! Time zone!
             print objdt, runix, unix
             if runix <= unix and unix-runix < min:
@@ -666,8 +666,8 @@ class Downloader():
             logging.error('%s:Cannot find time in the files!!!!!!!(Error)', self.co)
 
 if __name__ == '__main__':
-    order = 282
-    unix = largest_dt
+    order = 286
+    unix = cluster1_2[0]
 
     sdate = daterange[order][0]
     edate = daterange[order][1]
