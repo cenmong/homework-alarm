@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mpldates
 from matplotlib.lines import Line2D
 
+matplotlib.rcParams['legend.numpoints'] = 1
+
 line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
 font = {'size': 38,}
 #font = {'size': 80,}
@@ -25,12 +27,13 @@ plt.rc('legend',**{'fontsize':34})
 dot_size = 60
 
 default_color = 'k'
-colors = ['r', 'b', 'g', 'm', 'cyan', 'darkorange',\
-          'mediumpurple', 'salmon', 'lime', 'hotpink',\
-          'firebrick', 'sienna', 'sandybrown', 'y', 'teal', 'yellow']
+colors = ['r', 'b', 'g', 'm', 'cyan', 'teal', 'sienna', 'firebrick', 'darkorange',\
+          'mediumpurple', 'salmon', 'lime', 'hotpink', 'yellow', '',\
+          'y', 'sandybrown',]
 shapes = ['^', '*', 'D', 'd']
 cluster_labels = ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']
-linestyles = ['-', '--', '_', ':']
+linestyles = ['-', '--', '-.', ':']
+'''
 markers = []
 for m in Line2D.markers:
     try:
@@ -44,6 +47,8 @@ styles = markers + [
         r'$\circlearrowleft$',
         r'$\clubsuit$',
         r'$\checkmark$']
+'''
+styles = ['8','>','d','<','D','*','s','^','p','H']
 
 # used when plotting
 metric_tag2name = {'1':'CR1', '0.1':'CR0.1',}
@@ -147,7 +152,6 @@ class Mplotter():
             plt.clf() # clear the figure
             plt.close()
 
-        '''
         # plot all the metrics to total value correlation for each feature in ONE figure
         m2unix2v = dict()
         for fea in fea2unix2met2v:
@@ -202,7 +206,6 @@ class Mplotter():
             #plt.savefig(env.metric_plot_dir+'met2total_'+feature_num2name[fea]+'.pdf', bbox_inches='tight')
             plt.clf() # clear the figure
             plt.close()
-        '''
 
     def num_features_metrics_CDF(self): 
         met2unix2fea2v = dict() # Note: different to fea2unix2met2v
@@ -302,15 +305,15 @@ class Mplotter():
             else:
                 fig = plt.figure(figsize=(17, 13))
             ax = fig.add_subplot(111)
-            count = 1
+            count = -1
             for fea in fea2xlist:
                 if fea == 7:
                     continue
                 count += 1
+                #ax.plot(fea2xlist[fea], fea2ylist[fea],linestyles[count%4],\
+                #        color=colors[count], label=feature_num2name[fea], lw=9, alpha=0.8)
                 ax.plot(fea2xlist[fea], fea2ylist[fea],\
-                        color=colors[count], label=feature_num2name[fea], lw=6, alpha=0.8)
-                #ax.plot(fea2xlist[fea], fea2ylist[fea],\
-                #        color=colors[count], marker=styles[count], markersize=15, markevery=1000, label=feature_num2name[fea], lw=5, alpha=0.8)
+                        color=colors[count], marker=styles[count], markersize=25, markevery=(len(fea2xlist[fea])/2,len(fea2xlist[fea])), label=feature_num2name[fea], lw=6, alpha=0.8)
 
             ax.set_ylabel('Quantity of time slot')
             if mtype == 'TOTAL':
@@ -380,12 +383,14 @@ class Mplotter():
                 xlist.append(key)
                 ylist.append(mycdf[key])
 
-            ax.plot(xlist, ylist, color=colors[count], label=mtype, lw=6, alpha=0.8)
+            ax.plot(xlist, ylist,\
+                    color=colors[count], marker=styles[count], markersize=25, markevery=(len(xlist)/2,len(xlist)), label=mtype, lw=6, alpha=0.8)
+            #ax.plot(xlist, ylist, color=colors[count], label=mtype, lw=6, alpha=0.8)
             count += 1
 
         ax.set_ylabel('Quantity of time slot')
         ax.set_xlabel(' Metric value')
-        legend = ax.legend(loc='upper left',shadow=False)
+        legend = ax.legend(loc='lower right',shadow=False)
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))

@@ -722,51 +722,16 @@ class Micro_fighter():
 
 
         type2num = dict()
-        type2ratio = dict()
-        total = 0
         for mon in mp_dict:
             for pfx in mp_dict[mon]:
                 for t in mp_dict[mon][pfx]:
                     name = num2type[t]
-                    total += 1
                     try:
                         type2num[name] += 1
                     except:
                         type2num[name] = 1
         
-        for t in type2num:
-            type2ratio[t] = float(type2num[t]) / float(total)
-
         print type2num
-        print type2ratio
-        sorted_list = sorted(type2num.items(), key=operator.itemgetter(1), reverse=True)
-        if target_pset == None:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern.txt', 'w')
-        else:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_tpfx.txt', 'w')
-
-        for item in sorted_list:
-            tp = item[0]
-            count = item[1]
-            ratio = type2ratio[tp]
-            f.write(str(tp)+':'+str(count)+' '+str(ratio)+'\n')
-        f.close()
-
-        p2ratio = dict()
-        for p in pattern2tag:
-            p2ratio[num2type[p]] = float(len(pattern2tag[p])) / float(len(tag_set))
-        sorted_list = sorted(p2ratio.items(), key=operator.itemgetter(1), reverse=True)
-        if target_pset == None:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones.txt', 'w')
-        else:
-            f = open(self.reaper.get_output_dir_event()+str(unix_dt)+'_updt_pattern_in_ones_tpfx.txt', 'w')
-
-        for item in sorted_list:
-            p = item[0]
-            ratio = item[1]
-            f.write(str(p)+':'+str(ratio)+'\n')
-        f.close()
-
         print 'Total update: ', total_update
 
 
@@ -1356,6 +1321,7 @@ class Micro_fighter():
         non_exact_p2a = dict()
         exact_p2a = dict() # exact prefix matching
 
+        non_exact_pset = set() # XXX for once only 
 
         for pfx in pfxset:
             rnode = pfx2as_radix.search_best(pfx) # longest prefix matching
@@ -1365,6 +1331,7 @@ class Micro_fighter():
                     exact_p2a[pfx] = asn
                 else:
                     non_exact_p2a[pfx] = asn
+                    non_exact_pset.add(rnode.prefix) # XXX for once only 
             except:
                 asn = -1
 
@@ -1403,6 +1370,11 @@ class Micro_fighter():
         for asn in exact_a2p:
             f.write('E#|'+str(asn)+':'+str(len(exact_a2p[asn]))+'\n')
 
+        f.close()
+
+        f = open(out_dir + 'non_exact_pset.txt', 'w')
+        for pfx in non_exact_pset:
+            f.write(pfx+'\n')
         f.close()
 
 
@@ -2089,10 +2061,8 @@ class Micro_fighter():
         fo3.close()
 
     # pfile_path: None or the prefix file path
-    def upattern_mon_pfxset_intime(self, mip, pfile_path, sdt_unix, edt_unix):
+    def upattern_mon_pfxset_intime(self, mip, pfile_path, mfile, sdt_unix, edt_unix):
         fmy = open(self.updt_filel, 'r')
-        sdt_obj = datetime.datetime.utcfromtimestamp(sdt_unix)
-        edt_obj = datetime.datetime.utcfromtimestamp(edt_unix)
 
         target_pfx = set()
         f = open(pfile_path,'r')
@@ -2101,54 +2071,35 @@ class Micro_fighter():
             target_pfx.add(line)
         f.close()
 
+        monset = set()
+        f = open(mfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
         mp_dict = dict() # prefix: successive update type series (0~5)
         mp_last_A = dict() # prefix: latest full announcement update
         mp_last_type = dict()
         for p in target_pfx:
             mp_dict[p] = list()
 
+
+        # Read update files
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
         for fline in fmy:
-            # get date from file name
             updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
 
-            file_attr = updatefile.split('.')
-            fattr_date, fattr_time = file_attr[-5], file_attr[-4]
-            fname_dt_obj = datetime.datetime(int(fattr_date[0:4]),\
-                    int(fattr_date[4:6]), int(fattr_date[6:8]),\
-                    int(fattr_time[0:2]), int(fattr_time[2:4]))
-            
-            fline = datadir + fline.split('|')[0]
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_monset = co_monset & monset
 
-            # get current file's collector name
-            attributes = fline.split('/') 
-            j = -1
-            for a in attributes:
-                j += 1
-                if a.startswith('data.ris') or a.startswith('archi'):
-                    break
-
-            co = fline.split('/')[j + 1]
-            if co == 'bgpdata':  # route-views2, the special case
-                co = ''
-
-            # Deal with several special time zone problems according to collector name
-            if co == 'route-views.eqix' and fname_dt_obj <= dt_anchor2: # PST time
-                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=7) # XXX (not 8)
-            elif not co.startswith('rrc') and fname_dt_obj <= dt_anchor1:
-                fname_dt_obj = fname_dt_obj + datetime.timedelta(hours=8) # XXX here is 8
-
-            if co.startswith('rrc'):
-                shift = -10
-            else:
-                shift = -30
-
-            # Check whether the file is within our intended time range
-            if not sdt_obj+datetime.timedelta(minutes=shift)<=fname_dt_obj<=edt_obj:
-                continue
-
-            # read the update file
-            print 'Reading ', fline
-            p = subprocess.Popen(['zcat', fline],stdout=subprocess.PIPE, close_fds=True)
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
             myf = StringIO(p.communicate()[0])
             assert p.returncode == 0
             for line in myf:
@@ -2156,7 +2107,7 @@ class Micro_fighter():
                     line = line.rstrip('\n')
                     attr = line.split('|')
                     mon = attr[3]
-                    if mon != mip:
+                    if mon != mip or mon not in common_monset:
                         continue
                         
                     pfx = attr[5]
@@ -2212,6 +2163,7 @@ class Micro_fighter():
                         logging.info(traceback.format_exc())
                         logging.info(line)
             myf.close()
+
 
         outdir = final_output_root + 'upattern_TS/' + str(sdt_unix) + '_' + str(edt_unix) + '/' +\
                 pfile_path.split('/')[-1] + '/'
@@ -2464,3 +2416,117 @@ class Micro_fighter():
             f.write(str(asn)+':'+str(count)+'\n')
         f.close()
 
+
+    def get_upattern_pmfile(self, pfile, mfile, sdt_unix, edt_unix):
+        pfxset = set()
+        f = open(pfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            pfxset.add(line)
+        f.close()
+
+        monset = set()
+        f = open(mfile,'r')
+        for line in f:
+            line = line.rstrip('\n')
+            monset.add(line)
+        f.close()
+
+
+        #--------------------------------------------------------
+        # Read update files
+        updt_files = list()
+        fmy = open(self.updt_filel, 'r')
+        for fline in fmy:
+            updatefile = fline.split('|')[0]
+            updt_files.append(datadir+updatefile)
+
+        mp_dict = dict() # mon: prefix: successive update type series (0~5)
+        mp_last_A = dict() # mon: prefix: latest full update
+        mp_last_type = dict()
+        for m in monset:
+            mp_dict[m] = dict()
+            mp_last_A[m] = dict() # NOTE: does not record W, only record A
+            mp_last_type[m] = dict()
+
+        total_update = 0
+
+        fpathlist = cmlib.select_update_files(updt_files, sdt_unix, edt_unix)
+        for fpath in fpathlist:
+            co = cmlib.get_co_from_updt_path(fpath)
+            co_monset = set(self.period.co_mo[co])
+            common_monset = co_monset & monset
+
+            print 'Reading ', fpath
+            p = subprocess.Popen(['zcat', fpath],stdout=subprocess.PIPE, close_fds=True)
+            myf = StringIO(p.communicate()[0])
+            assert p.returncode == 0
+            for line in myf:
+                try:
+                    line = line.rstrip('\n')
+                    attr = line.split('|')
+                    pfx = attr[5]
+                    type = attr[2]
+                    mon = attr[3]
+
+                    if (mon not in common_monset) or (pfx not in pfxset):
+                        continue
+
+                    unix = int(attr[1])
+                    if unix < sdt_unix or unix > edt_unix:
+                        continue
+
+                    total_update += 1
+
+                    if type == 'A':
+                        as_path = attr[6]
+
+                    try:
+                        test = mp_dict[mon][pfx]
+                    except:
+                        mp_dict[mon][pfx] = list() # list of 0~5
+
+                    try:
+                        last_A = mp_last_A[mon][pfx]
+                        last_as_path = last_A.split('|')[6]
+                    except:
+                        last_A = None
+                        last_as_path = None
+
+                    try:
+                        last_type = mp_last_type[mon][pfx]
+                    except: # this is the first update for the mon-pfx pair
+                        last_type = None
+
+                    up = self.get_update_pattern(last_type, type, last_as_path, as_path, last_A, line)
+                    if up != -1: # not the first update
+                        try:
+                            mp_dict[mon][pfx].append(up)
+                        except:
+                            mp_dict[mon][pfx] = [up]
+
+                    if type == 'W':
+                        mp_last_type[mon][pfx] = 'W'
+                    elif type == 'A':
+                        mp_last_type[mon][pfx] = 'A'
+                        mp_last_A[mon][pfx] = line
+                    else:
+                        assert False
+                    
+                except Exception, err:
+                    pass
+            myf.close()
+
+
+        type2num = dict()
+        for mon in mp_dict:
+            for pfx in mp_dict[mon]:
+                for t in mp_dict[mon][pfx]:
+                    try:
+                        type2num[t] += 1
+                    except:
+                        type2num[t] = 1
+        
+
+        print type2num
+        print 'Total update: ', total_update

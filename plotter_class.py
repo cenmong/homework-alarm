@@ -10,6 +10,7 @@ import subprocess
 import re
 import os
 import ast
+from math import sqrt
 
 from operator import add
 from cStringIO import StringIO
@@ -30,12 +31,14 @@ from matplotlib.lines import Line2D
 from matplotlib import colors as colors_lib
 import matplotlib.patches as mpatches
 
+matplotlib.rcParams['legend.numpoints'] = 1
+
 line_type = ['k--', 'k-', 'k^-'] # line type (hard code)
 font = {'size': 38,}
 #font = {'size': 80,}
 
 matplotlib.rc('font', **font)
-plt.rc('legend',**{'fontsize':34})
+plt.rc('legend',**{'fontsize':32})
 
 spamhaus_s = 1363564800
 spamhaus_e = 1364860800
@@ -43,13 +46,13 @@ spamhaus_e = 1364860800
 dot_size = 60
 
 default_color = 'k'
-colors = ['r', 'b', 'g', 'm', 'cyan', 'darkorange',\
-          'mediumpurple', 'salmon', 'lime', 'hotpink', 'yellow', '',\
-          'firebrick', 'sienna', 'sandybrown', 'y', 'teal']
+colors = ['r', 'b', 'g', 'm', 'maroon', 'teal', 'sienna',  'olivedrab',\
+          'darkviolet', 'darkgoldenrod', 'darkblue', 'saddlebrown', 'gray', 'y',\
+          'firebrick']
 shapes = ['^', '*', 'D', 'd']
 cluster_labels = ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']
 month_labels = ['Jan.','Feb.','Mar.','Apr','May','June','July','Aug.','Sept.','Oct.','Nov.','Dec.']
-linestyles = ['-', '--', '_', ':']
+linestyles = ['-', '--', '-.', ':']
 markers = []
 for m in Line2D.markers:
     try:
@@ -1165,7 +1168,9 @@ class Plotter():
             ylist.append(sum)
             xlist.append(uq)
 
-            ax.plot(xlist,ylist,'k-', color=colors[i], label=str(top),lw=3)
+            #ax.plot(xlist, ylist, linestyle='-', marker=styles[i],\
+                    #color=colors[i], markersize=15, label=str(top),lw=3)
+            ax.plot(xlist,ylist, linestyles[i%4], color=colors[i], label=str(top),lw=9)
             ymax = max(ylist)
             print 'ymax=',ymax
 
@@ -1177,7 +1182,7 @@ class Plotter():
         ax.tick_params(axis='y',pad=10)
         ax.tick_params(axis='x',pad=10)
         #plt.plot((80, 80), (0, 23000), 'k--', lw=2)
-        plt.plot((100, 100), (0, 23000), 'k--', lw=6)
+        plt.plot((100, 100), (0, 23000), 'k--', lw=8)
         #plt.plot((200, 200), (0, 23000), 'k--', lw=2)
         ax.set_xscale('log')
         plt.xlim(-1,10000)
@@ -2135,10 +2140,10 @@ class Plotter():
         v_patch = mpatches.Patch(color='grey',label='WAUnknown')
         k_patch = mpatches.Patch(color='black',label='AW')
         fc_patch = mpatches.Patch(color='fuchsia',label='WADiff')
-        plt.legend(handles=[c_patch,b_patch,bv_patch,s_patch,y_patch,v_patch,k_patch,g_patch,fc_patch], loc='upper right', fontsize=14)
+        plt.legend(handles=[c_patch,b_patch,bv_patch,s_patch,y_patch,v_patch,k_patch,g_patch,fc_patch], loc='upper right', fontsize=36)
 
         ax.set_ylabel(str(short_num) + ' prefixes')
-        ax.set_xlabel('Update pattern')
+        ax.set_xlabel('Quantity of update pattern')
         ax.get_yaxis().set_ticks([])
         #ax.label_params(axis='y',pad=50)
 
@@ -2165,6 +2170,18 @@ class Plotter():
             thedict = ast.literal_eval('{'+line.split(':{')[1])
             dictlist.append(thedict)
         f.close()
+
+        count_90 = 0
+        for mydict in dictlist:
+            total = 0
+            for t in mydict:
+                if t in type_num_list:
+                    total += mydict[t]
+
+            if float(mydict[10])/float(total) > 0.8:
+                count_90 += 1
+        print 'count_90:', count_90
+
 
         new_dictlist = sorted(dictlist, key=lambda k: k[10], reverse=True)
 
@@ -2203,6 +2220,57 @@ class Plotter():
         plt.legend((p1[0],p2[0],p3[0],p4[0]),('No change', 'Path change', 'Community change', 'Withdrawn'),loc='lower left')
 
         output_loc = dir + 'rib_end_change.pdf'
+        plt.savefig(output_loc, bbox_inches='tight')
+        plt.clf() # clear the figure
+        plt.close()
+
+    def withdraw_ratio_9121(self, lbe_list, sdt_list, edt_list):
+        print 'Plotting withdrawn prefix ratio'
+        avg_list = list() # average
+        dev_list = list() # standard deviation
+
+        total = len(lbe_list)
+        for i in xrange(0, total):
+            lbe_unix = lbe_list[i]
+            sdt_unix = sdt_list[i]
+            edt_unix = edt_list[i]
+            indir = final_output_root + 'change_analysis/' + str(lbe_unix) + '_' + str(sdt_unix) + '_' +\
+                    str(edt_unix) + '/'
+            fpath = indir + str(lbe_unix) + '_withdrawn_pfx_9121_lpm.txt'
+
+
+            ratio_list = list()
+            f = open(fpath, 'r')
+            for line in f:
+                line = line.rstrip('\n')
+                mysum = float(line.split(':')[1].split('|')[0])
+                value = float(line.split(':')[1].split('|')[1])
+                ratio = value/mysum
+                ratio_list.append(ratio)
+            f.close()
+
+            avg = sum(ratio_list)/len(ratio_list)
+            avg_list.append(avg)
+
+            variance = 0
+            for r in ratio_list:
+                variance += (r-avg)**2
+            variance /= len(ratio_list)
+            dev_list.append(variance)
+
+
+        x_list = list()
+        for i in xrange(0, total):
+            x_list.append(i+1)
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(111)
+        ax.errorbar(x_list, avg_list, yerr=dev_list, fmt='o', markersize=10, elinewidth=3)
+        ax.set_ylabel('Ratio of withdrawn prefixes')
+        ax.set_xlabel('LBEs sequenced by time')
+        ax.set_ylim([-0.05,1.05])
+
+        cmlib.make_dir(CaseStudy_plot_dir)
+        output_loc = CaseStudy_plot_dir + 'ratio_withdrawn.pdf'
         plt.savefig(output_loc, bbox_inches='tight')
         plt.clf() # clear the figure
         plt.close()

@@ -15,7 +15,7 @@ import ast
 logging.info('Program starts!')
 
 #index_list = [0,1,2,3,4,5,6,7,8,10,11,13,14,15,16,19,20,21,22,23,24]
-index_list = [282]
+index_list = [289]
 #index_list = [281,282,283,284,285,286,287,288,289,2810]
 
 #pfx_set = set()
@@ -56,21 +56,6 @@ for index in index_list:
         if rsize > global_rsize_threshold:
             mf.oriAS_in_updt(unix_dt, None)
 
-    #----------------------------------------
-    # Get pfx->origin AS within an LBE for certain prefixes (optional)
-    for dt in cluster1_1:
-        try:
-            mf.oriAS_in_updt(dt, pfx_set)
-        except: # no such dt in the period
-            pass
-
-    #-----------------------------------------
-    # Get update pattern for certain prefixes and certain LBEs
-    for dt in cluster3:
-        try:
-            mf.event_update_pattern(dt, pfx_set)
-        except:
-            pass
     #----------------------------------
     # obtain the update pattern for all LBEs
     events = reaper.get_event_dict()
@@ -80,35 +65,37 @@ for index in index_list:
         thelist = events[unix_dt]
         rsize = thelist[0]
         if rsize > global_rsize_threshold:
-            mf.event_update_pattern(unix_dt, None) # Do only once for each LBE
-    '''
+            mf.event_update_pattern(unix_dt, None) # Do only once for each LBE # FIXME 
 
     #micro_fighter.set_sedate(sdt_obj, edt_obj)
     #micro_fighter.analyze_pfx()
 
     #mf.event_as_link_rank(1365604200)
     #mf.event_analyze_pfx(1365604200)
+    '''
     pl = Plotter(reaper)
 
+    #mf.get_rib_end_states(sdt_unix, sdt_unix, sdt_unix, edt_unix)
+    rib_unix = cluster3[0]
+    mfile = final_output_root + 'com_mon_cluster3.txt'
+    pfile = final_output_root + 'compfx_cluster3.txt'
     sdt_unix = 1378887000
     edt_unix = 1378899000
-
-
-    #mf.get_rib_end_states(sdt_unix, sdt_unix, sdt_unix, edt_unix)
-    #sdt_unix = cluster3[0]
-    pfile = final_output_root + 'compfx_cluster3.txt'
-    mfile = final_output_root + 'com_mon_cluster3.txt'
+    #mf.get_upattern_pmfile(pfile, mfile, sdt_unix, edt_unix)
     #mf.get_LPM_in_rib_pmfile(pfile, mfile, rib_unix)
-    #mf.get_as_recall_in_rib_pmfile(pfile, mfile, rib_unix)
+    #mf.get_as_recall_in_rib_pmfile('non_exact_pset.txt', mfile, rib_unix)
     #mf.get_as_recall_in_update_pmfile(pfile, mfile, sdt_unix, edt_unix)
     #mf.get_change_detail(sdt_unix, sdt_unix, sdt_unix + 1200)
     #mf.get_as_recall_in_rib(sdt_unix, rib_unix)
     #mf.get_as_precision_in_rib(sdt_unix, rib_unix)
     #mf.get_origin_in_rib(sdt_unix, rib_unix)
+    sdt_list = list()
+    edt_list = list()
     count = 0
-    rib_unix = cluster1_2[0]
-    for sdt_unix in cluster1_2:
-        count += 1
+    #for sdt_unix in cluster1:
+    #    count += 1
+    #    sdt_list.append(sdt_unix)
+    #    edt_list.append(sdt_unix+1200)
         #print 'Now:', count
         #mf.get_origin_in_rib(sdt_unix, rib_unix)
         #mf.get_withdrawn_pfx(sdt_unix, rib_unix, sdt_unix, sdt_unix + 1200)
@@ -118,13 +105,11 @@ for index in index_list:
 
 
     # Plotting...
-    sdt_unix = largest_dt
-    rib_unix = largest_dt
-    edt_unix = sdt_unix + 2400
-    pl.rib_end_change(sdt_unix, rib_unix, sdt_unix, edt_unix)
+    #pl.rib_end_change(sdt_unix, rib_unix, sdt_unix, edt_unix)
+    #pl.withdraw_ratio_9121(sdt_list, sdt_list, edt_list)
 
-    '''
-    f = open(mfile_path, 'r')
+
+    f = open(mfile, 'r')
     count = 0
     for line in f:
         mip = line.rstrip('\n')
@@ -132,13 +117,12 @@ for index in index_list:
         count += 1
         print '# ', count
         print mip
-        mf.upattern_mon_pfxset_intime(mip, pfile_path, sdt_unix, edt_unix) # get and record update pattern
+        #mf.upattern_mon_pfxset_intime(mip, pfile, mfile, sdt_unix, edt_unix) # get and record update pattern
 
         print 'Plotting...'
         # update pattern file path
         upfile = final_output_root + 'upattern_TS/' + str(sdt_unix) + '_' + str(edt_unix) + '/' +\
-                pfile_path.split('/')[-1] + '/' + mip + '.txt'
+                pfile.split('/')[-1] + '/' + mip + '.txt'
         pl.upattern_TS_for_mon(upfile)
 
     f.close()
-    '''

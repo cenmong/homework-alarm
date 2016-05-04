@@ -33,6 +33,7 @@ update_list_dir = datadir + 'update_list/'
 pub_plot_dir = datadir + 'plot_pub/'
 metric_plot_dir = pub_plot_dir + 'metric/'
 LBE_plot_dir = pub_plot_dir + 'LBE/'
+CaseStudy_plot_dir = pub_plot_dir + 'CaseStudy/'
 
 metrics_output_root = datadir + 'metrics_output/'
 
